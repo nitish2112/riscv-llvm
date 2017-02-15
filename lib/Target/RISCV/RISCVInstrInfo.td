@@ -13,6 +13,11 @@
 
 include "RISCVInstrFormats.td"
 
+// Target-independent nodes
+def RetFlag : SDNode<"RISCVISD::RET_FLAG", SDTNone,
+                     [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
+
+// Operands
 class ImmAsmOperand<string prefix, int width, string suffix> : AsmOperandClass {
   let Name = prefix # "Imm" # width # suffix;
   let RenderMethod = "addImmOperands";
@@ -32,12 +37,12 @@ def uimm4 : Operand<i32> {
   let DecoderMethod = "decodeUImmOperand<4>";
 }
 
-def uimm5 : Operand<i32> {
+def uimm5 : Operand<i32>, ImmLeaf<i32, [{return isUInt<5>(Imm);}]> {
   let ParserMatchClass = UImmAsmOperand<5>;
   let DecoderMethod = "decodeUImmOperand<5>";
 }
 
-def simm12 : Operand<i32> {
+def simm12 : Operand<i32>, ImmLeaf<i32, [{return isInt<12>(Imm);}]> {
   let ParserMatchClass = SImmAsmOperand<12>;
   let EncoderMethod = "getImmOpValue";
   let DecoderMethod = "decodeSImmOperand<12>";
@@ -88,6 +93,11 @@ def JAL : FUJ<0b1101111, (outs GPR:$rd), (ins simm21_lsb0:$imm20),
 def JALR : FI<0b000, 0b1100111, (outs GPR:$rd), (ins GPR:$rs1, simm12:$imm12),
               "jalr\t$rd, $rs1, $imm12", []>;
 
+let isReturn=1, isTerminator=1, isBarrier=1 in {
+  def PseudoRET : Pseudo<(outs), (ins), [(RetFlag)]>,
+                  PseudoInstExpansion<(JALR X0_32, X1_32, 0)>;
+}
+
 class Bcc<bits<3> funct3, string OpcodeStr> :
       FSB<funct3, 0b1100011, (outs), (ins GPR:$rs1, GPR:$rs2, simm13_lsb0:$imm12),
          OpcodeStr#"\t$rs1, $rs2, $imm12", []> {
@@ -122,45 +132,45 @@ def SB  : ST_ri<0b000, "sb">;
 def SH  : ST_ri<0b001, "sh">;
 def SW  : ST_ri<0b010, "sw">;
 
-class ALU_ri<bits<3> funct3, string OpcodeStr> :
+class ALU_ri<bits<3> funct3, string OpcodeStr, SDPatternOperator OpNode> :
       FI<funct3, 0b0010011, (outs GPR:$rd), (ins GPR:$rs1, simm12:$imm12),
-         OpcodeStr#"\t$rd, $rs1, $imm12", []>
+         OpcodeStr#"\t$rd, $rs1, $imm12", [(set GPR:$rd, (OpNode GPR:$rs1, simm12:$imm12))]>
 {
 }
 
-def ADDI  : ALU_ri<0b000, "addi">;
-def SLTI  : ALU_ri<0b010, "slti">;
-def SLTIU : ALU_ri<0b011, "sltiu">;
-def XORI  : ALU_ri<0b100, "xori">;
-def ORI   : ALU_ri<0b110, "ori">;
-def ANDI  : ALU_ri<0b111, "andi">;
+def ADDI  : ALU_ri<0b000, "addi", add>;
+def SLTI  : ALU_ri<0b010, "slti", setlt>;
+def SLTIU : ALU_ri<0b011, "sltiu", setult>;
+def XORI  : ALU_ri<0b100, "xori", xor>;
+def ORI   : ALU_ri<0b110, "ori", or>;
+def ANDI  : ALU_ri<0b111, "andi", and>;
 
-class SHIFT32_ri<bit arithshift, bits<3> funct3, string OpcodeStr> :
+class SHIFT32_ri<bit arithshift, bits<3> funct3, string OpcodeStr, SDPatternOperator OpNode> :
       FI32Shift<arithshift, funct3, 0b0010011, (outs GPR:$rd), (ins GPR:$rs1, uimm5:$shamt),
-         OpcodeStr#"\t$rd, $rs1, $shamt", []>
+         OpcodeStr#"\t$rd, $rs1, $shamt", [(set GPR:$rd, (OpNode GPR:$rs1, uimm5:$shamt))]>
 {
 }
 
-def SLLI : SHIFT32_ri<0, 0b001, "slli">;
-def SRLI : SHIFT32_ri<0, 0b101, "srli">;
-def SRAI : SHIFT32_ri<1, 0b101, "srai">;
+def SLLI : SHIFT32_ri<0, 0b001, "slli", shl>;
+def SRLI : SHIFT32_ri<0, 0b101, "srli", srl>;
+def SRAI : SHIFT32_ri<1, 0b101, "srai", sra>;
 
-class ALU_rr<bits<7> funct7, bits<3> funct3, string OpcodeStr> :
+class ALU_rr<bits<7> funct7, bits<3> funct3, string OpcodeStr, SDPatternOperator OpNode> :
       FR<funct7, funct3, 0b0110011, (outs GPR:$rd), (ins GPR:$rs1, GPR:$rs2),
-         OpcodeStr#"\t$rd, $rs1, $rs2", []>
+         OpcodeStr#"\t$rd, $rs1, $rs2", [(set GPR:$rd, (OpNode GPR:$rs1, GPR:$rs2))]>
 {
 }
 
-def ADD  : ALU_rr<0b0000000, 0b000, "add">;
-def SUB  : ALU_rr<0b0100000, 0b000, "sub">;
-def SLL  : ALU_rr<0b0000000, 0b001, "sll">;
-def SLT  : ALU_rr<0b0000000, 0b010, "slt">;
-def SLTU : ALU_rr<0b0000000, 0b011, "sltu">;
-def XOR  : ALU_rr<0b0000000, 0b100, "xor">;
-def SRL  : ALU_rr<0b0000000, 0b101, "srl">;
-def SRA  : ALU_rr<0b0100000, 0b101, "sra">;
-def OR   : ALU_rr<0b0000000, 0b110, "or">;
-def AND  : ALU_rr<0b0000000, 0b111, "and">;
+def ADD  : ALU_rr<0b0000000, 0b000, "add", add>;
+def SUB  : ALU_rr<0b0100000, 0b000, "sub", sub>;
+def SLL  : ALU_rr<0b0000000, 0b001, "sll", shl>;
+def SLT  : ALU_rr<0b0000000, 0b010, "slt", setlt>;
+def SLTU : ALU_rr<0b0000000, 0b011, "sltu", setult>;
+def XOR  : ALU_rr<0b0000000, 0b100, "xor", xor>;
+def SRL  : ALU_rr<0b0000000, 0b101, "srl", srl>;
+def SRA  : ALU_rr<0b0100000, 0b101, "sra", sra>;
+def OR   : ALU_rr<0b0000000, 0b110, "or", or>;
+def AND  : ALU_rr<0b0000000, 0b111, "and", and>;
 
 def FENCE : FI<0b000, 0b0001111, (outs), (ins uimm4:$pred, uimm4:$succ),
                "fence\t$pred, $succ", []> {

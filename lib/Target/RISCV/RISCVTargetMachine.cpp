@@ -11,12 +11,13 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "RISCV.h"
 #include "RISCVTargetMachine.h"
 #include "llvm/ADT/STLExtras.h"
+#include "llvm/CodeGen/Passes.h"
 #include "llvm/CodeGen/TargetLoweringObjectFileImpl.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/IR/LegacyPassManager.h"
-#include "llvm/CodeGen/Passes.h"
 #include "llvm/Support/FormattedStream.h"
 #include "llvm/Support/TargetRegistry.h"
 #include "llvm/Target/TargetOptions.h"
@@ -51,10 +52,31 @@ RISCVTargetMachine::RISCVTargetMachine(const Target &T, const Triple &TT,
                                        CodeGenOpt::Level OL)
     : LLVMTargetMachine(T, computeDataLayout(TT), TT, CPU, FS, Options,
                         getEffectiveRelocModel(TT, RM), CM, OL),
-      TLOF(make_unique<TargetLoweringObjectFileELF>()) {
+      TLOF(make_unique<TargetLoweringObjectFileELF>()),
+      Subtarget(TT, CPU, FS, *this) {
   initAsmInfo();
 }
 
+namespace {
+class RISCVPassConfig : public TargetPassConfig {
+public:
+  RISCVPassConfig(RISCVTargetMachine *TM, PassManagerBase &PM)
+      : TargetPassConfig(TM, PM) {}
+
+  RISCVTargetMachine &getRISCVTargetMachine() const {
+    return getTM<RISCVTargetMachine>();
+  }
+
+  bool addInstSelector() override;
+};
+}
+
 TargetPassConfig *RISCVTargetMachine::createPassConfig(PassManagerBase &PM) {
-  return new TargetPassConfig(this, PM);
+  return new RISCVPassConfig(this, PM);
+}
+
+bool RISCVPassConfig::addInstSelector() {
+  addPass(createRISCVISelDag(getRISCVTargetMachine()));
+
+  return false;
 }

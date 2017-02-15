@@ -10,6 +10,7 @@
 include "llvm/Target/Target.td"
 
 include "RISCVRegisterInfo.td"
+include "RISCVCallingConv.td"
 include "RISCVInstrInfo.td"
 
 

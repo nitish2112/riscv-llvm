@@ -39,6 +39,7 @@ def uimm5 : Operand<i32> {
 
 def simm12 : Operand<i32> {
   let ParserMatchClass = SImmAsmOperand<12>;
+  let EncoderMethod = "getImmOpValue";
   let DecoderMethod = "decodeSImmOperand<12>";
 }
 

@@ -53,9 +53,9 @@ subs t0, t2, t1 # CHECK: :[[@LINE]]:1: error: unrecognized instruction mnemonic
 nandi t0, zero, 0 # CHECK: :[[@LINE]]:1: error: unrecognized instruction mnemonic
 
 # Invalid register names
-addi foo, sp, 10 # CHECK: :[[@LINE]]:6: error: unknown operand
-slti a10, a2, 0x20 # CHECK: :[[@LINE]]:6: error: unknown operand
-slt x32, s0, s0 # CHECK: :[[@LINE]]:5: error: unknown operand
+addi foo, sp, 10 # CHECK: :[[@LINE]]:6: error: invalid operand for instruction
+slti a10, a2, 0x20 # CHECK: :[[@LINE]]:6: error: invalid operand for instruction
+slt x32, s0, s0 # CHECK: :[[@LINE]]:5: error: invalid operand for instruction
 
 # RV64I mnemonics
 addiw a0, sp, 100 # CHECK: :[[@LINE]]:1: error: unrecognized instruction mnemonic

@@ -7,7 +7,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "MCTargetDesc/RISCVFixupKinds.h"
 #include "MCTargetDesc/RISCVMCTargetDesc.h"
+#include "llvm/ADT/APInt.h"
 #include "llvm/MC/MCAsmBackend.h"
 #include "llvm/MC/MCAssembler.h"
 #include "llvm/MC/MCDirectives.h"
@@ -43,7 +45,32 @@ public:
     return false;
   }
 
-  unsigned getNumFixupKinds() const override { return 1; }
+  unsigned getNumFixupKinds() const override {
+    return RISCV::NumTargetFixupKinds;
+  }
+
+  const MCFixupKindInfo &getFixupKindInfo(MCFixupKind Kind) const override {
+    const static MCFixupKindInfo Infos[RISCV::NumTargetFixupKinds] = {
+      // This table *must* be in the order that the fixup_* kinds are defined in
+      // RISCVFixupKinds.h.
+      //
+      // name                    offset bits  flags
+      { "fixup_riscv_hi20",       12,     20,  0 },
+      { "fixup_riscv_lo12_i",     20,     12,  0 },
+      { "fixup_riscv_lo12_s",      0,     32,  0 },
+      { "fixup_riscv_pcrel_hi20", 12,     20,  MCFixupKindInfo::FKF_IsPCRel },
+      { "fixup_riscv_jal",        12,     20,  MCFixupKindInfo::FKF_IsPCRel },
+      { "fixup_riscv_branch",      0,     32,  MCFixupKindInfo::FKF_IsPCRel }
+    };
+
+
+    if (Kind < FirstTargetFixupKind)
+      return MCAsmBackend::getFixupKindInfo(Kind);
+
+    assert(unsigned(Kind - FirstTargetFixupKind) < getNumFixupKinds() &&
+           "Invalid kind!");
+    return Infos[Kind - FirstTargetFixupKind];
+  }
 
   bool mayNeedRelaxation(const MCInst &Inst) const override { return false; }
 
@@ -69,9 +96,77 @@ bool RISCVAsmBackend::writeNopData(uint64_t Count, MCObjectWriter *OW) const {
   return true;
 }
 
+static uint64_t adjustFixupValue(unsigned Kind, uint64_t Value) {
+  switch (Kind) {
+  default:
+    llvm_unreachable("Unknown fixup kind!");
+  case FK_Data_1:
+  case FK_Data_2:
+  case FK_Data_4:
+  case FK_Data_8:
+    return Value;
+  case RISCV::fixup_riscv_lo12_i:
+    return Value & 0xfff;
+  case RISCV::fixup_riscv_lo12_s:
+    return (((Value >> 5) & 0x7f) << 25) | ((Value & 0x1f) << 7);
+  case RISCV::fixup_riscv_hi20:
+  case RISCV::fixup_riscv_pcrel_hi20:
+    // Add 1 if bit 11 is 1, to compensate for low 12 bits being negative.
+    return ((Value + 0x800) >> 12) & 0xfffff;
+  case RISCV::fixup_riscv_jal: {
+    // Need to produce imm[19|10:1|11|19:12] from the 21-bit Value.
+    unsigned Sbit = (Value >> 20) & 0x1;
+    unsigned Hi8 = (Value >> 12) & 0xff;
+    unsigned Mid1 = (Value >> 11) & 0x1;
+    unsigned Lo10 = (Value >> 1) & 0x3ff;
+    // Inst{31} = Sbit;
+    // Inst{30-21} = Lo10;
+    // Inst{20} = Mid1;
+    // Inst{19-12} = Hi8;
+    Value = (Sbit << 19) | (Lo10 << 9) | (Mid1 << 8) | Hi8;
+    return Value;
+  }
+  case RISCV::fixup_riscv_branch: {
+    // Need to extract imm[12], imm[10:5], imm[4:1], imm[11] from the 13-bit
+    // Value.
+    unsigned Sbit = (Value >> 12) & 0x1;
+    unsigned Hi1 = (Value >> 11) & 0x1;
+    unsigned Mid6 = (Value >> 5) & 0x3f;
+    unsigned Lo4 = (Value >> 1) & 0xf;
+    // Inst{31} = Sbit;
+    // Inst{30-25} = Mid6;
+    // Inst{11-8} = Lo4;
+    // Inst{7} = Hi1;
+    Value = (Sbit << 31) | (Mid6 << 25) | (Lo4 << 8) | (Hi1 << 7);
+    return Value;
+  }
+
+  }
+}
+
 void RISCVAsmBackend::applyFixup(const MCFixup &Fixup, char *Data,
                                  unsigned DataSize, uint64_t Value,
                                  bool IsPCRel) const {
+  MCFixupKind Kind = Fixup.getKind();
+  unsigned NumBytes = (getFixupKindInfo(Kind).TargetSize + 7) / 8;
+  if (!Value)
+    return; // Doesn't change encoding.
+  MCFixupKindInfo Info = getFixupKindInfo(Fixup.getKind());
+  // Apply any target-specific value adjustments.
+  Value = adjustFixupValue(Fixup.getKind(), Value);
+
+  // Shift the value into position.
+  Value <<= Info.TargetOffset;
+
+  unsigned Offset = Fixup.getOffset();
+  assert(Offset + NumBytes <= DataSize && "Invalid fixup offset!");
+
+  // For each byte of the fragment that the fixup touches, mask in the
+  // bits from the fixup value.
+  for (unsigned i = 0; i != 4; ++i) {
+    unsigned Idx = i;
+    Data[Offset + i] |= uint8_t((Value >> (Idx * 8)) & 0xff);
+  }
   return;
 }
 

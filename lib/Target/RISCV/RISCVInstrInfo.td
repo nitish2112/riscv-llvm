@@ -134,6 +134,11 @@ def JALR : FI<0b000, 0b1100111, (outs GPR:$rd), (ins GPR:$rs1, simm12:$imm12),
               "jalr\t$rd, $rs1, $imm12", []>;
 }
 
+let isBranch = 1, isBarrier = 1, isTerminator = 1, isIndirectBranch = 1 in {
+  def PseudoBRIND : Pseudo<(outs), (ins GPR:$rs1), [(brind GPR:$rs1)]>,
+                    PseudoInstExpansion<(JALR X0_32, GPR:$rs1, 0)>;
+}
+
 let isCall=1, Defs=[X1_32] in {
   def PseudoCALL : Pseudo<(outs), (ins GPR:$rs1), [(Call GPR:$rs1)]>,
                    PseudoInstExpansion<(JALR X1_32, GPR:$rs1, 0)>;
@@ -273,6 +278,18 @@ def SRL  : ALU_rr<0b0000000, 0b101, "srl", srl>;
 def SRA  : ALU_rr<0b0100000, 0b101, "sra", sra>;
 def OR   : ALU_rr<0b0000000, 0b110, "or", or>;
 def AND  : ALU_rr<0b0000000, 0b111, "and", and>;
+
+// Define pattern expansions for setcc operations that aren't directly
+// handled by a RISC-V instruction
+
+def : Pat<(seteq GPR:$rs1, GPR:$rs2), (SLTI (XOR GPR:$rs1, GPR:$rs2), 1)>;
+def : Pat<(setne GPR:$rs1, GPR:$rs2), (SLTU X0_32, (XOR GPR:$rs1, GPR:$rs2))>;
+def : Pat<(setugt GPR:$rs1, GPR:$rs2), (SLTU GPR:$rs2, GPR:$rs1)>;
+def : Pat<(setuge GPR:$rs1, GPR:$rs2), (XORI (SLTU GPR:$rs1, GPR:$rs2), 1)>;
+def : Pat<(setule GPR:$rs1, GPR:$rs2), (XORI (SLTU GPR:$rs2, GPR:$rs1), 1)>;
+def : Pat<(setgt GPR:$rs1, GPR:$rs2), (SLT GPR:$rs2, GPR:$rs1)>;
+def : Pat<(setge GPR:$rs1, GPR:$rs2), (XORI (SLT GPR:$rs1, GPR:$rs2), 1)>;
+def : Pat<(setle GPR:$rs1, GPR:$rs2), (XORI (SLT GPR:$rs2, GPR:$rs1), 1)>;
 
 def FENCE : FI<0b000, 0b0001111, (outs), (ins uimm4:$pred, uimm4:$succ),
                "fence\t$pred, $succ", []> {

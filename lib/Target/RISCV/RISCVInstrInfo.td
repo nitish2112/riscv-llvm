@@ -53,7 +53,7 @@ def uimm12 : Operand<i32> {
 }
 
 // A 13-bit signed immediate where the least significant bit is zero.
-def simm13_lsb0 : Operand<i32> {
+def simm13_lsb0 : Operand<OtherVT> {
   let ParserMatchClass = SImmAsmOperand<13, "Lsb0">;
   let EncoderMethod = "getImmOpValueAsr1";
   let DecoderMethod = "decodeSImmOperandAndLsl1<13>";
@@ -66,7 +66,7 @@ def uimm20 : Operand<i32> {
 }
 
 // A 21-bit signed immediate where the least significant bit is zero.
-def simm21_lsb0 : Operand<i32> {
+def simm21_lsb0 : Operand<OtherVT> {
   let ParserMatchClass = SImmAsmOperand<21, "Lsb0">;
   let EncoderMethod = "getImmOpValueAsr1";
   let DecoderMethod = "decodeSImmOperandAndLsl1<21>";
@@ -105,6 +105,11 @@ def AUIPC : FU<0b0010111, (outs GPR:$rd), (ins uimm20:$imm20),
 def JAL : FUJ<0b1101111, (outs GPR:$rd), (ins simm21_lsb0:$imm20),
               "jal\t$rd, $imm20", []>;
 
+let isTerminator=1, isBarrier=1 in {
+def PseudoBR : Pseudo<(outs), (ins simm21_lsb0:$imm20), [(br bb:$imm20)]>,
+               PseudoInstExpansion<(JAL X0_32, simm21_lsb0:$imm20)>;
+}
+
 def JALR : FI<0b000, 0b1100111, (outs GPR:$rd), (ins GPR:$rs1, simm12:$imm12),
               "jalr\t$rd, $rs1, $imm12", []>;
 
@@ -113,17 +118,32 @@ let isReturn=1, isTerminator=1, isBarrier=1 in {
                   PseudoInstExpansion<(JALR X0_32, X1_32, 0)>;
 }
 
-class Bcc<bits<3> funct3, string OpcodeStr> :
+class Bcc<bits<3> funct3, string OpcodeStr, PatFrag CondOp> :
       FSB<funct3, 0b1100011, (outs), (ins GPR:$rs1, GPR:$rs2, simm13_lsb0:$imm12),
-         OpcodeStr#"\t$rs1, $rs2, $imm12", []> {
+         OpcodeStr#"\t$rs1, $rs2, $imm12", [(brcond (i32 (CondOp GPR:$rs1, GPR:$rs2)), bb:$imm12)]> {
+  let isBranch = 1;
+  let isTerminator = 1;
 }
 
-def BEQ   : Bcc<0b000, "beq">;
-def BNE   : Bcc<0b001, "bne">;
-def BLT   : Bcc<0b100, "blt">;
-def BGE   : Bcc<0b101, "bge">;
-def BLTU  : Bcc<0b110, "bltu">;
-def BGEU  : Bcc<0b111, "bgeu">;
+def BEQ   : Bcc<0b000, "beq", seteq>;
+def BNE   : Bcc<0b001, "bne", setne>;
+def BLT   : Bcc<0b100, "blt", setlt>;
+def BGE   : Bcc<0b101, "bge", setge>;
+def BLTU  : Bcc<0b110, "bltu", setult>;
+def BGEU  : Bcc<0b111, "bgeu", setuge>;
+
+class Bcc_SwapPat<PatFrag CondOp, RISCVInst InstBcc> : Pat<
+  (brcond (i32 (CondOp GPR:$rs1, GPR:$rs2)), bb:$imm12),
+  (InstBcc GPR:$rs2, GPR:$rs1, bb:$imm12)>;
+
+// Condition codes that don't have matching RISC-V branch instructions, but
+// are trivially supported by swapping the two input operands
+def : Bcc_SwapPat<setgt, BLT>;
+def : Bcc_SwapPat<setle, BGE>;
+def : Bcc_SwapPat<setugt, BLTU>;
+def : Bcc_SwapPat<setule, BGEU>;
+
+def : Pat<(brcond GPR:$cond, bb:$imm12), (BNE GPR:$cond, X0_32, bb:$imm12)>;
 
 class LD_ri<bits<3> funct3, string OpcodeStr> :
       FI<funct3, 0b0000011, (outs GPR:$rd), (ins GPR:$rs1, simm12:$imm12),

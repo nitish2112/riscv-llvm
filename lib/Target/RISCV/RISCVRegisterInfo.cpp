@@ -49,10 +49,38 @@ BitVector RISCVRegisterInfo::getReservedRegs(const MachineFunction &MF) const {
   return Reserved;
 }
 
+const uint32_t *RISCVRegisterInfo::getNoPreservedMask() const {
+  return CSR_NoRegs_RegMask;
+}
+
 void RISCVRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
                                             int SPAdj, unsigned FIOperandNum,
                                             RegScavenger *RS) const {
-  llvm_unreachable("Subroutines not supported yet");
+  assert(SPAdj == 0 && "Unexpected");
+
+  MachineInstr &MI = *II;
+  MachineFunction &MF = *MI.getParent()->getParent();
+  const TargetFrameLowering *TFI = MF.getSubtarget().getFrameLowering();
+  DebugLoc DL = MI.getDebugLoc();
+
+  unsigned FrameReg = getFrameRegister(MF);
+  int FrameIndex = MI.getOperand(FIOperandNum).getIndex();
+  int Offset = TFI->getFrameIndexReference(MF, FrameIndex, FrameReg);
+  Offset += MI.getOperand(FIOperandNum + 1).getImm();
+
+  if (!TFI->hasFP(MF)) {
+    llvm_unreachable("eliminateFrameIndex currently requires hasFP");
+  }
+
+  // If the offset fits in an immediate, then directly encode it
+  if (isInt<12>(Offset)) {
+    MI.getOperand(FIOperandNum).ChangeToRegister(FrameReg, false);
+    MI.getOperand(FIOperandNum + 1).ChangeToImmediate(Offset);
+    return;
+  } else {
+    llvm_unreachable(
+        "Frame offsets outside of the signed 12-bit range not supported");
+  }
 }
 
 unsigned RISCVRegisterInfo::getFrameRegister(const MachineFunction &MF) const {

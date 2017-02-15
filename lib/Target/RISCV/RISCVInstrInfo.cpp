@@ -28,7 +28,7 @@
 
 using namespace llvm;
 
-RISCVInstrInfo::RISCVInstrInfo() : RISCVGenInstrInfo() {}
+RISCVInstrInfo::RISCVInstrInfo() : RISCVGenInstrInfo(RISCV::ADJCALLSTACKDOWN, RISCV::ADJCALLSTACKUP) {}
 
 void RISCVInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                                  MachineBasicBlock::iterator Position,

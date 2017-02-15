@@ -29,6 +29,8 @@ enum NodeType : unsigned {
 }
 
 class RISCVTargetLowering : public TargetLowering {
+  const RISCVSubtarget *Subtarget;
+
 public:
   explicit RISCVTargetLowering(const TargetMachine &TM, const RISCVSubtarget &STI);
 
@@ -53,6 +55,7 @@ private:
                                          Type *Ty) const override {
     return true;
   }
+  SDValue lowerGlobalAddress(SDValue Op, SelectionDAG &DAG) const;
 };
 }
 

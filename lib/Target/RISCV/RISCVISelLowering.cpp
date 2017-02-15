@@ -36,8 +36,8 @@ using namespace llvm;
 #define DEBUG_TYPE "riscv-lower"
 
 RISCVTargetLowering::RISCVTargetLowering(const TargetMachine &TM,
-                                     const RISCVSubtarget &STI)
-    : TargetLowering(TM) {
+                                         const RISCVSubtarget &STI)
+    : TargetLowering(TM), Subtarget(&STI) {
 
   // Set up the register classes.
   addRegisterClass(MVT::i32, &RISCV::GPRRegClass);
@@ -51,6 +51,8 @@ RISCVTargetLowering::RISCVTargetLowering(const TargetMachine &TM,
 
   setBooleanContents(ZeroOrOneBooleanContent);
 
+  setOperationAction(ISD::GlobalAddress, MVT::i32, Custom);
+
   // Function alignments (log2)
   setMinFunctionAlignment(3);
   setPrefFunctionAlignment(3);
@@ -63,8 +65,32 @@ RISCVTargetLowering::RISCVTargetLowering(const TargetMachine &TM,
 
 SDValue RISCVTargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const {
   switch (Op.getOpcode()) {
+  case ISD::GlobalAddress:
+    return lowerGlobalAddress(Op, DAG);
   default:
     report_fatal_error("unimplemented operand");
+  }
+}
+
+SDValue RISCVTargetLowering::lowerGlobalAddress(SDValue Op,
+                                                SelectionDAG &DAG) const {
+  SDLoc DL(Op);
+  EVT Ty = Op.getValueType();
+  GlobalAddressSDNode *N = cast<GlobalAddressSDNode>(Op);
+  const GlobalValue *GV = N->getGlobal();
+  int64_t Offset = N->getOffset();
+
+  if (!isPositionIndependent() && !Subtarget->is64Bit()) {
+    SDValue GAHi =
+        DAG.getTargetGlobalAddress(GV, DL, Ty, Offset, RISCVII::MO_HI);
+    SDValue GALo =
+        DAG.getTargetGlobalAddress(GV, DL, Ty, Offset, RISCVII::MO_LO);
+    SDValue MNHi = SDValue(DAG.getMachineNode(RISCV::LUI, DL, Ty, GAHi), 0);
+    SDValue MNLo =
+        SDValue(DAG.getMachineNode(RISCV::ADDI, DL, Ty, MNHi, GALo), 0);
+    return MNLo;
+  } else {
+    llvm_unreachable("Unable to lowerGlobalAddress");
   }
 }
 

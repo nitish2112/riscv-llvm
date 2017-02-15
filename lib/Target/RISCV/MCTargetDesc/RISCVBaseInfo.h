@@ -32,6 +32,12 @@ enum {
 
   FormMask = 15
 };
+enum {
+  MO_None,
+  MO_LO,
+  MO_HI,
+  MO_PCREL_HI,
+};
 }
 }
 

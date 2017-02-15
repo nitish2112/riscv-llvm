@@ -54,6 +54,7 @@ public:
   const RISCVTargetLowering *getTargetLowering() const override {
     return &TLInfo;
   }
+  bool is64Bit() const { return HasRV64; }
 };
 } // End llvm namespace
 

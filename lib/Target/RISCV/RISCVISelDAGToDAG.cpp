@@ -43,6 +43,7 @@ public:
 }
 
 void RISCVDAGToDAGISel::Select(SDNode *Node) {
+  SDLoc DL(Node);
   // Dump information about the Node being selected.
   DEBUG(errs() << "Selecting: "; Node->dump(CurDAG); errs() << "\n");
 
@@ -51,6 +52,25 @@ void RISCVDAGToDAGISel::Select(SDNode *Node) {
     DEBUG(errs() << "== "; Node->dump(CurDAG); errs() << "\n");
     Node->setNodeId(-1);
     return;
+  }
+
+  // Few custom selection stuff.
+  switch (Node->getOpcode()) {
+  default: break;
+  case ISD::FrameIndex: {
+    assert(Node->getValueType(0) == MVT::i32);
+    int FI = cast<FrameIndexSDNode>(Node)->getIndex();
+    SDValue TFI = CurDAG->getTargetFrameIndex(FI, MVT::i32);
+    if (Node->hasOneUse()) {
+      CurDAG->SelectNodeTo(Node, RISCV::ADDI, MVT::i32, TFI,
+                           CurDAG->getTargetConstant(0, DL, MVT::i32));
+      return;
+    }
+    ReplaceNode(Node, CurDAG->getMachineNode(
+                          RISCV::ADDI, DL, MVT::i32, TFI,
+                          CurDAG->getTargetConstant(0, DL, MVT::i32)));
+    return;
+  }
   }
 
   // Select the default instruction.

@@ -36,6 +36,12 @@ public:
                                 MachineBasicBlock::iterator MI) const override {
     return MBB.erase(MI);
   }
+
+  int getFrameIndexReference(const MachineFunction &MF, int FI,
+                             unsigned &FrameReg) const override;
+
+  void determineCalleeSaves(MachineFunction &MF, BitVector &SavedRegs,
+                            RegScavenger *RS) const override;
 };
 }
 #endif

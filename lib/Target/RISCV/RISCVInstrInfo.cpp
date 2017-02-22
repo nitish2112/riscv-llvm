@@ -78,6 +78,21 @@ void RISCVInstrInfo::loadRegFromStackSlot(MachineBasicBlock &MBB,
     llvm_unreachable("Can't load this register from stack slot");
 }
 
+/// Adjust SP by Amount bytes.
+void RISCVInstrInfo::adjustStackPtr(unsigned SP, int64_t Amount,
+                                    MachineBasicBlock &MBB,
+                                    MachineBasicBlock::iterator I) const {
+  DebugLoc DL;
+
+  if (Amount == 0)
+    return;
+
+  // addi sp, sp, amount
+  BuildMI(MBB, I, DL, get(RISCV::ADDI), SP).
+      addReg(SP).addImm(Amount);
+}
+
+
 //===----------------------------------------------------------------------===//
 // Branch Analysis
 //===----------------------------------------------------------------------===//

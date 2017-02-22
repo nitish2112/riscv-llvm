@@ -58,23 +58,44 @@ void RISCVRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
                                             RegScavenger *RS) const {
   assert(SPAdj == 0 && "Unexpected");
 
+  unsigned SP = RISCV::X2_32;
+  unsigned FP = RISCV::X8_32;
   MachineInstr &MI = *II;
-  MachineFunction &MF = *MI.getParent()->getParent();
-  const TargetFrameLowering *TFI = MF.getSubtarget().getFrameLowering();
+  MachineBasicBlock &MBB = *MI.getParent();
+  MachineFunction &MF = *MBB.getParent();
+  MachineFrameInfo &MFI = MF.getFrameInfo();
+  const RISCVFrameLowering *TFI = getFrameLowering(MF);
   DebugLoc DL = MI.getDebugLoc();
-
-  unsigned FrameReg = getFrameRegister(MF);
   int FrameIndex = MI.getOperand(FIOperandNum).getIndex();
-  int Offset = TFI->getFrameIndexReference(MF, FrameIndex, FrameReg);
-  Offset += MI.getOperand(FIOperandNum + 1).getImm();
+  uint64_t stackSize = MF.getFrameInfo().getStackSize();
+  int64_t Offset = MF.getFrameInfo().getObjectOffset(FrameIndex);
+  unsigned BasePtr = (TFI->hasFP(MF) ? FP : SP);
 
-  if (!TFI->hasFP(MF)) {
-    llvm_unreachable("eliminateFrameIndex currently requires hasFP");
+  const std::vector<CalleeSavedInfo> &CSI = MFI.getCalleeSavedInfo();
+  int MinCSFI = 0;
+  int MaxCSFI = -1;
+
+  if (CSI.size()) {
+    MinCSFI = CSI[0].getFrameIdx();
+    MaxCSFI = CSI[CSI.size() - 1].getFrameIdx();
   }
+  // If the FrameIndex push a callee saved register, use SP as Base
+  // To avoid FP not setting yet when -fno-omit-frame-pointer
+  // E.g.
+  //   addi    $sp, $sp, -56
+  //   swi     $fp, [$sp + (44)] <= use SP as base
+  //   addi    $fp, $sp, 0
+  if (FrameIndex >= MinCSFI && FrameIndex <= MaxCSFI)
+    BasePtr = SP;
+
+  Offset += stackSize;
+
+  // Fold imm into offset
+  Offset += MI.getOperand(FIOperandNum + 1).getImm();
 
   // If the offset fits in an immediate, then directly encode it
   if (isInt<12>(Offset)) {
-    MI.getOperand(FIOperandNum).ChangeToRegister(FrameReg, false);
+    MI.getOperand(FIOperandNum).ChangeToRegister(BasePtr, false);
     MI.getOperand(FIOperandNum + 1).ChangeToImmediate(Offset);
     return;
   } else {
@@ -84,7 +105,8 @@ void RISCVRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
 }
 
 unsigned RISCVRegisterInfo::getFrameRegister(const MachineFunction &MF) const {
-  return RISCV::X8_32;
+  const RISCVFrameLowering *TFI = getFrameLowering(MF);
+  return TFI->hasFP(MF) ? RISCV::X8_32 : RISCV::X2_32;
 }
 
 const uint32_t *

@@ -44,6 +44,17 @@ public:
                             MachineBasicBlock::iterator MBBI, unsigned DestReg,
                             int FrameIndex, const TargetRegisterClass *RC,
                             const TargetRegisterInfo *TRI) const override;
+
+  unsigned removeBranch(MachineBasicBlock &MBB,
+                        int *BytesRemoved = nullptr) const override;
+
+  unsigned insertBranch(MachineBasicBlock &MBB, MachineBasicBlock *TBB,
+                        MachineBasicBlock *FBB, ArrayRef<MachineOperand> Cond,
+                        const DebugLoc &DL,
+                        int *BytesAdded = nullptr) const override;
+private:
+  void BuildCondBr(MachineBasicBlock &MBB, MachineBasicBlock *TBB,
+                   const DebugLoc &DL, ArrayRef<MachineOperand> Cond) const;
 };
 }
 

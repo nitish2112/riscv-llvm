@@ -103,6 +103,15 @@ private:
   void RestoreVarArgRegs(std::vector<SDValue> &OutChains, SDValue Chain,
                          const SDLoc &DL, SelectionDAG &DAG,
                          CCState &State) const;
+
+  TargetLowering::ConstraintType
+  getConstraintType(StringRef Constraint) const override;
+
+  std::pair<unsigned, const TargetRegisterClass *>
+  getRegForInlineAsmConstraint(const TargetRegisterInfo *TRI,
+                               StringRef Constraint, MVT VT) const override;
+
+
 };
 }
 

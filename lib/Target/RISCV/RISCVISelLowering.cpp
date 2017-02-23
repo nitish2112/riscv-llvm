@@ -292,6 +292,41 @@ RISCVTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
 }
 
 //===----------------------------------------------------------------------===//
+//                       RISCV Inline Assembly Support
+//===----------------------------------------------------------------------===//
+
+/// getConstraintType - Given a constraint letter, return the type of
+/// constraint it is for this target.
+TargetLowering::ConstraintType
+RISCVTargetLowering::getConstraintType(StringRef Constraint) const {
+  if (Constraint.size() == 1) {
+    switch (Constraint[0]) {
+    case 'r':
+      return C_RegisterClass;
+    default:
+      break;
+    }
+  }
+  return TargetLowering::getConstraintType(Constraint);
+}
+
+std::pair<unsigned, const TargetRegisterClass *>
+RISCVTargetLowering::getRegForInlineAsmConstraint(
+    const TargetRegisterInfo *TRI, StringRef Constraint, MVT VT) const {
+  if (Constraint.size() == 1) {
+    // GCC Constraint Letters
+    switch (Constraint[0]) {
+    default: break;
+    case 'r':   // GENERAL_REGS
+      return std::make_pair(0U, &RISCV::GPRRegClass);
+    }
+  }
+
+  return TargetLowering::getRegForInlineAsmConstraint(TRI, Constraint, VT);
+}
+
+
+//===----------------------------------------------------------------------===//
 //                      Calling Convention Implementation
 //===----------------------------------------------------------------------===//
 

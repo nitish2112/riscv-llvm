@@ -67,10 +67,34 @@ private:
   SDValue lowerExternalSymbol(SDValue Op, SelectionDAG &DAG) const;
   SDValue lowerSELECT_CC(SDValue Op, SelectionDAG &DAG) const;
 
+  typedef SmallVector<std::pair<unsigned, SDValue>, 8> RegsToPassVector;
+
   SDValue LowerMemOpCallTo(SDValue Chain, SDValue StackPtr, SDValue Arg,
                            const SDLoc &dl, SelectionDAG &DAG,
                            const CCValAssign &VA,
                            ISD::ArgFlagsTy Flags) const;
+
+  void HandleByVal(CCState *, unsigned &, unsigned) const override;
+
+  /// copyByValArg - Copy argument registers which were used to pass a byval
+  /// argument to the stack. Create a stack frame object for the byval
+  /// argument.
+  void copyByValRegs(SDValue Chain, const SDLoc &DL,
+                     std::vector<SDValue> &OutChains, SelectionDAG &DAG,
+                     const ISD::ArgFlagsTy &Flags,
+                     SmallVectorImpl<SDValue> &InVals,
+                     const Argument *FuncArg, unsigned FirstReg,
+                     unsigned LastReg, const CCValAssign &VA,
+                     CCState &State) const;
+
+  /// passByValArg - Pass a byval argument in registers or on stack.
+  void passByValArg(SDValue Chain, const SDLoc &DL,
+                    RegsToPassVector &RegsToPass,
+                    SmallVectorImpl<SDValue> &MemOpChains, SDValue StackPtr,
+                    MachineFrameInfo &MFI, SelectionDAG &DAG, SDValue Arg,
+                    unsigned FirstReg, unsigned LastReg,
+                    const ISD::ArgFlagsTy &Flags, bool isLittle,
+                    const CCValAssign &VA) const;
 };
 }
 

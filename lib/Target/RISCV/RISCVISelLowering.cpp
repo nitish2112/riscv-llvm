@@ -267,7 +267,10 @@ RISCVTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
   return BB;
 }
 
-// Calling Convention Implementation
+//===----------------------------------------------------------------------===//
+//                      Calling Convention Implementation
+//===----------------------------------------------------------------------===//
+
 #include "RISCVGenCallingConv.inc"
 
 // addLiveIn - This helper function adds the specified physical register to the
@@ -279,6 +282,96 @@ addLiveIn(MachineFunction &MF, unsigned PReg, const TargetRegisterClass *RC)
   unsigned VReg = MF.getRegInfo().createVirtualRegister(RC);
   MF.getRegInfo().addLiveIn(PReg, VReg);
   return VReg;
+}
+static const MCPhysReg RISCVArgRegs[8] = {
+    RISCV::X10_32, RISCV::X11_32, RISCV::X12_32, RISCV::X13_32,
+    RISCV::X14_32, RISCV::X15_32, RISCV::X16_32, RISCV::X17_32
+};
+
+void RISCVTargetLowering::copyByValRegs(
+    SDValue Chain, const SDLoc &DL, std::vector<SDValue> &OutChains,
+    SelectionDAG &DAG, const ISD::ArgFlagsTy &Flags,
+    SmallVectorImpl<SDValue> &InVals, const Argument *FuncArg,
+    unsigned FirstReg, unsigned LastReg, const CCValAssign &VA,
+    CCState &State) const {
+  MachineFunction &MF = DAG.getMachineFunction();
+  MachineFrameInfo &MFI = MF.getFrameInfo();
+  unsigned GPRSizeInBytes = 4;
+  unsigned NumRegs = LastReg - FirstReg;
+  unsigned RegAreaSize = NumRegs * GPRSizeInBytes;
+  unsigned FrameObjSize = std::max(Flags.getByValSize(), RegAreaSize);
+  int FrameObjOffset;
+  ArrayRef<MCPhysReg> ByValArgRegs = makeArrayRef(RISCVArgRegs);
+
+  if (RegAreaSize)
+    FrameObjOffset =
+        - (int)((ByValArgRegs.size() - FirstReg) * GPRSizeInBytes);
+  else
+    FrameObjOffset = VA.getLocMemOffset();
+
+  // Create frame object.
+  EVT PtrTy = getPointerTy(DAG.getDataLayout());
+  int FI = MFI.CreateFixedObject(FrameObjSize, FrameObjOffset, true);
+  SDValue FIN = DAG.getFrameIndex(FI, PtrTy);
+  InVals.push_back(FIN);
+
+  if (!NumRegs)
+    return;
+
+  // Copy arg registers.
+  MVT RegTy = MVT::getIntegerVT(GPRSizeInBytes * 8);
+  const TargetRegisterClass *RC = getRegClassFor(RegTy);
+
+  for (unsigned I = 0; I < NumRegs; ++I) {
+    unsigned ArgReg = ByValArgRegs[FirstReg + I];
+    unsigned VReg = addLiveIn(MF, ArgReg, RC);
+    unsigned Offset = I * GPRSizeInBytes;
+    SDValue StorePtr = DAG.getNode(ISD::ADD, DL, PtrTy, FIN,
+                                   DAG.getConstant(Offset, DL, PtrTy));
+    SDValue Store = DAG.getStore(Chain, DL, DAG.getRegister(VReg, RegTy),
+                                 StorePtr, MachinePointerInfo(FuncArg, Offset));
+    OutChains.push_back(Store);
+  }
+}
+
+void RISCVTargetLowering::HandleByVal(CCState *State, unsigned &Size,
+                                      unsigned Align) const {
+  const TargetFrameLowering *TFL = Subtarget->getFrameLowering();
+
+  assert(Size && "Byval argument's size shouldn't be 0.");
+
+  Align = std::min(Align, TFL->getStackAlignment());
+
+  unsigned FirstReg = 0;
+  unsigned NumRegs = 0;
+
+  if (State->getCallingConv() != CallingConv::Fast) {
+    unsigned RegSizeInBytes = 4;
+    ArrayRef<MCPhysReg> IntArgRegs = makeArrayRef(RISCVArgRegs);
+    const MCPhysReg *ShadowRegs = IntArgRegs.data();
+
+    // We used to check the size as well but we can't do that anymore since
+    // CCState::HandleByVal() rounds up the size after calling this function.
+    assert(!(Align % RegSizeInBytes) &&
+           "Byval argument's alignment should be a multiple of"
+           "RegSizeInBytes.");
+
+    FirstReg = State->getFirstUnallocated(IntArgRegs);
+
+    // If Align > RegSizeInBytes, the first arg register must be even.
+    if ((Align > RegSizeInBytes) && (FirstReg % 2)) {
+      State->AllocateReg(IntArgRegs[FirstReg], ShadowRegs[FirstReg]);
+      ++FirstReg;
+    }
+
+    // Mark the registers allocated.
+    Size = alignTo(Size, RegSizeInBytes);
+    for (unsigned I = FirstReg; Size > 0 && (I < IntArgRegs.size());
+         Size -= RegSizeInBytes, ++I, ++NumRegs)
+      State->AllocateReg(IntArgRegs[I], ShadowRegs[I]);
+  }
+
+  State->addInRegsParamInfo(FirstReg, FirstReg + NumRegs);
 }
 
 // Transform physical registers into virtual registers
@@ -311,6 +404,23 @@ SDValue RISCVTargetLowering::LowerFormalArguments(
       std::advance(FuncArg, Ins[i].getOrigArgIndex() - CurArgIdx);
       CurArgIdx = Ins[i].getOrigArgIndex();
     }
+    ISD::ArgFlagsTy Flags = Ins[i].Flags;
+
+    if (Flags.isByVal()) {
+      assert(Ins[i].isOrigArg() && "Byval arguments cannot be implicit");
+      unsigned FirstByValReg, LastByValReg;
+      unsigned ByValIdx = CCInfo.getInRegsParamsProcessed();
+      CCInfo.getInRegsParamInfo(ByValIdx, FirstByValReg, LastByValReg);
+
+      assert(Flags.getByValSize() &&
+             "ByVal args of size 0 should have been ignored by front-end.");
+      assert(ByValIdx < CCInfo.getInRegsParamsCount());
+      copyByValRegs(Chain, DL, OutChains, DAG, Flags, InVals, &*FuncArg,
+                    FirstByValReg, LastByValReg, VA, CCInfo);
+      CCInfo.nextInRegsParam();
+      continue;
+    }
+
     bool IsRegLoc = VA.isRegLoc();
     // Arguments stored on registers
     if (IsRegLoc) {
@@ -371,6 +481,103 @@ SDValue RISCVTargetLowering::LowerMemOpCallTo(SDValue Chain, SDValue StackPtr,
       MachinePointerInfo::getStack(DAG.getMachineFunction(), LocMemOffset));
 }
 
+// Copy byVal arg to registers and stack.
+void RISCVTargetLowering::passByValArg(
+    SDValue Chain, const SDLoc &DL,
+    RegsToPassVector &RegsToPass,
+    SmallVectorImpl<SDValue> &MemOpChains, SDValue StackPtr,
+    MachineFrameInfo &MFI, SelectionDAG &DAG, SDValue Arg, unsigned FirstReg,
+    unsigned LastReg, const ISD::ArgFlagsTy &Flags, bool isLittle,
+    const CCValAssign &VA) const {
+  unsigned ByValSizeInBytes = Flags.getByValSize();
+  unsigned OffsetInBytes = 0; // From beginning of struct
+  unsigned RegSizeInBytes = 4;
+  unsigned Alignment = std::min(Flags.getByValAlign(), RegSizeInBytes);
+  EVT PtrTy = getPointerTy(DAG.getDataLayout()),
+      RegTy = MVT::getIntegerVT(RegSizeInBytes * 8);
+  unsigned NumRegs = LastReg - FirstReg;
+
+  if (NumRegs) {
+    ArrayRef<MCPhysReg> ArgRegs = makeArrayRef(RISCVArgRegs);
+    bool LeftoverBytes = (NumRegs * RegSizeInBytes > ByValSizeInBytes);
+    unsigned I = 0;
+
+    // Copy words to registers.
+    for (; I < NumRegs - LeftoverBytes; ++I, OffsetInBytes += RegSizeInBytes) {
+      SDValue LoadPtr = DAG.getNode(ISD::ADD, DL, PtrTy, Arg,
+                                    DAG.getConstant(OffsetInBytes, DL, PtrTy));
+      SDValue LoadVal = DAG.getLoad(RegTy, DL, Chain, LoadPtr,
+                                    MachinePointerInfo(), Alignment);
+      MemOpChains.push_back(LoadVal.getValue(1));
+      unsigned ArgReg = ArgRegs[FirstReg + I];
+      RegsToPass.push_back(std::make_pair(ArgReg, LoadVal));
+    }
+
+    // Return if the struct has been fully copied.
+    if (ByValSizeInBytes == OffsetInBytes)
+      return;
+
+    // Copy the remainder of the byval argument with sub-word loads and shifts.
+    if (LeftoverBytes) {
+      SDValue Val;
+
+      for (unsigned LoadSizeInBytes = RegSizeInBytes / 2, TotalBytesLoaded = 0;
+           OffsetInBytes < ByValSizeInBytes; LoadSizeInBytes /= 2) {
+        unsigned RemainingSizeInBytes = ByValSizeInBytes - OffsetInBytes;
+
+        if (RemainingSizeInBytes < LoadSizeInBytes)
+          continue;
+
+        // Load subword.
+        SDValue LoadPtr = DAG.getNode(ISD::ADD, DL, PtrTy, Arg,
+                                      DAG.getConstant(OffsetInBytes, DL,
+                                                      PtrTy));
+        SDValue LoadVal = DAG.getExtLoad(
+            ISD::ZEXTLOAD, DL, RegTy, Chain, LoadPtr, MachinePointerInfo(),
+            MVT::getIntegerVT(LoadSizeInBytes * 8), Alignment);
+        MemOpChains.push_back(LoadVal.getValue(1));
+
+        // Shift the loaded value.
+        unsigned Shamt;
+
+        if (isLittle)
+          Shamt = TotalBytesLoaded * 8;
+        else
+          Shamt = (RegSizeInBytes - (TotalBytesLoaded + LoadSizeInBytes)) * 8;
+
+        SDValue Shift = DAG.getNode(ISD::SHL, DL, RegTy, LoadVal,
+                                    DAG.getConstant(Shamt, DL, MVT::i32));
+
+        if (Val.getNode())
+          Val = DAG.getNode(ISD::OR, DL, RegTy, Val, Shift);
+        else
+          Val = Shift;
+
+        OffsetInBytes += LoadSizeInBytes;
+        TotalBytesLoaded += LoadSizeInBytes;
+        Alignment = std::min(Alignment, LoadSizeInBytes);
+      }
+
+      unsigned ArgReg = ArgRegs[FirstReg + I];
+      RegsToPass.push_back(std::make_pair(ArgReg, Val));
+      return;
+    }
+  }
+
+  // Copy remainder of byval arg to it with memcpy.
+  unsigned MemCpySize = ByValSizeInBytes - OffsetInBytes;
+  SDValue Src = DAG.getNode(ISD::ADD, DL, PtrTy, Arg,
+                            DAG.getConstant(OffsetInBytes, DL, PtrTy));
+  SDValue Dst = DAG.getNode(ISD::ADD, DL, PtrTy, StackPtr,
+                            DAG.getIntPtrConstant(VA.getLocMemOffset(), DL));
+  Chain = DAG.getMemcpy(Chain, DL, Dst, Src,
+                        DAG.getConstant(MemCpySize, DL, PtrTy),
+                        Alignment, /*isVolatile=*/false, /*AlwaysInline=*/false,
+                        /*isTailCall=*/false,
+                        MachinePointerInfo(), MachinePointerInfo());
+  MemOpChains.push_back(Chain);
+}
+
 // Lower a call to a callseq_start + CALL + callseq_end chain, and add input 
 // and output parameter nodes.
 SDValue
@@ -388,11 +595,12 @@ RISCVTargetLowering::LowerCall(CallLoweringInfo &CLI,
   bool IsVarArg = CLI.IsVarArg;
   EVT PtrVT = getPointerTy(DAG.getDataLayout());
 
+  MachineFunction &MF = DAG.getMachineFunction();
+  MachineFrameInfo &MFI = MF.getFrameInfo();
+
   if (IsVarArg) {
     llvm_unreachable("LowerCall with varargs not implemented");
   }
-
-  MachineFunction &MF = DAG.getMachineFunction();
 
   // Analyze the operands of the call, assigning locations to each operand.
   SmallVector<CCValAssign, 16> ArgLocs;
@@ -417,6 +625,23 @@ RISCVTargetLowering::LowerCall(CallLoweringInfo &CLI,
     CCValAssign &VA = ArgLocs[I];
     SDValue Arg = OutVals[I];
     ISD::ArgFlagsTy Flags = Outs[I].Flags;
+
+    // ByVal Arg.
+    if (Flags.isByVal()) {
+      unsigned FirstByValReg, LastByValReg;
+      unsigned ByValIdx = ArgCCInfo.getInRegsParamsProcessed();
+      ArgCCInfo.getInRegsParamInfo(ByValIdx, FirstByValReg, LastByValReg);
+
+      assert(Flags.getByValSize() &&
+             "ByVal args of size 0 should have been ignored by front-end.");
+      assert(ByValIdx < ArgCCInfo.getInRegsParamsCount());
+      assert(!CLI.IsTailCall &&
+             "Do not tail-call optimize if there is a byval argument.");
+      passByValArg(Chain, DL, RegsToPass, MemOpChains, StackPtr, MFI, DAG, Arg,
+                   FirstByValReg, LastByValReg, Flags, true, VA);
+      ArgCCInfo.nextInRegsParam();
+      continue;
+    }
 
     // Promote the value if needed.
     switch (VA.getLocInfo()) {

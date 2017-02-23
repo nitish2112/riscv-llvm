@@ -685,8 +685,8 @@ RISCVTargetLowering::LowerCall(CallLoweringInfo &CLI,
   CLI.IsTailCall = false;
   CallingConv::ID CallConv = CLI.CallConv;
   bool IsVarArg = CLI.IsVarArg;
-  EVT PtrVT = getPointerTy(DAG.getDataLayout());
 
+  const TargetFrameLowering *TFL = Subtarget->getFrameLowering();
   MachineFunction &MF = DAG.getMachineFunction();
   MachineFrameInfo &MFI = MF.getFrameInfo();
 
@@ -695,12 +695,19 @@ RISCVTargetLowering::LowerCall(CallLoweringInfo &CLI,
   CCState ArgCCInfo(CallConv, IsVarArg, MF, ArgLocs, *DAG.getContext());
   ArgCCInfo.AnalyzeCallOperands(Outs, CC_RISCV32);
 
-  // Get a count of how many bytes are to be pushed on the stack.
-  unsigned NumBytes = ArgCCInfo.getNextStackOffset();
 
-  Chain = DAG.getCALLSEQ_START(Chain,
-                                 DAG.getIntPtrConstant(NumBytes, DL, true),
-                                 DL);
+  // Get a count of how many bytes are to be pushed on the stack.
+  unsigned NextStackOffset = ArgCCInfo.getNextStackOffset();
+
+  // Chain is the output chain of the last Load/Store or CopyToReg node.
+  // ByValChain is the output chain of the last Memcpy node created for copying
+  // byval arguments to the stack.
+  unsigned StackAlignment = TFL->getStackAlignment();
+  NextStackOffset = alignTo(NextStackOffset, StackAlignment);
+  SDValue NextStackOffsetVal = DAG.getIntPtrConstant(NextStackOffset, DL, true);
+
+  if (!CLI.IsTailCall)
+    Chain = DAG.getCALLSEQ_START(Chain, NextStackOffsetVal, DL);
 
   // Copy argument values to their designated locations.
   SmallVector<std::pair<unsigned, SDValue>, 8> RegsToPass;
@@ -758,13 +765,17 @@ RISCVTargetLowering::LowerCall(CallLoweringInfo &CLI,
     }
   }
 
-  SDValue Glue;
+  if (!MemOpChains.empty())
+    Chain = DAG.getNode(ISD::TokenFactor, DL, MVT::Other, MemOpChains);
 
-  // Build a sequence of copy-to-reg nodes, chained and glued together.
-  for (unsigned I = 0, E = RegsToPass.size(); I != E; ++I) {
-    Chain = DAG.getCopyToReg(Chain, DL, RegsToPass[I].first,
-                             RegsToPass[I].second, Glue);
-    Glue = Chain.getValue(1);
+  // Build a sequence of copy-to-reg nodes chained together with token chain and
+  // flag operands which copy the outgoing args into registers.  The InFlag in
+  // necessary since all emitted instructions must be stuck together.
+  SDValue InFlag;
+  for (unsigned i = 0, e = RegsToPass.size(); i != e; ++i) {
+    Chain = DAG.getCopyToReg(Chain, DL, RegsToPass[i].first,
+                             RegsToPass[i].second, InFlag);
+    InFlag = Chain.getValue(1);
   }
 
   if (isa<GlobalAddressSDNode>(Callee)) {
@@ -774,53 +785,50 @@ RISCVTargetLowering::LowerCall(CallLoweringInfo &CLI,
   }
 
   // The first call operand is the chain and the second is the target address.
-  SmallVector<SDValue, 8> Ops;
+  std::vector<SDValue> Ops;
   Ops.push_back(Chain);
   Ops.push_back(Callee);
 
   // Add argument registers to the end of the list so that they are
   // known live into the call.
-  for (unsigned I = 0, E = RegsToPass.size(); I != E; ++I)
-    Ops.push_back(DAG.getRegister(RegsToPass[I].first,
-                                  RegsToPass[I].second.getValueType()));
+  for (unsigned i = 0, e = RegsToPass.size(); i != e; ++i)
+    Ops.push_back(DAG.getRegister(RegsToPass[i].first,
+                                  RegsToPass[i].second.getValueType()));
 
-  // Add a register mask operand representing the call-preserved registers.
+  // Add a register mask operand representing the call-preserved(callee saved)
+  // registers. Let register allocator could get correct register live time
+  // cross call.
   const TargetRegisterInfo *TRI = Subtarget->getRegisterInfo();
-  const uint32_t *Mask = TRI->getCallPreservedMask(MF, CallConv);
+  const uint32_t *Mask =
+      TRI->getCallPreservedMask(DAG.getMachineFunction(), CLI.CallConv);
   assert(Mask && "Missing call preserved mask for calling convention");
   Ops.push_back(DAG.getRegisterMask(Mask));
 
-  // Glue the call to the argument copies, if any.
-  if (Glue.getNode())
-    Ops.push_back(Glue);
+  if (InFlag.getNode())
+    Ops.push_back(InFlag);
 
-  // Emit the call.
   SDVTList NodeTys = DAG.getVTList(MVT::Other, MVT::Glue);
   Chain = DAG.getNode(RISCVISD::CALL, DL, NodeTys, Ops);
-  Glue = Chain.getValue(1);
+  InFlag = Chain.getValue(1);
 
-  // Mark the end of the call, which is glued to the call itself.
-  Chain = DAG.getCALLSEQ_END(Chain,
-                             DAG.getConstant(NumBytes, DL, PtrVT, true),
-                             DAG.getConstant(0, DL, PtrVT, true),
-                             Glue, DL);
-  Glue = Chain.getValue(1);
+  // Create the CALLSEQ_END node.
+  Chain = DAG.getCALLSEQ_END(Chain, NextStackOffsetVal,
+                             DAG.getIntPtrConstant(0, DL, true), InFlag, DL);
+
+  InFlag = Chain.getValue(1);
 
   // Assign locations to each value returned by this call.
-  SmallVector<CCValAssign, 16> RetLocs;
-  CCState RetCCInfo(CallConv, IsVarArg, MF, RetLocs, *DAG.getContext());
-  RetCCInfo.AnalyzeCallResult(Ins, RetCC_RISCV32);
+  SmallVector<CCValAssign, 16> RVLocs;
+  CCState CCInfo(CallConv, IsVarArg, DAG.getMachineFunction(), RVLocs,
+                 *DAG.getContext());
+
+  CCInfo.AnalyzeCallResult(Ins, RetCC_RISCV32);
 
   // Copy all of the result registers out of their specified physreg.
-  for (unsigned I = 0, E = RetLocs.size(); I != E; ++I) {
-    CCValAssign &VA = RetLocs[I];
-
-    // Copy the value out, gluing the copy to the end of the call sequence.
-    SDValue RetValue = DAG.getCopyFromReg(Chain, DL, VA.getLocReg(),
-                                          VA.getLocVT(), Glue);
-    Chain = RetValue.getValue(1);
-    Glue = RetValue.getValue(2);
-
+  for (unsigned I = 0; I != RVLocs.size(); ++I) {
+    Chain = DAG.getCopyFromReg(Chain, DL, RVLocs[I].getLocReg(),
+                               RVLocs[I].getValVT(), InFlag).getValue(1);
+    InFlag = Chain.getValue(2);
     InVals.push_back(Chain.getValue(0));
   }
 
@@ -829,10 +837,10 @@ RISCVTargetLowering::LowerCall(CallLoweringInfo &CLI,
 
 SDValue
 RISCVTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
-                               bool IsVarArg,
-                               const SmallVectorImpl<ISD::OutputArg> &Outs,
-                               const SmallVectorImpl<SDValue> &OutVals,
-                               const SDLoc &DL, SelectionDAG &DAG) const {
+                                 bool IsVarArg,
+                                 const SmallVectorImpl<ISD::OutputArg> &Outs,
+                                 const SmallVectorImpl<SDValue> &OutVals,
+                                 const SDLoc &DL, SelectionDAG &DAG) const {
 
   // Stores the assignment of the return value to a location
   SmallVector<CCValAssign, 16> RVLocs;

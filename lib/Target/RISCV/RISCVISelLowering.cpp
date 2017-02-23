@@ -48,6 +48,13 @@ RISCVTargetLowering::RISCVTargetLowering(const TargetMachine &TM,
 
   setStackPointerRegisterToSaveRestore(RISCV::X2_32);
 
+  // Load extented operations for i1 types must be promoted
+  for (MVT VT : MVT::integer_valuetypes()) {
+    setLoadExtAction(ISD::EXTLOAD,  VT, MVT::i1,  Promote);
+    setLoadExtAction(ISD::ZEXTLOAD, VT, MVT::i1,  Promote);
+    setLoadExtAction(ISD::SEXTLOAD, VT, MVT::i1,  Promote);
+  }
+
   // TODO: add all necessary setOperationAction calls
 
   setOperationAction(ISD::BR_CC, MVT::i32, Expand);

@@ -33,6 +33,7 @@ class RISCVSubtarget : public RISCVGenSubtargetInfo {
   RISCVInstrInfo InstrInfo;
   RISCVFrameLowering FrameLowering;
   RISCVTargetLowering TLInfo;
+  const SelectionDAGTargetInfo TSInfo;
   bool HasRV64;
 
 public:
@@ -53,6 +54,9 @@ public:
   }
   const RISCVTargetLowering *getTargetLowering() const override {
     return &TLInfo;
+  }
+  const SelectionDAGTargetInfo *getSelectionDAGInfo() const override {
+    return &TSInfo;
   }
   bool is64Bit() const { return HasRV64; }
 };

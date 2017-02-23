@@ -120,6 +120,57 @@ void RISCVFrameLowering::emitEpilogue(MachineFunction &MF,
     TII.adjustStackPtr(SP, StackSize, MBB, MBBI);
 }
 
+bool RISCVFrameLowering::
+spillCalleeSavedRegisters(MachineBasicBlock &MBB,
+                          MachineBasicBlock::iterator MI,
+                          const std::vector<CalleeSavedInfo> &CSI,
+                          const TargetRegisterInfo *TRI) const {
+  if (CSI.empty())
+    return false;
+
+  MachineFunction &MF = *MBB.getParent();
+  MachineBasicBlock *EntryBlock = &(&MF)->front();
+  const TargetInstrInfo &TII = *MF.getSubtarget().getInstrInfo();
+
+  for (unsigned i = 0, e = CSI.size(); i != e; ++i) {
+    unsigned Reg = CSI[i].getReg();
+
+    // Add the callee-saved register as live-in. It's killed at the spill.
+    MBB.addLiveIn(Reg);
+
+    // Insert the spill to the stack frame.
+    bool IsKill = 1;
+    const TargetRegisterClass *RC = TRI->getMinimalPhysRegClass(Reg);
+    TII.storeRegToStackSlot(*EntryBlock, MI, Reg, IsKill,
+                            CSI[i].getFrameIdx(), RC, TRI);
+  }
+
+  return true;
+}
+
+bool RISCVFrameLowering::
+restoreCalleeSavedRegisters(MachineBasicBlock &MBB,
+                            MachineBasicBlock::iterator MI,
+                            const std::vector<CalleeSavedInfo> &CSI,
+                            const TargetRegisterInfo *TRI) const {
+  if (CSI.empty())
+    return false;
+
+  DebugLoc DL;
+  if (MI != MBB.end()) DL = MI->getDebugLoc();
+
+  MachineFunction &MF = *MBB.getParent();
+  const TargetInstrInfo &TII = *MF.getSubtarget().getInstrInfo();
+
+  for (unsigned i = 0, e = CSI.size(); i != e; ++i) {
+    unsigned Reg = CSI[i].getReg();
+    const TargetRegisterClass *RC = TRI->getMinimalPhysRegClass(Reg);
+    TII.loadRegFromStackSlot(MBB, MI, Reg, CSI[i].getFrameIdx(), RC, TRI);
+  }
+
+  return true;
+}
+
 /// Mark \p Reg and all registers aliasing it in the bitset.
 static void setAliasRegs(MachineFunction &MF, BitVector &SavedRegs,
                          unsigned Reg) {

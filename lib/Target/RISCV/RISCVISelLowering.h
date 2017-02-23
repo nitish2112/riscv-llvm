@@ -66,6 +66,7 @@ private:
   SDValue lowerGlobalAddress(SDValue Op, SelectionDAG &DAG) const;
   SDValue lowerExternalSymbol(SDValue Op, SelectionDAG &DAG) const;
   SDValue lowerSELECT_CC(SDValue Op, SelectionDAG &DAG) const;
+  SDValue lowerVASTART(SDValue Op, SelectionDAG &DAG) const;
 
   typedef SmallVector<std::pair<unsigned, SDValue>, 8> RegsToPassVector;
 
@@ -95,6 +96,13 @@ private:
                     unsigned FirstReg, unsigned LastReg,
                     const ISD::ArgFlagsTy &Flags, bool isLittle,
                     const CCValAssign &VA) const;
+
+  /// RestoreVarArgRegs - Restore variable function arguments passed in
+  /// registers to the stack. Also create a stack frame object for the
+  /// first variable argument.
+  void RestoreVarArgRegs(std::vector<SDValue> &OutChains, SDValue Chain,
+                         const SDLoc &DL, SelectionDAG &DAG,
+                         CCState &State) const;
 };
 }
 

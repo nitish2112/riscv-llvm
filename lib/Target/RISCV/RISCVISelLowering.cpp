@@ -14,6 +14,7 @@
 
 #include "RISCVISelLowering.h"
 #include "RISCV.h"
+#include "RISCVMachineFunctionInfo.h"
 #include "RISCVRegisterInfo.h"
 #include "RISCVSubtarget.h"
 #include "RISCVTargetMachine.h"
@@ -80,6 +81,11 @@ RISCVTargetLowering::RISCVTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::SRL_PARTS, MVT::i32, Expand);
   setOperationAction(ISD::SRA_PARTS, MVT::i32, Expand);
 
+  setOperationAction(ISD::VASTART,          MVT::Other, Custom);
+  setOperationAction(ISD::VAARG,            MVT::Other, Expand);
+  setOperationAction(ISD::VACOPY,           MVT::Other, Expand);
+  setOperationAction(ISD::VAEND,            MVT::Other, Expand);
+
   setOperationAction(ISD::GlobalAddress, MVT::i32, Custom);
 
   setBooleanContents(ZeroOrOneBooleanContent);
@@ -100,6 +106,8 @@ SDValue RISCVTargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const
     return lowerGlobalAddress(Op, DAG);
   case ISD::SELECT_CC:
     return lowerSELECT_CC(Op, DAG);
+  case ISD::VASTART:
+    return lowerVASTART(Op, DAG);
   default:
     report_fatal_error("unimplemented operand");
   }
@@ -174,6 +182,22 @@ SDValue RISCVTargetLowering::lowerSELECT_CC(SDValue Op, SelectionDAG &DAG) const
   SDValue Ops[] = {LHS, RHS, TargetCC, TrueV, FalseV};
 
   return DAG.getNode(RISCVISD::SELECT_CC, DL, VTs, Ops);
+}
+
+SDValue RISCVTargetLowering::lowerVASTART(SDValue Op,
+                                          SelectionDAG &DAG) const {
+  MachineFunction &MF = DAG.getMachineFunction();
+  RISCVMachineFunctionInfo *FuncInfo = MF.getInfo<RISCVMachineFunctionInfo>();
+  auto PtrVT = getPointerTy(DAG.getDataLayout());
+
+  // Frame index of first vararg argument
+  SDValue FrameIndex =
+      DAG.getFrameIndex(FuncInfo->getVarArgsFrameIndex(), PtrVT);
+  const Value *SV = cast<SrcValueSDNode>(Op.getOperand(2))->getValue();
+
+  // Create a store of the frame index to the location operand
+  return DAG.getStore(Op.getOperand(0), SDLoc(Op), FrameIndex, Op.getOperand(1),
+                      MachinePointerInfo(SV));
 }
 
 MachineBasicBlock *
@@ -288,6 +312,67 @@ static const MCPhysReg RISCVArgRegs[8] = {
     RISCV::X14_32, RISCV::X15_32, RISCV::X16_32, RISCV::X17_32
 };
 
+// RestoreVarArgRegs - Store VarArg register to the stack
+void RISCVTargetLowering::RestoreVarArgRegs(std::vector<SDValue> &OutChains,
+                                            SDValue Chain, const SDLoc &DL,
+                                            SelectionDAG &DAG,
+                                            CCState &State) const {
+  ArrayRef<MCPhysReg> ArgRegs = makeArrayRef(RISCVArgRegs);
+  unsigned Idx = State.getFirstUnallocated(ArgRegs);
+  unsigned RegSizeInBytes = 4;
+  MVT RegTy = MVT::getIntegerVT(RegSizeInBytes * 8);
+  const TargetRegisterClass *RC = getRegClassFor(RegTy);
+  MachineFunction &MF = DAG.getMachineFunction();
+  MachineFrameInfo &MFI = MF.getFrameInfo();
+  RISCVMachineFunctionInfo *RISCVFI = MF.getInfo<RISCVMachineFunctionInfo>();
+  // VaArgOffset is the va_start offset from stack pointer
+  int VaArgOffset = 0;
+
+  // All ArgRegs use to pass arguments
+  if (ArgRegs.size() == Idx) {
+    VaArgOffset = State.getNextStackOffset();
+  //
+  // ---------------- <-- va_start
+  // | outgoing args|
+  // ---------------- <-- sp
+  // |   A0 ~ A7    |
+  // ----------------
+  }
+  else {
+    VaArgOffset = -(int)(RegSizeInBytes * (ArgRegs.size() - Idx));
+  // E.g Idx = A3 which means f (a, b, c, ...)
+  //
+  // ---------------- <-- sp
+  // |   A3 ~ A7    |
+  // ---------------- <-- va_start
+  // |   A0 ~ A2    |
+  // ----------------
+  }
+
+  // Record the frame index of the first variable argument
+  // which is a value necessary to VASTART.
+  int VA_FI = MFI.CreateFixedObject(RegSizeInBytes, VaArgOffset, true);
+  RISCVFI->setVarArgsFrameIndex(VA_FI);
+
+  // Copy the integer registers that have not been used for argument passing
+  // to the argument register save area. The save area is allocated in the
+  // callee's stack frame.
+  // For above case Idx = A3, generate store to push A3~A7 to callee stack
+  // frame.
+  for (unsigned I = Idx; I < ArgRegs.size();
+       ++I, VaArgOffset += RegSizeInBytes) {
+    unsigned Reg = addLiveIn(MF, ArgRegs[I], RC);
+    SDValue ArgValue = DAG.getCopyFromReg(Chain, DL, Reg, RegTy);
+    int FI = MFI.CreateFixedObject(RegSizeInBytes, VaArgOffset, true);
+    SDValue PtrOff = DAG.getFrameIndex(FI, getPointerTy(DAG.getDataLayout()));
+    SDValue Store =
+        DAG.getStore(Chain, DL, ArgValue, PtrOff, MachinePointerInfo());
+    cast<StoreSDNode>(Store.getNode())->getMemOperand()->setValue(
+        (Value *)nullptr);
+    OutChains.push_back(Store);
+  }
+}
+
 void RISCVTargetLowering::copyByValRegs(
     SDValue Chain, const SDLoc &DL, std::vector<SDValue> &OutChains,
     SelectionDAG &DAG, const ISD::ArgFlagsTy &Flags,
@@ -381,7 +466,10 @@ SDValue RISCVTargetLowering::LowerFormalArguments(
     SelectionDAG &DAG, SmallVectorImpl<SDValue> &InVals) const {
   MachineFunction &MF = DAG.getMachineFunction();
   MachineFrameInfo &MFI = MF.getFrameInfo();
+  RISCVMachineFunctionInfo *FI = MF.getInfo<RISCVMachineFunctionInfo>();
 
+  FI->setVarArgsFrameIndex(0);
+ 
   // Used with vargs to accumulate store chains.
   std::vector<SDValue> OutChains;
 
@@ -455,6 +543,10 @@ SDValue RISCVTargetLowering::LowerFormalArguments(
       InVals.push_back(ArgValue);
     }
   }
+
+  // Push VarArg Registers to the stack
+  if (IsVarArg)
+    RestoreVarArgRegs(OutChains, Chain, DL, DAG, CCInfo);
 
   // All stores are grouped in one node to allow the matching between
   // the size of Ins and InVals. This only happens when on varg functions
@@ -597,10 +689,6 @@ RISCVTargetLowering::LowerCall(CallLoweringInfo &CLI,
 
   MachineFunction &MF = DAG.getMachineFunction();
   MachineFrameInfo &MFI = MF.getFrameInfo();
-
-  if (IsVarArg) {
-    llvm_unreachable("LowerCall with varargs not implemented");
-  }
 
   // Analyze the operands of the call, assigning locations to each operand.
   SmallVector<CCValAssign, 16> ArgLocs;
@@ -745,9 +833,6 @@ RISCVTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
                                const SmallVectorImpl<ISD::OutputArg> &Outs,
                                const SmallVectorImpl<SDValue> &OutVals,
                                const SDLoc &DL, SelectionDAG &DAG) const {
-  if (IsVarArg) {
-    report_fatal_error("VarArg not supported");
-  }
 
   // Stores the assignment of the return value to a location
   SmallVector<CCValAssign, 16> RVLocs;

@@ -356,6 +356,21 @@ SDValue RISCVTargetLowering::LowerFormalArguments(
   return Chain;
 }
 
+/// LowerMemOpCallTo - Store the argument to the stack.
+SDValue RISCVTargetLowering::LowerMemOpCallTo(SDValue Chain, SDValue StackPtr,
+                                              SDValue Arg, const SDLoc &dl,
+                                              SelectionDAG &DAG,
+                                              const CCValAssign &VA,
+                                              ISD::ArgFlagsTy Flags) const {
+  unsigned LocMemOffset = VA.getLocMemOffset();
+  SDValue PtrOff = DAG.getIntPtrConstant(LocMemOffset, dl);
+  PtrOff = DAG.getNode(ISD::ADD, dl, getPointerTy(DAG.getDataLayout()),
+                       StackPtr, PtrOff);
+  return DAG.getStore(
+      Chain, dl, Arg, PtrOff,
+      MachinePointerInfo::getStack(DAG.getMachineFunction(), LocMemOffset));
+}
+
 // Lower a call to a callseq_start + CALL + callseq_end chain, and add input 
 // and output parameter nodes.
 SDValue
@@ -393,26 +408,40 @@ RISCVTargetLowering::LowerCall(CallLoweringInfo &CLI,
 
   // Copy argument values to their designated locations.
   SmallVector<std::pair<unsigned, SDValue>, 8> RegsToPass;
-  SDValue StackPtr;
+  SmallVector<SDValue, 8> MemOpChains;
+
+  SDValue StackPtr = DAG.getCopyFromReg(Chain, DL, RISCV::X2_32,
+                                        getPointerTy(DAG.getDataLayout()));
+
   for (unsigned I = 0, E = ArgLocs.size(); I != E; ++I) {
     CCValAssign &VA = ArgLocs[I];
-    SDValue ArgValue = OutVals[I];
+    SDValue Arg = OutVals[I];
+    ISD::ArgFlagsTy Flags = Outs[I].Flags;
 
     // Promote the value if needed.
-    // For now, only handle fully promoted arguments.
     switch (VA.getLocInfo()) {
-    case CCValAssign::Full:
+    default: llvm_unreachable("Unknown loc info!");
+    case CCValAssign::Full: break;
+    case CCValAssign::SExt:
+      Arg = DAG.getNode(ISD::SIGN_EXTEND, DL, VA.getLocVT(), Arg);
       break;
-    default:
-      llvm_unreachable("Unknown loc info!");
+    case CCValAssign::ZExt:
+      Arg = DAG.getNode(ISD::ZERO_EXTEND, DL, VA.getLocVT(), Arg);
+      break;
+    case CCValAssign::AExt:
+      Arg = DAG.getNode(ISD::ANY_EXTEND, DL, VA.getLocVT(), Arg);
+      break;
+    case CCValAssign::BCvt:
+      Arg = DAG.getNode(ISD::BITCAST, DL, VA.getLocVT(), Arg);
+      break;
     }
 
-    if (VA.isRegLoc())
-      // Queue up the argument copies and emit them at the end.
-      RegsToPass.push_back(std::make_pair(VA.getLocReg(), ArgValue));
-    else {
-      assert(VA.isMemLoc() && "Argument not register or memory");
-      llvm_unreachable("Passing arguments via the stack not yet implemented");
+    if (VA.isRegLoc()) {
+      RegsToPass.push_back(std::make_pair(VA.getLocReg(), Arg));
+    } else {
+      assert(VA.isMemLoc());
+      MemOpChains.push_back(LowerMemOpCallTo(Chain, StackPtr, Arg,
+                                             DL, DAG, VA, Flags));
     }
   }
 

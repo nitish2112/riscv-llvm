@@ -66,6 +66,11 @@ private:
   SDValue lowerGlobalAddress(SDValue Op, SelectionDAG &DAG) const;
   SDValue lowerExternalSymbol(SDValue Op, SelectionDAG &DAG) const;
   SDValue lowerSELECT_CC(SDValue Op, SelectionDAG &DAG) const;
+
+  SDValue LowerMemOpCallTo(SDValue Chain, SDValue StackPtr, SDValue Arg,
+                           const SDLoc &dl, SelectionDAG &DAG,
+                           const CCValAssign &VA,
+                           ISD::ArgFlagsTy Flags) const;
 };
 }
 

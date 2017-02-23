@@ -88,7 +88,8 @@ void RISCVRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
   if (FrameIndex >= MinCSFI && FrameIndex <= MaxCSFI)
     BasePtr = SP;
 
-  Offset += stackSize;
+  if (BasePtr == SP)
+    Offset += stackSize;
 
   // Fold imm into offset
   Offset += MI.getOperand(FIOperandNum + 1).getImm();

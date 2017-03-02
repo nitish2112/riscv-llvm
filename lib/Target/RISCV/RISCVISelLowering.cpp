@@ -60,6 +60,9 @@ RISCVTargetLowering::RISCVTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::JumpTable, MVT::i32, Custom);
   setOperationAction(ISD::BR_JT, MVT::Other, Expand);
 
+  setOperationAction(ISD::ROTR, MVT::i32, Expand);
+  setOperationAction(ISD::ROTL, MVT::i32, Expand);
+
   setOperationAction(ISD::BR_CC, MVT::i32, Expand);
   setOperationAction(ISD::SELECT_CC, MVT::i32, Custom);
   setOperationAction(ISD::SELECT, MVT::i32, Expand);
@@ -95,6 +98,20 @@ RISCVTargetLowering::RISCVTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::VAARG,            MVT::Other, Expand);
   setOperationAction(ISD::VACOPY,           MVT::Other, Expand);
   setOperationAction(ISD::VAEND,            MVT::Other, Expand);
+
+  setOperationAction(ISD::CTTZ,             MVT::i32,   Expand);
+  setOperationAction(ISD::CTTZ,             MVT::i64,   Expand);
+  setOperationAction(ISD::DYNAMIC_STACKALLOC, MVT::i32, Expand);
+  setOperationAction(ISD::DYNAMIC_STACKALLOC, MVT::i64, Expand);
+
+  setOperationAction(ISD::STACKSAVE,        MVT::Other, Expand);
+  setOperationAction(ISD::STACKRESTORE,     MVT::Other, Expand);
+
+  setOperationAction(ISD::BSWAP,            MVT::i32,   Expand);
+  setOperationAction(ISD::BSWAP,            MVT::i64,   Expand);
+
+  setOperationAction(ISD::CTPOP,            MVT::i32,   Expand);
+  setOperationAction(ISD::CTLZ,             MVT::i32,   Expand);
 
   setOperationAction(ISD::GlobalAddress, MVT::i32, Custom);
 

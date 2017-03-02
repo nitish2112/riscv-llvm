@@ -64,6 +64,8 @@ void RISCVRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
   MachineBasicBlock &MBB = *MI.getParent();
   MachineFunction &MF = *MBB.getParent();
   MachineFrameInfo &MFI = MF.getFrameInfo();
+  const RISCVInstrInfo &TII =
+       *static_cast<const RISCVInstrInfo *>(MF.getSubtarget().getInstrInfo());
   const RISCVFrameLowering *TFI = getFrameLowering(MF);
   DebugLoc DL = MI.getDebugLoc();
   int FrameIndex = MI.getOperand(FIOperandNum).getIndex();
@@ -100,8 +102,10 @@ void RISCVRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
     MI.getOperand(FIOperandNum + 1).ChangeToImmediate(Offset);
     return;
   } else {
-    llvm_unreachable(
-        "Frame offsets outside of the signed 12-bit range not supported");
+    MI.dump();
+    unsigned ScratchReg = TII.loadImmediate(BasePtr, Offset, MBB, II, DL);
+    MI.getOperand(FIOperandNum).ChangeToRegister(ScratchReg, false);
+    MI.dump();
   }
 }
 

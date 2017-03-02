@@ -57,6 +57,10 @@ public:
   void adjustStackPtr(unsigned SP, int64_t Amount, MachineBasicBlock &MBB,
                       MachineBasicBlock::iterator I) const;
 
+  unsigned loadImmediate(unsigned BaseReg, int64_t Imm, MachineBasicBlock &MBB,
+                         MachineBasicBlock::iterator II,
+                         const DebugLoc &DL) const;
+
 private:
   void BuildCondBr(MachineBasicBlock &MBB, MachineBasicBlock *TBB,
                    const DebugLoc &DL, ArrayRef<MachineOperand> Cond) const;

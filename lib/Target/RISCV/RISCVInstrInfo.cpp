@@ -92,6 +92,30 @@ void RISCVInstrInfo::adjustStackPtr(unsigned SP, int64_t Amount,
       addReg(SP).addImm(Amount);
 }
 
+unsigned RISCVInstrInfo::loadImmediate(unsigned BaseReg, int64_t Imm,
+                                       MachineBasicBlock &MBB,
+                                       MachineBasicBlock::iterator II,
+                                       const DebugLoc &DL) const {
+  MachineFunction &MF = *MBB.getParent();
+  MachineRegisterInfo &RegInfo = MBB.getParent()->getRegInfo();
+  const RISCVSubtarget &STI = MF.getSubtarget<RISCVSubtarget>();
+  const TargetRegisterClass *RC = STI.is64Bit() ?
+    &RISCV::GPR64RegClass : &RISCV::GPRRegClass;
+
+  unsigned ScratchReg = RegInfo.createVirtualRegister(RC);
+
+  BuildMI(MBB, II, DL, get(RISCV::LUI), ScratchReg)
+    .addImm((Imm >> 12) & 0xfffff);
+
+  BuildMI(MBB, II, DL, get(RISCV::ADDI), ScratchReg).addReg(ScratchReg)
+    .addImm(Imm & 0xfff);
+
+  BuildMI(MBB, II, DL, get(RISCV::ADD), ScratchReg).addReg(ScratchReg)
+    .addReg(BaseReg);
+
+  return ScratchReg;
+}
+
 
 //===----------------------------------------------------------------------===//
 // Branch Analysis

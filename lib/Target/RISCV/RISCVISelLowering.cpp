@@ -57,6 +57,9 @@ RISCVTargetLowering::RISCVTargetLowering(const TargetMachine &TM,
 
   // TODO: add all necessary setOperationAction calls
 
+  setOperationAction(ISD::JumpTable, MVT::i32, Custom);
+  setOperationAction(ISD::BR_JT, MVT::Other, Expand);
+
   setOperationAction(ISD::BR_CC, MVT::i32, Expand);
   setOperationAction(ISD::SELECT_CC, MVT::i32, Custom);
   setOperationAction(ISD::SELECT, MVT::i32, Expand);
@@ -111,6 +114,8 @@ SDValue RISCVTargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const
   switch (Op.getOpcode()) {
   case ISD::GlobalAddress:
     return lowerGlobalAddress(Op, DAG);
+  case ISD::JumpTable:
+    return lowerJumpTable(Op, DAG);
   case ISD::SELECT_CC:
     return lowerSELECT_CC(Op, DAG);
   case ISD::VASTART:
@@ -164,6 +169,26 @@ SDValue RISCVTargetLowering::lowerExternalSymbol(SDValue Op,
     return MNLo;
   } else {
     llvm_unreachable("Unable to lowerExternalSymbol");
+  }
+}
+
+SDValue RISCVTargetLowering::lowerJumpTable(SDValue Op,
+                                            SelectionDAG &DAG) const {
+  SDLoc DL(Op);
+  EVT Ty = Op.getValueType();
+  JumpTableSDNode *N = cast<JumpTableSDNode>(Op);
+
+  if (!isPositionIndependent() && !Subtarget->is64Bit()) {
+    SDValue GAHi =
+        DAG.getTargetJumpTable(N->getIndex(), Ty, RISCVII::MO_HI);
+    SDValue GALo =
+        DAG.getTargetJumpTable(N->getIndex(), Ty, RISCVII::MO_LO);
+    SDValue MNHi = SDValue(DAG.getMachineNode(RISCV::LUI, DL, Ty, GAHi), 0);
+    SDValue MNLo =
+        SDValue(DAG.getMachineNode(RISCV::ADDI, DL, Ty, MNHi, GALo), 0);
+    return MNLo;
+  } else {
+    llvm_unreachable("Unable to lowerGlobalAddress");
   }
 }
 

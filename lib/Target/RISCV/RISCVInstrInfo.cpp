@@ -110,11 +110,13 @@ unsigned RISCVInstrInfo::loadImmediate(unsigned BaseReg, int64_t Imm,
 
   unsigned ScratchReg = RegInfo.createVirtualRegister(RC);
 
-  BuildMI(MBB, II, DL, get(RISCV::LUI), ScratchReg)
-    .addImm((Imm >> 12) & 0xfffff);
-
+  int64_t LuiImm = ((Imm + 0x800) >> 12) & 0xfffff;
+  if (LuiImm != 0) {
+    BuildMI(MBB, II, DL, get(RISCV::LUI), ScratchReg)
+      .addImm(LuiImm);
+  }
   BuildMI(MBB, II, DL, get(RISCV::ADDI), ScratchReg).addReg(ScratchReg)
-    .addImm(Imm & 0xfff);
+    .addImm(SignExtend64<12> (Imm));
 
   BuildMI(MBB, II, DL, get(RISCV::ADD), ScratchReg).addReg(ScratchReg)
     .addReg(BaseReg);

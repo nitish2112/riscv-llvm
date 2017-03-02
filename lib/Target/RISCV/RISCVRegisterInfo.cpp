@@ -57,6 +57,26 @@ const uint32_t *RISCVRegisterInfo::getNoPreservedMask() const {
   return CSR_NoRegs_RegMask;
 }
 
+bool RISCVRegisterInfo::
+requiresRegisterScavenging(const MachineFunction &MF) const {
+  return true;
+}
+
+bool RISCVRegisterInfo::
+trackLivenessAfterRegAlloc(const MachineFunction &MF) const {
+  return true;
+}
+
+bool RISCVRegisterInfo::
+requiresFrameIndexScavenging(const MachineFunction &MF) const {
+  return true;
+}
+
+bool RISCVRegisterInfo::
+requiresVirtualBaseRegisters(const MachineFunction &MF) const {
+  return true;
+}
+
 void RISCVRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
                                             int SPAdj, unsigned FIOperandNum,
                                             RegScavenger *RS) const {

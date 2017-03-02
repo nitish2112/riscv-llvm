@@ -34,6 +34,14 @@ struct RISCVRegisterInfo : public RISCVGenRegisterInfo {
 
   const uint32_t *getNoPreservedMask() const override;
 
+  bool requiresRegisterScavenging(const MachineFunction &MF) const override;
+
+  bool trackLivenessAfterRegAlloc(const MachineFunction &MF) const override;
+
+  bool requiresFrameIndexScavenging(const MachineFunction &MF) const override;
+
+  bool requiresVirtualBaseRegisters(const MachineFunction &MF) const override;
+
   void eliminateFrameIndex(MachineBasicBlock::iterator MI, int SPAdj,
                            unsigned FIOperandNum,
                            RegScavenger *RS = nullptr) const override;

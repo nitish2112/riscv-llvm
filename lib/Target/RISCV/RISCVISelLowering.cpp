@@ -114,6 +114,7 @@ RISCVTargetLowering::RISCVTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::CTLZ,             MVT::i32,   Expand);
 
   setOperationAction(ISD::GlobalAddress, MVT::i32, Custom);
+  setOperationAction(ISD::BlockAddress, MVT::i32, Custom);
 
   setBooleanContents(ZeroOrOneBooleanContent);
 
@@ -131,6 +132,8 @@ SDValue RISCVTargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const
   switch (Op.getOpcode()) {
   case ISD::GlobalAddress:
     return lowerGlobalAddress(Op, DAG);
+  case ISD::BlockAddress:
+    return lowerBlockAddress(Op, DAG);
   case ISD::JumpTable:
     return lowerJumpTable(Op, DAG);
   case ISD::SELECT_CC:
@@ -165,6 +168,27 @@ SDValue RISCVTargetLowering::lowerGlobalAddress(SDValue Op,
     return MNLo;
   } else {
     llvm_unreachable("Unable to lowerGlobalAddress");
+  }
+}
+
+SDValue RISCVTargetLowering::lowerBlockAddress(SDValue Op,
+                                               SelectionDAG &DAG) const {
+  SDLoc DL(Op);
+  EVT Ty = Op.getValueType();
+  BlockAddressSDNode *BASDN = cast<BlockAddressSDNode>(Op);
+  const BlockAddress *BA = BASDN->getBlockAddress();
+
+  if (!isPositionIndependent() && !Subtarget->is64Bit()) {
+    SDValue BAHi =
+        DAG.getTargetBlockAddress(BA, Ty, 0, RISCVII::MO_HI);
+    SDValue BALo =
+        DAG.getTargetBlockAddress(BA, Ty, 0, RISCVII::MO_LO);
+    SDValue MNHi = SDValue(DAG.getMachineNode(RISCV::LUI, DL, Ty, BAHi), 0);
+    SDValue MNLo =
+        SDValue(DAG.getMachineNode(RISCV::ADDI, DL, Ty, MNHi, BALo), 0);
+    return MNLo;
+  } else {
+    llvm_unreachable("Unable to lowerBlockAddress");
   }
 }
 

@@ -87,9 +87,15 @@ void RISCVInstrInfo::adjustStackPtr(unsigned SP, int64_t Amount,
   if (Amount == 0)
     return;
 
-  // addi sp, sp, amount
-  BuildMI(MBB, I, DL, get(RISCV::ADDI), SP).
+  if (isInt<12>(Amount)) {
+    // addi sp, sp, amount
+    BuildMI(MBB, I, DL, get(RISCV::ADDI), SP).
       addReg(SP).addImm(Amount);
+  } else {
+    unsigned Reg = loadImmediate (SP, Amount, MBB, I, DL);
+    BuildMI(MBB, I, DL, get(RISCV::ADD), SP)
+      .addReg(SP).addReg(Reg);
+  }
 }
 
 unsigned RISCVInstrInfo::loadImmediate(unsigned BaseReg, int64_t Imm,

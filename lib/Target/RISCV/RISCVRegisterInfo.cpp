@@ -18,9 +18,13 @@
 #include "llvm/CodeGen/MachineFunction.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
 #include "llvm/CodeGen/RegisterScavenging.h"
+#include "llvm/IR/DebugInfo.h"
+#include "llvm/Support/Debug.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Target/TargetFrameLowering.h"
 #include "llvm/Target/TargetInstrInfo.h"
+
+#define DEBUG_TYPE "riscv-reg-info"
 
 #define GET_REGINFO_TARGET_DESC
 #include "RISCVGenRegisterInfo.inc"
@@ -57,20 +61,28 @@ void RISCVRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
                                             int SPAdj, unsigned FIOperandNum,
                                             RegScavenger *RS) const {
   assert(SPAdj == 0 && "Unexpected");
-
-  unsigned SP = RISCV::X2_32;
-  unsigned FP = RISCV::X8_32;
   MachineInstr &MI = *II;
   MachineBasicBlock &MBB = *MI.getParent();
   MachineFunction &MF = *MBB.getParent();
+
+  DEBUG(errs() << "\nFunction : " << MF.getName() << "\n";
+        errs() << "<--------->\n" << MI);
+
+  int FrameIndex = MI.getOperand(FIOperandNum).getIndex();
+  uint64_t stackSize = MF.getFrameInfo().getStackSize();
+  int64_t Offset = MF.getFrameInfo().getObjectOffset(FrameIndex);
+
+  DEBUG(errs() << "FrameIndex : " << FrameIndex << "\n"
+               << "spOffset   : " << Offset << "\n"
+               << "stackSize  : " << stackSize << "\n");
+
+  unsigned SP = RISCV::X2_32;
+  unsigned FP = RISCV::X8_32;
   MachineFrameInfo &MFI = MF.getFrameInfo();
   const RISCVInstrInfo &TII =
        *static_cast<const RISCVInstrInfo *>(MF.getSubtarget().getInstrInfo());
   const RISCVFrameLowering *TFI = getFrameLowering(MF);
   DebugLoc DL = MI.getDebugLoc();
-  int FrameIndex = MI.getOperand(FIOperandNum).getIndex();
-  uint64_t stackSize = MF.getFrameInfo().getStackSize();
-  int64_t Offset = MF.getFrameInfo().getObjectOffset(FrameIndex);
   unsigned BasePtr = (TFI->hasFP(MF) ? FP : SP);
 
   const std::vector<CalleeSavedInfo> &CSI = MFI.getCalleeSavedInfo();

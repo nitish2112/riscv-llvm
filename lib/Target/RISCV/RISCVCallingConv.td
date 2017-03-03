@@ -11,8 +11,20 @@
 //
 //===----------------------------------------------------------------------===//
 
+/// CCIfAlign - Match of the original alignment of the arg
+class CCIfAlign<string Align, CCAction A>:
+  CCIf<!strconcat("ArgFlags.getOrigAlign() == ", Align), A>;
+
+class CCIfNotAlign<string Align, CCAction A>:
+  CCIf<!strconcat("ArgFlags.getOrigAlign() != ", Align), A>;
+
 // RISCV 32-bit C return-value convention.
-def RetCC_RISCV32 : CallingConv<[CCIfType<[i32], CCAssignToReg<[X10_32, X11_32]>>]>;
+def RetCC_RISCV32 : CallingConv<[
+  CCIfType<[i1, i8, i16], CCPromoteToType<i32>>,
+  CCIfType<[i32], CCAssignToReg<[X10_32, X11_32]>>,
+  CCIfType<[i64], CCAssignToRegWithShadow<[X10_32], [X11_32]>>,
+  CCIfType<[f32], CCBitConvertToType<i32>>
+]>;
 
 // RISCV 32-bit C Calling convention.
 def CC_RISCV32 : CallingConv<[
@@ -21,11 +33,26 @@ def CC_RISCV32 : CallingConv<[
   // Pass by value if the byval attribute is given
   CCIfByVal<CCPassByVal<4, 4>>,
 
-  CCIfType<[f32], CCBitConvertToType<i32>>,
+  // i64/f64 is passed in even pairs of GPRs
+  // i64 is 8-aligned i32 here, so we may need to eat R1 as a pad register
+  // (and the same is true for f64 if VFP is not enabled)
+  CCIfType<[i32], CCIfNotAlign<"8",
+                     CCAssignToReg<[X10_32, X11_32, X12_32, X13_32,
+                                    X14_32, X15_32, X16_32, X17_32]>>>,
 
-  // All arguments get passed in integer registers if there is space.
-  CCIfType<[i32], CCAssignToReg<[ X10_32, X11_32, X12_32, X13_32, X14_32,
-                                  X15_32, X16_32, X17_32 ]>>,
+  CCIfType<[i32], CCIfAlign<"8",
+           CCAssignToRegWithShadow<[X10_32, X12_32, X14_32, X16_32],
+                                   [X10_32, X11_32, X13_32, X15_32]>>>,
+
+  // If a part of argument assign to stack, shadow the argument registers.
+  // To avoid a double argument assign to stack and register in the same time.
+  CCIfType<[i32], CCIfAlign<"8", CCAssignToStackWithShadow<4, 8,
+                                         [X10_32, X11_32, X12_32, X13_32,
+                                          X14_32, X15_32, X16_32, X17_32]>>>,
+
+  CCIfType<[f32], CCBitConvertToType<i32>>,
+  CCIfType<[i64, f64], CCAssignToRegWithShadow<[X10_32, X12_32, X14_32, X16_32],
+                                               [X11_32, X13_32, X15_32, X17_32]>>,
 
   CCIfType<[i32, f32], CCAssignToStack<4, 4>>,
   CCIfType<[i64, f64], CCAssignToStack<8, 8>>

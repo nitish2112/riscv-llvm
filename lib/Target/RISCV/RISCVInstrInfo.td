@@ -282,7 +282,7 @@ def AND  : ALU_rr<0b0000000, 0b111, "and", and>;
 // Define pattern expansions for setcc operations that aren't directly
 // handled by a RISC-V instruction
 
-def : Pat<(seteq GPR:$rs1, GPR:$rs2), (SLTI (XOR GPR:$rs1, GPR:$rs2), 1)>;
+def : Pat<(seteq GPR:$rs1, GPR:$rs2), (SLTIU (XOR GPR:$rs1, GPR:$rs2), 1)>;
 def : Pat<(setne GPR:$rs1, GPR:$rs2), (SLTU X0_32, (XOR GPR:$rs1, GPR:$rs2))>;
 def : Pat<(setugt GPR:$rs1, GPR:$rs2), (SLTU GPR:$rs2, GPR:$rs1)>;
 def : Pat<(setuge GPR:$rs1, GPR:$rs2), (XORI (SLTU GPR:$rs1, GPR:$rs2), 1)>;

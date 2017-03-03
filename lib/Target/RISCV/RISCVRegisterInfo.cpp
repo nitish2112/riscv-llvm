@@ -134,10 +134,9 @@ void RISCVRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
     MI.getOperand(FIOperandNum + 1).ChangeToImmediate(Offset);
     return;
   } else {
-    MI.dump();
-    unsigned ScratchReg = TII.loadImmediate(BasePtr, Offset, MBB, II, DL);
+    unsigned ScratchReg = TII.basePlusImmediate(0, BasePtr, Offset,
+                                                MBB, II, DL);
     MI.getOperand(FIOperandNum).ChangeToRegister(ScratchReg, false);
-    MI.dump();
   }
 }
 

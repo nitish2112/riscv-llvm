@@ -83,7 +83,6 @@ void RISCVInstrInfo::adjustStackPtr(unsigned SP, int64_t Amount,
                                     MachineBasicBlock &MBB,
                                     MachineBasicBlock::iterator I) const {
   DebugLoc DL;
-
   if (Amount == 0)
     return;
 
@@ -92,36 +91,47 @@ void RISCVInstrInfo::adjustStackPtr(unsigned SP, int64_t Amount,
     BuildMI(MBB, I, DL, get(RISCV::ADDI), SP).
       addReg(SP).addImm(Amount);
   } else {
-    unsigned Reg = loadImmediate (SP, Amount, MBB, I, DL);
-    BuildMI(MBB, I, DL, get(RISCV::ADD), SP)
-      .addReg(SP).addReg(Reg);
+    basePlusImmediate (SP, SP, Amount, MBB, I, DL);
   }
 }
 
-unsigned RISCVInstrInfo::loadImmediate(unsigned BaseReg, int64_t Imm,
-                                       MachineBasicBlock &MBB,
-                                       MachineBasicBlock::iterator II,
-                                       const DebugLoc &DL) const {
-  MachineFunction &MF = *MBB.getParent();
-  MachineRegisterInfo &RegInfo = MBB.getParent()->getRegInfo();
-  const RISCVSubtarget &STI = MF.getSubtarget<RISCVSubtarget>();
-  const TargetRegisterClass *RC = STI.is64Bit() ?
-    &RISCV::GPR64RegClass : &RISCV::GPRRegClass;
-
-  unsigned ScratchReg = RegInfo.createVirtualRegister(RC);
-
+void RISCVInstrInfo::loadImmediate(unsigned ScratchReg,
+                                   int64_t Imm, MachineBasicBlock &MBB,
+                                   MachineBasicBlock::iterator II,
+                                   const DebugLoc &DL) const {
   int64_t LuiImm = ((Imm + 0x800) >> 12) & 0xfffff;
   if (LuiImm != 0) {
     BuildMI(MBB, II, DL, get(RISCV::LUI), ScratchReg)
       .addImm(LuiImm);
   }
-  BuildMI(MBB, II, DL, get(RISCV::ADDI), ScratchReg).addReg(ScratchReg)
-    .addImm(SignExtend64<12> (Imm));
+  if (SignExtend64<12> (Imm) != 0) {
+    BuildMI(MBB, II, DL, get(RISCV::ADDI), ScratchReg).addReg(ScratchReg)
+      .addImm(SignExtend64<12> (Imm));
+  }
+}
 
-  BuildMI(MBB, II, DL, get(RISCV::ADD), ScratchReg).addReg(ScratchReg)
+unsigned
+RISCVInstrInfo::basePlusImmediate(unsigned DstReg, unsigned BaseReg,
+                                  int64_t Imm, MachineBasicBlock &MBB,
+                                  MachineBasicBlock::iterator II,
+                                  const DebugLoc &DL) const {
+  MachineFunction &MF = *MBB.getParent();
+  MachineRegisterInfo &RegInfo = MBB.getParent()->getRegInfo();
+  const RISCVSubtarget &STI = MF.getSubtarget<RISCVSubtarget>();
+  const TargetRegisterClass *RC = STI.is64Bit() ?
+    &RISCV::GPR64RegClass : &RISCV::GPRRegClass;
+  unsigned ScratchReg = RegInfo.createVirtualRegister(RC);
+
+  if (DstReg == 0)
+    DstReg = ScratchReg;
+
+  loadImmediate (ScratchReg, Imm, MBB, II, DL);
+  BuildMI(MBB, II, DL, get(RISCV::ADD), DstReg)
+    .addReg(ScratchReg)
     .addReg(BaseReg);
 
   return ScratchReg;
+
 }
 
 

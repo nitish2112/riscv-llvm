@@ -42,7 +42,7 @@ void RISCVFrameLowering::emitPrologue(MachineFunction &MF,
       *static_cast<const RISCVInstrInfo *>(MF.getSubtarget().getInstrInfo());
 
   MachineBasicBlock::iterator MBBI = MBB.begin();
-  DebugLoc dl;
+  DebugLoc DL;
 
   // First, compute final stack size.
   uint64_t StackSize = MFI.getStackSize();
@@ -59,7 +59,7 @@ void RISCVFrameLowering::emitPrologue(MachineFunction &MF,
   // emit ".cfi_def_cfa_offset StackSize"
   unsigned CFIIndex = MF.addFrameInst(
       MCCFIInstruction::createDefCfaOffset(nullptr, -StackSize));
-  BuildMI(MBB, MBBI, dl, TII.get(TargetOpcode::CFI_INSTRUCTION))
+  BuildMI(MBB, MBBI, DL, TII.get(TargetOpcode::CFI_INSTRUCTION))
       .addCFIIndex(CFIIndex);
 
   const std::vector<CalleeSavedInfo> &CSI = MFI.getCalleeSavedInfo();
@@ -78,21 +78,26 @@ void RISCVFrameLowering::emitPrologue(MachineFunction &MF,
       unsigned Reg = I->getReg();
       unsigned CFIIndex = MF.addFrameInst(MCCFIInstruction::createOffset(
             nullptr, MRI->getDwarfRegNum(Reg, 1), Offset));
-      BuildMI(MBB, MBBI, dl, TII.get(TargetOpcode::CFI_INSTRUCTION))
+      BuildMI(MBB, MBBI, DL, TII.get(TargetOpcode::CFI_INSTRUCTION))
           .addCFIIndex(CFIIndex);
     }
   }
 
   // if framepointer enabled, set it to point to the stack pointer.
   if (hasFP(MF)) {
-    // Insert instruction "move $fp, $sp" at this location.
-    BuildMI(MBB, MBBI, dl, TII.get(ADDI), FP).addReg(SP).addImm(StackSize)
-      .setMIFlag(MachineInstr::FrameSetup);
+    if (isInt<12>(StackSize)) {
+      BuildMI(MBB, MBBI, DL, TII.get(ADDI), FP).addReg(SP).addImm(StackSize)
+        .setMIFlag(MachineInstr::FrameSetup);
+    } else {
+      TII.loadImmediate (FP, StackSize, MBB, MBBI, DL);
 
+      BuildMI(MBB, MBBI, DL, TII.get(RISCV::ADD), FP).addReg(FP).addReg(SP)
+        .setMIFlag(MachineInstr::FrameSetup);
+    }
     // emit ".cfi_def_cfa_register $fp"
     unsigned CFIIndex = MF.addFrameInst(MCCFIInstruction::createDefCfaRegister(
         nullptr, MRI->getDwarfRegNum(FP, true)));
-    BuildMI(MBB, MBBI, dl, TII.get(TargetOpcode::CFI_INSTRUCTION))
+    BuildMI(MBB, MBBI, DL, TII.get(TargetOpcode::CFI_INSTRUCTION))
         .addCFIIndex(CFIIndex);
   }
 }

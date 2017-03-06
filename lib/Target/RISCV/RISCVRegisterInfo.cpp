@@ -136,7 +136,7 @@ void RISCVRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
   } else {
     unsigned ScratchReg = TII.basePlusImmediate(0, BasePtr, Offset,
                                                 MBB, II, DL);
-    MI.getOperand(FIOperandNum).ChangeToRegister(ScratchReg, false);
+    MI.getOperand(FIOperandNum).ChangeToRegister(ScratchReg, false, false, true);
   }
 }
 

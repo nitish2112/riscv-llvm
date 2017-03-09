@@ -26,6 +26,8 @@ enum NodeType : unsigned {
   FIRST_NUMBER = ISD::BUILTIN_OP_END,
   RET_FLAG,
   CALL,
+  // Add pseudo op to model memcpy for struct byval.
+  COPY_STRUCT_BYVAL,
   SELECT_CC
 };
 }
@@ -46,6 +48,8 @@ public:
   EmitInstrWithCustomInserter(MachineInstr &MI,
                               MachineBasicBlock *BB) const override;
 
+  MachineBasicBlock *EmitStructByval(MachineInstr &MI,
+                                     MachineBasicBlock *MBB) const;
 private:
   // Lower incoming arguments, copy physregs into vregs
   SDValue LowerFormalArguments(SDValue Chain, CallingConv::ID CallConv,

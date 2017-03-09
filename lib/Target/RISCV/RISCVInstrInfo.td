@@ -21,6 +21,9 @@ def SDT_RISCVSelectCC     : SDTypeProfile<1, 5, [SDTCisSameAs<1, 2>,
                                                  SDTCisSameAs<0, 4>,
                                                  SDTCisSameAs<4, 5>]>;
 
+def SDT_RISCVStructByVal : SDTypeProfile<0, 4,
+                                         [SDTCisVT<0, i32>, SDTCisVT<1, i32>,
+                                          SDTCisVT<2, i32>, SDTCisVT<3, i32>]>;
 
 def Call             : SDNode<"RISCVISD::CALL", SDT_RISCVCall,
                               [SDNPHasChain, SDNPOptInGlue, SDNPOutGlue,
@@ -32,6 +35,12 @@ def CallSeqStart     : SDNode<"ISD::CALLSEQ_START", SDT_RISCVCallSeqStart,
 def CallSeqEnd       : SDNode<"ISD::CALLSEQ_END", SDT_RISCVCallSeqEnd,
                               [SDNPHasChain, SDNPOptInGlue, SDNPOutGlue]>;
 def SelectCC         : SDNode<"RISCVISD::SELECT_CC", SDT_RISCVSelectCC, [SDNPInGlue]>;
+
+def RISCVcopystructbyval : SDNode<"RISCVISD::COPY_STRUCT_BYVAL" ,
+                                   SDT_RISCVStructByVal,
+                                  [SDNPHasChain, SDNPInGlue, SDNPOutGlue,
+                                   SDNPMayStore, SDNPMayLoad]>;
+
 
 // Operands
 class ImmAsmOperand<string prefix, int width, string suffix> : AsmOperandClass {
@@ -336,6 +345,11 @@ def CSRRWI : CSR_ri<0b101, "csrrwi">;
 def CSRRSI : CSR_ri<0b110, "csrrsi">;
 def CSRRCI : CSR_ri<0b111, "csrrci">;
 
+let usesCustomInserter = 1 in {
+    def COPY_STRUCT_BYVAL_I32 : Pseudo<
+      (outs), (ins GPR:$dst, GPR:$src, i32imm:$size, i32imm:$alignment),
+      [(RISCVcopystructbyval GPR:$dst, GPR:$src, imm:$size, imm:$alignment)]>;
+}
 
 // signed 12-bit immediate
 def : Pat<(simm12:$imm), (ADDI X0_32, simm12:$imm)>;

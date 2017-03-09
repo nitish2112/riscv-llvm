@@ -51,6 +51,8 @@ public:
 
   void determineCalleeSaves(MachineFunction &MF, BitVector &SavedRegs,
                             RegScavenger *RS) const override;
+
+  bool hasReservedCallFrame(const MachineFunction &MF) const override;
 };
 }
 #endif

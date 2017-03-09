@@ -204,3 +204,9 @@ int RISCVFrameLowering::getFrameIndexReference(const MachineFunction &MF,
   return MFI.getObjectOffset(FI) + MFI.getStackSize() -
          getOffsetOfLocalArea() + MFI.getOffsetAdjustment();
 }
+
+bool RISCVFrameLowering::hasReservedCallFrame(const MachineFunction &MF) const {
+  return !MF.getFrameInfo().hasVarSizedObjects();
+}
+
+

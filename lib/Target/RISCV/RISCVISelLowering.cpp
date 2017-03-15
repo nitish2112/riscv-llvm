@@ -560,10 +560,25 @@ void RISCVTargetLowering::copyByValRegs(
     SDValue Chain, const SDLoc &DL, std::vector<SDValue> &OutChains,
     SelectionDAG &DAG, const ISD::ArgFlagsTy &Flags,
     SmallVectorImpl<SDValue> &InVals, const Argument *FuncArg,
-    unsigned FirstReg, unsigned LastReg, const CCValAssign &VA,
-    CCState &State) const {
+    const CCValAssign &VA, CCState &CCInfo) const {
+  ArrayRef<MCPhysReg> ArgRegs = makeArrayRef(RISCVArgRegs);
   MachineFunction &MF = DAG.getMachineFunction();
   MachineFrameInfo &MFI = MF.getFrameInfo();
+
+  unsigned FirstReg, LastReg;
+  unsigned ByValIdx = CCInfo.getInRegsParamsProcessed();
+  unsigned ByValArgsCount = CCInfo.getInRegsParamsCount();
+
+  // The ByVal Argument pass by register
+  if (ByValIdx < ByValArgsCount) {
+    CCInfo.getInRegsParamInfo(ByValIdx, FirstReg, LastReg);
+  // The ByVal Argument pass by stack
+  } else {
+    unsigned FirstRegIdx = CCInfo.getFirstUnallocated(ArgRegs);
+    FirstReg = FirstRegIdx == 8 ? (unsigned)RISCV::X17_32 : ArgRegs[FirstRegIdx];
+    LastReg = RISCV::X17_32;
+  }
+
   unsigned GPRSizeInBytes = 4;
   unsigned NumRegs = LastReg - FirstReg;
   unsigned RegAreaSize = NumRegs * GPRSizeInBytes;
@@ -701,26 +716,15 @@ SDValue RISCVTargetLowering::LowerFormalArguments(
 
     if (Flags.isByVal()) {
       assert(Ins[i].isOrigArg() && "Byval arguments cannot be implicit");
-      unsigned FirstByValReg, LastByValReg;
-      unsigned ByValIdx = CCInfo.getInRegsParamsProcessed();
-      unsigned ByValArgsCount = CCInfo.getInRegsParamsCount();
 
-      if (ByValIdx < ByValArgsCount) {
-        CCInfo.getInRegsParamInfo(ByValIdx, FirstByValReg, LastByValReg);
+      assert(Flags.getByValSize() &&
+             "ByVal args of size 0 should have been ignored by front-end.");
 
-        assert(Flags.getByValSize() &&
-               "ByVal args of size 0 should have been ignored by front-end.");
-        assert(ByValIdx < CCInfo.getInRegsParamsCount());
-        copyByValRegs(Chain, DL, OutChains, DAG, Flags, InVals, &*FuncArg,
-                      FirstByValReg, LastByValReg, VA, CCInfo);
-        CCInfo.nextInRegsParam();
+      copyByValRegs(Chain, DL, OutChains, DAG, Flags, InVals, &*FuncArg,
+                    VA, CCInfo);
+      CCInfo.nextInRegsParam();
 
-        // If parameter size outsides register area, "offset" value
-        // helps us to calculate stack slot for remained part properly.
-        offset = LastByValReg - FirstByValReg;
-
-        continue;
-      }
+      continue;
     }
 
     bool IsRegLoc = VA.isRegLoc();
@@ -1151,12 +1155,18 @@ RISCVTargetLowering::EmitStructByval(MachineInstr &MI,
   DebugLoc DL = MI.getDebugLoc();
   TRC = &RISCV::GPRRegClass;
   unsigned UnitSize = 0;
+  unsigned LoadInst = RISCV::LW;
+  unsigned StoreInst = RISCV::SW;
 
 
   if (Align & 1) {
     UnitSize = 1;
+    LoadInst = RISCV::LB;
+    StoreInst = RISCV::SB;
   } else if (Align & 2) {
     UnitSize = 2;
+    LoadInst = RISCV::LH;
+    StoreInst = RISCV::SH;
   } else
     UnitSize = 4;
 
@@ -1176,12 +1186,12 @@ RISCVTargetLowering::EmitStructByval(MachineInstr &MI,
       unsigned scratch = MRI.createVirtualRegister(TRC);
 
       if (isInt<12>(i)) {
-        BuildMI(*BB, MI, DL, TII->get(RISCV::LW))
+        BuildMI(*BB, MI, DL, TII->get(LoadInst))
           .addReg(scratch, RegState::Define)
           .addReg(src)
           .addImm(i);
 
-        BuildMI(*BB, MI, DL, TII->get(RISCV::SW))
+        BuildMI(*BB, MI, DL, TII->get(StoreInst))
           .addReg(scratch)
           .addReg(dest)
           .addImm(i);

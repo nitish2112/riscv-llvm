@@ -95,9 +95,8 @@ private:
                      std::vector<SDValue> &OutChains, SelectionDAG &DAG,
                      const ISD::ArgFlagsTy &Flags,
                      SmallVectorImpl<SDValue> &InVals,
-                     const Argument *FuncArg, unsigned FirstReg,
-                     unsigned LastReg, const CCValAssign &VA,
-                     CCState &State) const;
+                     const Argument *FuncArg, const CCValAssign &VA,
+                     CCState &CCInfo) const;
 
   /// passByValArg - Pass a byval argument in registers or on stack.
   void passByValArg(SDValue Chain, const SDLoc &DL,

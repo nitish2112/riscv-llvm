@@ -1158,7 +1158,6 @@ RISCVTargetLowering::EmitStructByval(MachineInstr &MI,
   unsigned LoadInst = RISCV::LW;
   unsigned StoreInst = RISCV::SW;
 
-
   if (Align & 1) {
     UnitSize = 1;
     LoadInst = RISCV::LB;
@@ -1173,19 +1172,16 @@ RISCVTargetLowering::EmitStructByval(MachineInstr &MI,
   unsigned BytesLeft = SizeVal % UnitSize;
   unsigned LoopSize = SizeVal - BytesLeft;
 
-// TODO:
-//   We should consider expand to loop to avoid expanding too much code.
-//
-//   unsigned MaxCopyThreshold = 64;
-//   if (SizeVal <= MaxCopyThreshold) {
+  // Expand to a loop if SizeVal > MaxCopyThreshold.
+  unsigned MaxCopyThreshold = 64;
 
+  if (SizeVal <= MaxCopyThreshold) {
     // Use LDR and STR to copy.
     // [scratch, srcOut] = LDR_POST(srcIn, UnitSize)
     // [destOut] = STR_POST(scratch, destIn, UnitSize)
     for (unsigned i = 0; i < LoopSize; i+=UnitSize) {
       unsigned scratch = MRI.createVirtualRegister(TRC);
 
-      if (isInt<12>(i)) {
         BuildMI(*BB, MI, DL, TII->get(LoadInst))
           .addReg(scratch, RegState::Define)
           .addReg(src)
@@ -1195,32 +1191,7 @@ RISCVTargetLowering::EmitStructByval(MachineInstr &MI,
           .addReg(scratch)
           .addReg(dest)
           .addImm(i);
-      } else {
-        unsigned scratch1 = MRI.createVirtualRegister(TRC);
-        unsigned scratch2 = MRI.createVirtualRegister(TRC);
-        unsigned scratch3 = MRI.createVirtualRegister(TRC);
-        TII->loadImmediate (scratch1, i, *BB, MachineBasicBlock::iterator(MI), DL);
 
-        BuildMI(*BB, MI, DL, TII->get(RISCV::ADD))
-          .addReg(scratch2, RegState::Define)
-          .addReg(scratch1)
-          .addReg(dest);
-
-        BuildMI(*BB, MI, DL, TII->get(RISCV::ADD))
-          .addReg(scratch3, RegState::Define)
-          .addReg(scratch1)
-          .addReg(src);
-
-        BuildMI(*BB, MI, DL, TII->get(RISCV::LW))
-          .addReg(scratch, RegState::Define)
-          .addReg(scratch3)
-          .addImm(0);
-
-        BuildMI(*BB, MI, DL, TII->get(RISCV::SW))
-          .addReg(scratch)
-          .addReg(scratch2)
-          .addImm(0);
-      }
     }
 
     // Handle the leftover bytes with LDRB and STRB.
@@ -1242,7 +1213,113 @@ RISCVTargetLowering::EmitStructByval(MachineInstr &MI,
 
     MI.eraseFromParent(); // The instruction is gone now.
     return BB;
-//  }
+  }
 
+  // Generate loop to push ByVal arguments to the stack.
+  const BasicBlock *LLVM_BB = BB->getBasicBlock();
+  MachineFunction::iterator It = ++BB->getIterator();
+
+  MachineBasicBlock *loopMBB = MF->CreateMachineBasicBlock(LLVM_BB);
+  MachineBasicBlock *exitMBB = MF->CreateMachineBasicBlock(LLVM_BB);
+  MF->insert(It, loopMBB);
+  MF->insert(It, exitMBB);
+
+  // Transfer the remainder of BB and its successor edges to exitMBB.
+  exitMBB->splice(exitMBB->begin(), BB,
+                  std::next(MachineBasicBlock::iterator(MI)), BB->end());
+  exitMBB->transferSuccessorsAndUpdatePHIs(BB);
+
+  unsigned varEnd = MRI.createVirtualRegister(TRC);
+  TII->loadImmediate (varEnd, LoopSize, *BB, MachineBasicBlock::iterator(MI), DL);
+  BB->addSuccessor(loopMBB);
+
+  // Generate the loop body:
+  //   varPhi = PHI(varLoop, varEnd)
+  //   srcPhi = PHI(srcLoop, src)
+  //   destPhi = PHI(destLoop, dst)
+  MachineBasicBlock *entryBB = BB;
+  BB = loopMBB;
+  unsigned varLoop = MRI.createVirtualRegister(TRC);
+  unsigned varPhi = MRI.createVirtualRegister(TRC);
+  unsigned srcLoop = MRI.createVirtualRegister(TRC);
+  unsigned srcPhi = MRI.createVirtualRegister(TRC);
+  unsigned destLoop = MRI.createVirtualRegister(TRC);
+  unsigned destPhi = MRI.createVirtualRegister(TRC);
+  unsigned data = MRI.createVirtualRegister(TRC);
+
+  BuildMI(*BB, BB->begin(), DL, TII->get(RISCV::PHI), varPhi)
+    .addReg(varLoop).addMBB(loopMBB)
+    .addReg(varEnd).addMBB(entryBB);
+  BuildMI(BB, DL, TII->get(RISCV::PHI), srcPhi)
+    .addReg(srcLoop).addMBB(loopMBB)
+    .addReg(src).addMBB(entryBB);
+  BuildMI(BB, DL, TII->get(RISCV::PHI), destPhi)
+    .addReg(destLoop).addMBB(loopMBB)
+    .addReg(dest).addMBB(entryBB);
+
+
+  // Load Argument
+  BuildMI(*BB, BB->end(), DL, TII->get(LoadInst))
+    .addReg(data, RegState::Define)
+    .addReg(srcPhi)
+    .addImm(0);
+
+  // Store Argument to the stack
+  BuildMI(*BB, BB->end(), DL, TII->get(StoreInst))
+    .addReg(data)
+    .addReg(destPhi)
+    .addImm(0);
+
+  // Increase src base by UnitSize.
+  BuildMI(*BB, BB->end(), DL, TII->get(RISCV::ADDI))
+    .addReg(srcLoop, RegState::Define)
+    .addReg(srcPhi)
+    .addImm(UnitSize);
+
+  // Increase dest base by UnitSize.
+  BuildMI(*BB, BB->end(), DL, TII->get(RISCV::ADDI))
+    .addReg(destLoop, RegState::Define)
+    .addReg(destPhi)
+    .addImm(UnitSize);
+
+  // Decrease loop variable by UnitSize.
+  BuildMI(*BB, BB->end(), DL, TII->get(RISCV::ADDI))
+    .addReg(varLoop, RegState::Define)
+    .addReg(varPhi)
+    .addImm(SignExtend64<12>(-UnitSize));
+
+
+  BuildMI(*BB, BB->end(), DL, TII->get(RISCV::BNE))
+    .addReg(varLoop)
+    .addReg(RISCV::X0_32)
+    .addMBB(loopMBB);
+
+  // loopMBB can loop back to loopMBB or fall through to exitMBB.
+  BB->addSuccessor(loopMBB);
+  BB->addSuccessor(exitMBB);
+
+  // Add epilogue to handle BytesLeft.
+  BB = exitMBB;
+  auto StartOfExit = exitMBB->begin();
+
+  //   [scratch, srcOut] = LDRB_POST(srcLoop, 1)
+  //   [destOut] = STRB_POST(scratch, destLoop, 1)
+  unsigned srcIn = srcLoop;
+  unsigned destIn = destLoop;
+  for (unsigned i = 0; i < BytesLeft; i++) {
+    unsigned scratch = MRI.createVirtualRegister(TRC);
+
+    BuildMI(*BB, StartOfExit, DL, TII->get(RISCV::LB))
+      .addReg(scratch, RegState::Define)
+      .addReg(srcIn)
+      .addImm(i);
+
+    BuildMI(*BB, StartOfExit, DL, TII->get(RISCV::SB))
+      .addReg(scratch)
+      .addReg(destIn)
+      .addImm(i);
+  }
+
+  MI.eraseFromParent(); // The instruction is gone now.
   return BB;
 }

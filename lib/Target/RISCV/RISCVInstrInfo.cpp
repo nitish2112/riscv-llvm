@@ -99,13 +99,34 @@ void RISCVInstrInfo::loadImmediate(unsigned ScratchReg,
                                    int64_t Imm, MachineBasicBlock &MBB,
                                    MachineBasicBlock::iterator II,
                                    const DebugLoc &DL) const {
+  MachineFunction &MF = *MBB.getParent();
+  MachineRegisterInfo &RegInfo = MBB.getParent()->getRegInfo();
+  const RISCVSubtarget &STI = MF.getSubtarget<RISCVSubtarget>();
+  const TargetRegisterClass *RC = STI.is64Bit() ?
+    &RISCV::GPR64RegClass : &RISCV::GPRRegClass;
+
+  if (Imm == 0)
+    return;
+
   int64_t LuiImm = ((Imm + 0x800) >> 12) & 0xfffff;
-  if (LuiImm != 0) {
+
+  if ((LuiImm != 0) && (SignExtend64<12> (Imm) == 0)) {
     BuildMI(MBB, II, DL, get(RISCV::LUI), ScratchReg)
       .addImm(LuiImm);
-  }
-  if (SignExtend64<12> (Imm) != 0) {
-    BuildMI(MBB, II, DL, get(RISCV::ADDI), ScratchReg).addReg(ScratchReg)
+  } else if ((LuiImm == 0) && (SignExtend64<12> (Imm) != 0)) {
+    BuildMI(MBB, II, DL, get(RISCV::ADDI), ScratchReg)
+      .addReg(RISCV::X0_32)
+      .addImm(SignExtend64<12> (Imm));
+  } else {
+    // Create TempReg here because Virtual register expect as SSA form.
+    // So ADDI ScratchReg, ScratchReg, Imm is not allow.
+    unsigned TempReg = RegInfo.createVirtualRegister(RC);
+
+    BuildMI(MBB, II, DL, get(RISCV::LUI), TempReg)
+      .addImm(LuiImm);
+
+    BuildMI(MBB, II, DL, get(RISCV::ADDI), ScratchReg)
+      .addReg(TempReg, getKillRegState (true))
       .addImm(SignExtend64<12> (Imm));
   }
 }

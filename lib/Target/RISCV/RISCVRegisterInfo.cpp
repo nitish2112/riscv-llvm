@@ -122,6 +122,14 @@ void RISCVRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
   if (FrameIndex >= MinCSFI && FrameIndex <= MaxCSFI)
     BasePtr = SP;
 
+  // Use SP as Base if sp_offset (offset + stackSize)
+  // could fit in isInt<12>.
+  // Then we could avoid expand new instruction for setting offset.
+  if ((BasePtr == FP) &&
+      !isInt<12>(Offset) &&
+      isInt<12>(Offset + stackSize))
+    BasePtr = SP;
+
   if (BasePtr == SP)
     Offset += stackSize;
 

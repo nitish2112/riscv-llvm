@@ -118,6 +118,7 @@ RISCVTargetLowering::RISCVTargetLowering(const TargetMachine &TM,
 
   setOperationAction(ISD::GlobalAddress, MVT::i32, Custom);
   setOperationAction(ISD::BlockAddress, MVT::i32, Custom);
+  setOperationAction(ISD::ConstantPool, MVT::i32, Custom);
 
   setBooleanContents(ZeroOrOneBooleanContent);
 
@@ -147,6 +148,8 @@ SDValue RISCVTargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const
     return LowerRETURNADDR(Op, DAG);
   case ISD::FRAMEADDR:
     return LowerFRAMEADDR(Op, DAG);
+  case ISD::ConstantPool:
+    return LowerConstantPool(Op, DAG);
   default:
     report_fatal_error("unimplemented operand");
   }
@@ -339,6 +342,31 @@ SDValue RISCVTargetLowering::LowerFRAMEADDR(SDValue Op,
     FrameAddr = DAG.getLoad(VT, dl, DAG.getEntryNode(), FrameAddr,
                             MachinePointerInfo());
   return FrameAddr;
+}
+
+SDValue RISCVTargetLowering::LowerConstantPool(SDValue Op,
+                                               SelectionDAG &DAG) const {
+  SDLoc DL(Op);
+  EVT Ty = Op.getValueType();
+  ConstantPoolSDNode *N = cast<ConstantPoolSDNode>(Op);
+  const Constant *C = N->getConstVal();
+
+  if (!isPositionIndependent() && !Subtarget->is64Bit()) {
+    uint8_t OpFlagHi = RISCVII::MO_HI;
+    uint8_t OpFlagLo = RISCVII::MO_LO;
+
+    SDValue Hi = DAG.getTargetConstantPool(C, MVT::i32, N->getAlignment(),
+                                           N->getOffset(), OpFlagHi);
+    SDValue Lo = DAG.getTargetConstantPool(C, MVT::i32, N->getAlignment(),
+                                           N->getOffset(), OpFlagLo);
+
+    SDValue MNHi = SDValue(DAG.getMachineNode(RISCV::LUI, DL, Ty, Hi), 0);
+    SDValue MNLo =
+        SDValue(DAG.getMachineNode(RISCV::ADDI, DL, Ty, MNHi, Lo), 0);
+    return MNLo;
+  } else {
+    llvm_unreachable("Unable to LowerConstantPool");
+  }
 }
 
 MachineBasicBlock *

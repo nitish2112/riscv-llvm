@@ -356,3 +356,11 @@ def : Pat<(simm12:$imm), (ADDI X0_32, simm12:$imm)>;
 
 // 32-bit immediate
 def : Pat<(i32 imm:$imm), (ADDI (LUI (HI20 imm:$imm)), (LO12Sext imm:$imm))>;
+
+//===----------------------------------------------------------------------===//
+// M Instructions
+//
+
+include "RISCVInstrInfoM.td"
+
+//===----------------------------------------------------------------------===//

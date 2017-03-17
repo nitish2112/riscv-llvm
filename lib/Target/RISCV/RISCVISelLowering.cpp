@@ -763,7 +763,8 @@ SDValue RISCVTargetLowering::LowerFormalArguments(
   const Function *Func = DAG.getMachineFunction().getFunction();
   Function::const_arg_iterator FuncArg = Func->arg_begin();
 
-  CCInfo.AnalyzeFormalArguments(Ins, CC_RISCV32);
+  CCAssignFn *CC = IsVarArg ? CC_RISCV32_VAR : CC_RISCV32;
+  CCInfo.AnalyzeFormalArguments(Ins, CC);
 
   unsigned CurArgIdx = 0;
 
@@ -974,7 +975,8 @@ RISCVTargetLowering::LowerCall(CallLoweringInfo &CLI,
   // Analyze the operands of the call, assigning locations to each operand.
   SmallVector<CCValAssign, 16> ArgLocs;
   CCState ArgCCInfo(CallConv, IsVarArg, MF, ArgLocs, *DAG.getContext());
-  ArgCCInfo.AnalyzeCallOperands(Outs, CC_RISCV32);
+  CCAssignFn *CC = IsVarArg ? CC_RISCV32_VAR : CC_RISCV32;
+  ArgCCInfo.AnalyzeCallOperands(Outs, CC);
 
 
   // Get a count of how many bytes are to be pushed on the stack.

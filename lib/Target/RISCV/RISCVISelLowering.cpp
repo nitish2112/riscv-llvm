@@ -58,6 +58,67 @@ RISCVTargetLowering::RISCVTargetLowering(const TargetMachine &TM,
     setLoadExtAction(ISD::SEXTLOAD, VT, MVT::i1,  Promote);
   }
 
+  // Handle integer types.
+  for (unsigned I = MVT::FIRST_INTEGER_VALUETYPE;
+       I <= MVT::LAST_INTEGER_VALUETYPE;
+       ++I) {
+    MVT VT = MVT::SimpleValueType(I);
+    if (isTypeLegal(VT)) {
+      if(Subtarget->hasM()) {
+        if(Subtarget->isRV64() && VT==MVT::i32)
+          setOperationAction(ISD::MUL  , VT, Promote);
+        if(Subtarget->isRV32() && VT==MVT::i64)
+          setOperationAction(ISD::MUL  , VT, Expand);
+        setOperationAction(ISD::MUL  , VT, Legal);
+        setOperationAction(ISD::MULHS, VT, Legal);
+        setOperationAction(ISD::MULHU, VT, Legal);
+        setOperationAction(ISD::SDIV , VT, Legal);
+        setOperationAction(ISD::UDIV , VT, Legal);
+        setOperationAction(ISD::SREM , VT, Legal);
+        setOperationAction(ISD::UREM , VT, Legal);
+      }else{
+        setOperationAction(ISD::MUL  , VT, Expand);
+        setOperationAction(ISD::MULHS, VT, Expand);
+        setOperationAction(ISD::MULHU, VT, Expand);
+        setOperationAction(ISD::SDIV , VT, Expand);
+        setOperationAction(ISD::UDIV , VT, Expand);
+        setOperationAction(ISD::SREM , VT, Expand);
+        setOperationAction(ISD::UREM , VT, Expand);
+      }
+
+      //No support at all
+      setOperationAction(ISD::SDIVREM, VT, Expand);
+      setOperationAction(ISD::UDIVREM, VT, Expand);
+      //RISCV doesn't support  [ADD,SUB][E,C]
+      setOperationAction(ISD::ADDE, VT, Expand);
+      setOperationAction(ISD::SUBE, VT, Expand);
+      setOperationAction(ISD::ADDC, VT, Expand);
+      setOperationAction(ISD::SUBC, VT, Expand);
+      //RISCV doesn't support s[hl,rl,ra]_parts
+      setOperationAction(ISD::SHL_PARTS, VT, Expand);
+      setOperationAction(ISD::SRL_PARTS, VT, Expand);
+      setOperationAction(ISD::SRA_PARTS, VT, Expand);
+      //RISCV doesn't support rotl
+      setOperationAction(ISD::ROTL, VT, Expand);
+      setOperationAction(ISD::ROTR, VT, Expand);
+      setOperationAction(ISD::SMUL_LOHI, VT, Expand);
+      setOperationAction(ISD::UMUL_LOHI, VT, Expand);
+
+      // Expand ATOMIC_LOAD and ATOMIC_STORE using ATOMIC_CMP_SWAP.
+      // FIXME: probably much too conservative.
+      setOperationAction(ISD::ATOMIC_LOAD,  VT, Expand);
+      setOperationAction(ISD::ATOMIC_STORE, VT, Expand);
+
+      // No special instructions for these.
+      setOperationAction(ISD::CTPOP,           VT, Expand);
+      setOperationAction(ISD::CTTZ,            VT, Expand);
+      setOperationAction(ISD::CTLZ,            VT, Expand);
+      setOperationAction(ISD::CTTZ_ZERO_UNDEF, VT, Expand);
+      setOperationAction(ISD::CTLZ_ZERO_UNDEF, VT, Expand);
+
+    }
+  }
+
   // TODO: add all necessary setOperationAction calls
 
   setOperationAction(ISD::JumpTable, MVT::i32, Custom);
@@ -75,35 +136,11 @@ RISCVTargetLowering::RISCVTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i16, Expand);
   setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i32, Expand);
 
-  setOperationAction(ISD::ADDC, MVT::i32, Expand);
-  setOperationAction(ISD::ADDE, MVT::i32, Expand);
-  setOperationAction(ISD::SUBC, MVT::i32, Expand);
-  setOperationAction(ISD::SUBE, MVT::i32, Expand);
-
-  setOperationAction(ISD::SREM, MVT::i32, Expand);
-  setOperationAction(ISD::SDIVREM, MVT::i32, Expand);
-  setOperationAction(ISD::SDIV, MVT::i32, Expand);
-  setOperationAction(ISD::UREM, MVT::i32, Expand);
-  setOperationAction(ISD::UDIVREM, MVT::i32, Expand);
-  setOperationAction(ISD::UDIV, MVT::i32, Expand);
-
-  setOperationAction(ISD::MUL, MVT::i32, Expand);
-  setOperationAction(ISD::SMUL_LOHI, MVT::i32, Expand);
-  setOperationAction(ISD::UMUL_LOHI, MVT::i32, Expand);
-  setOperationAction(ISD::MULHS, MVT::i32, Expand);
-  setOperationAction(ISD::MULHU, MVT::i32, Expand);
-
-  setOperationAction(ISD::SHL_PARTS, MVT::i32, Expand);
-  setOperationAction(ISD::SRL_PARTS, MVT::i32, Expand);
-  setOperationAction(ISD::SRA_PARTS, MVT::i32, Expand);
-
   setOperationAction(ISD::VASTART,          MVT::Other, Custom);
   setOperationAction(ISD::VAARG,            MVT::Other, Expand);
   setOperationAction(ISD::VACOPY,           MVT::Other, Expand);
   setOperationAction(ISD::VAEND,            MVT::Other, Expand);
 
-  setOperationAction(ISD::CTTZ,             MVT::i32,   Expand);
-  setOperationAction(ISD::CTTZ,             MVT::i64,   Expand);
   setOperationAction(ISD::DYNAMIC_STACKALLOC, MVT::i32, Expand);
   setOperationAction(ISD::DYNAMIC_STACKALLOC, MVT::i64, Expand);
 
@@ -112,9 +149,6 @@ RISCVTargetLowering::RISCVTargetLowering(const TargetMachine &TM,
 
   setOperationAction(ISD::BSWAP,            MVT::i32,   Expand);
   setOperationAction(ISD::BSWAP,            MVT::i64,   Expand);
-
-  setOperationAction(ISD::CTPOP,            MVT::i32,   Expand);
-  setOperationAction(ISD::CTLZ,             MVT::i32,   Expand);
 
   setOperationAction(ISD::GlobalAddress, MVT::i32, Custom);
   setOperationAction(ISD::BlockAddress, MVT::i32, Custom);
@@ -163,7 +197,7 @@ SDValue RISCVTargetLowering::lowerGlobalAddress(SDValue Op,
   const GlobalValue *GV = N->getGlobal();
   int64_t Offset = N->getOffset();
 
-  if (!isPositionIndependent() && !Subtarget->is64Bit()) {
+  if (!isPositionIndependent()) {
     SDValue GAHi =
         DAG.getTargetGlobalAddress(GV, DL, Ty, Offset, RISCVII::MO_HI);
     SDValue GALo =
@@ -184,7 +218,7 @@ SDValue RISCVTargetLowering::lowerBlockAddress(SDValue Op,
   BlockAddressSDNode *BASDN = cast<BlockAddressSDNode>(Op);
   const BlockAddress *BA = BASDN->getBlockAddress();
 
-  if (!isPositionIndependent() && !Subtarget->is64Bit()) {
+  if (!isPositionIndependent()) {
     SDValue BAHi =
         DAG.getTargetBlockAddress(BA, Ty, 0, RISCVII::MO_HI);
     SDValue BALo =
@@ -207,7 +241,7 @@ SDValue RISCVTargetLowering::lowerExternalSymbol(SDValue Op,
 
   // TODO: should also handle gp-relative loads
 
-  if (!isPositionIndependent() && !Subtarget->is64Bit()) {
+  if (!isPositionIndependent()) {
     SDValue GAHi = DAG.getTargetExternalSymbol(Sym, Ty, RISCVII::MO_HI);
     SDValue GALo = DAG.getTargetExternalSymbol(Sym, Ty, RISCVII::MO_LO);
     SDValue MNHi = SDValue(DAG.getMachineNode(RISCV::LUI, DL, Ty, GAHi), 0);
@@ -225,7 +259,7 @@ SDValue RISCVTargetLowering::lowerJumpTable(SDValue Op,
   EVT Ty = Op.getValueType();
   JumpTableSDNode *N = cast<JumpTableSDNode>(Op);
 
-  if (!isPositionIndependent() && !Subtarget->is64Bit()) {
+  if (!isPositionIndependent()) {
     SDValue GAHi =
         DAG.getTargetJumpTable(N->getIndex(), Ty, RISCVII::MO_HI);
     SDValue GALo =
@@ -351,7 +385,7 @@ SDValue RISCVTargetLowering::LowerConstantPool(SDValue Op,
   ConstantPoolSDNode *N = cast<ConstantPoolSDNode>(Op);
   const Constant *C = N->getConstVal();
 
-  if (!isPositionIndependent() && !Subtarget->is64Bit()) {
+  if (!isPositionIndependent()) {
     uint8_t OpFlagHi = RISCVII::MO_HI;
     uint8_t OpFlagLo = RISCVII::MO_LO;
 

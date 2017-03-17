@@ -31,6 +31,8 @@ public:
                      Optional<Reloc::Model> RM, CodeModel::Model CM,
                      CodeGenOpt::Level OL);
 
+  // Override TargetMachine.
+  const RISCVSubtarget *getSubtargetImpl() const { return &Subtarget; }
   const RISCVSubtarget *getSubtargetImpl(const Function &) const override {
     return &Subtarget;
   }

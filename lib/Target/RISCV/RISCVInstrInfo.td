@@ -13,6 +13,27 @@
 
 include "RISCVInstrFormats.td"
 
+//===----------------------------------------------------------------------===//
+// Predicates for Subtargets
+//===----------------------------------------------------------------------===//
+
+ def IsRV32 :    Predicate<"Subtarget.isRV32()">,
+                 AssemblerPredicate<"FeatureRV32">; 
+ def IsRV64 :    Predicate<"Subtarget.isRV64()">,
+                 AssemblerPredicate<"FeatureRV64">; 
+ def HasM   :    Predicate<"Subtarget.hasM()">,
+                 AssemblerPredicate<"FeatureM">; 
+ def HasF   :    Predicate<"Subtarget.hasF()">,
+                 AssemblerPredicate<"FeatureF">; 
+ def HasD   :    Predicate<"Subtarget.hasD()">,
+                 AssemblerPredicate<"FeatureD">; 
+ def HasA   :    Predicate<"Subtarget.hasA()">,
+                 AssemblerPredicate<"FeatureA">; 
+
+//===----------------------------------------------------------------------===//
+// Type Profiles.
+//===----------------------------------------------------------------------===//
+
 def SDT_RISCVCallSeqStart : SDCallSeqStart<[SDTCisVT<0, i32>]>;
 def SDT_RISCVCallSeqEnd   : SDCallSeqEnd<[SDTCisVT<0, i32>,
                                          SDTCisVT<1, i32>]>;
@@ -24,6 +45,10 @@ def SDT_RISCVSelectCC     : SDTypeProfile<1, 5, [SDTCisSameAs<1, 2>,
 def SDT_RISCVStructByVal : SDTypeProfile<0, 4,
                                          [SDTCisVT<0, i32>, SDTCisVT<1, i32>,
                                           SDTCisVT<2, i32>, SDTCisVT<3, i32>]>;
+
+//===----------------------------------------------------------------------===//
+// RISCV Specific Node Definitions.
+//===----------------------------------------------------------------------===//
 
 def Call             : SDNode<"RISCVISD::CALL", SDT_RISCVCall,
                               [SDNPHasChain, SDNPOptInGlue, SDNPOutGlue,

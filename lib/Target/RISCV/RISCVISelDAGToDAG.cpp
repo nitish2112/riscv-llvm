@@ -27,9 +27,11 @@ using namespace llvm;
 // SelectionDAG operations.
 namespace {
 class RISCVDAGToDAGISel final : public SelectionDAGISel {
+  const RISCVSubtarget &Subtarget;
 public:
   explicit RISCVDAGToDAGISel(RISCVTargetMachine &TargetMachine)
-      : SelectionDAGISel(TargetMachine) {}
+      : SelectionDAGISel(TargetMachine),
+        Subtarget(*TargetMachine.getSubtargetImpl()) {}
 
   StringRef getPassName() const override {
     return "RISCV DAG->DAG Pattern Instruction Selection";

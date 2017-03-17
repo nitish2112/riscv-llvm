@@ -29,12 +29,30 @@ namespace llvm {
 class StringRef;
 
 class RISCVSubtarget : public RISCVGenSubtargetInfo {
+protected:
+  enum RISCVArchEnum {
+    RV32,
+    RV64
+  };
+
+  RISCVArchEnum RISCVArchVersion;
+
+  bool HasM;
+  bool HasA;
+  bool HasF;
+  bool HasD;
+
+  bool UseSoftFloat;
+
+private:
   virtual void anchor();
   RISCVInstrInfo InstrInfo;
   RISCVFrameLowering FrameLowering;
   RISCVTargetLowering TLInfo;
   const SelectionDAGTargetInfo TSInfo;
   bool HasRV64;
+
+  RISCVSubtarget &initializeSubtargetDependencies(StringRef CPU, StringRef FS);
 
 public:
   // Initializes the data members to match that of the specified triple.
@@ -59,6 +77,16 @@ public:
     return &TSInfo;
   }
   bool is64Bit() const { return HasRV64; }
+
+  bool isRV32() const { return RISCVArchVersion == RV32; };
+  bool isRV64() const { return RISCVArchVersion == RV64; };
+
+  bool hasM() const { return HasM; };
+  bool hasA() const { return HasA; };
+  bool hasF() const { return HasF; };
+  bool hasD() const { return HasD; };
+
+  bool useSoftFloat() const { return UseSoftFloat; }
 };
 } // End llvm namespace
 

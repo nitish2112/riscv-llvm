@@ -9,19 +9,51 @@
 
 include "llvm/Target/Target.td"
 
+//===----------------------------------------------------------------------===//
+// RISCV subtarget features
+//===----------------------------------------------------------------------===//
+
+def FeatureM : SubtargetFeature<"m", "HasM", "true",
+                                "Supports Integer Multiplication and Division.">;
+def FeatureA : SubtargetFeature<"a", "HasA", "true",
+                                "Supports Atomic Instructions.">;
+def FeatureF : SubtargetFeature<"f", "HasF", "true",
+                                "Supports Single-Precision Floating-Point.">;
+def FeatureD : SubtargetFeature<"d", "HasD", "true",
+                                "Supports Double-Precision Floating-Point.">;
+
+def FeatureRV32 : SubtargetFeature<"rv32", "RISCVArchVersion", "RV32", 
+                                   "RV32 ISA Support">;
+def FeatureRV64 : SubtargetFeature<"rv64", "RISCVArchVersion", "RV64", 
+                                   "RV64 ISA Support">;
+
+def FeatureSoftFloat : SubtargetFeature<"soft-float", "UseSoftFloat", "true",
+                                        "Use software floating point features.">;
+
+//===----------------------------------------------------------------------===//
+// Register file description
+//===----------------------------------------------------------------------===//
+
 include "RISCVRegisterInfo.td"
+
+//===----------------------------------------------------------------------===//
+// Calling convention description
+//===----------------------------------------------------------------------===//
+
 include "RISCVCallingConv.td"
+
+//===----------------------------------------------------------------------===//
+// Instruction descriptions
+//===----------------------------------------------------------------------===//
+
 include "RISCVInstrInfo.td"
 
 
 def RISCVInstrInfo : InstrInfo;
 
-def Feature64Bit   : SubtargetFeature<"64bit", "HasRV64", "true",
-                                      "Implements RV64">;
-
 def : ProcessorModel<"generic-rv32", NoSchedModel, []>;
 
-def : ProcessorModel<"generic-rv64", NoSchedModel, [Feature64Bit]>;
+def : ProcessorModel<"generic-rv64", NoSchedModel, [FeatureRV64]>;
 
 def RISCVAsmParser : AsmParser {
   let ShouldEmitMatchRegisterAltName = 1;

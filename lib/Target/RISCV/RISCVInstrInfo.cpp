@@ -102,7 +102,7 @@ void RISCVInstrInfo::loadImmediate(unsigned ScratchReg,
   MachineFunction &MF = *MBB.getParent();
   MachineRegisterInfo &RegInfo = MBB.getParent()->getRegInfo();
   const RISCVSubtarget &STI = MF.getSubtarget<RISCVSubtarget>();
-  const TargetRegisterClass *RC = STI.is64Bit() ?
+  const TargetRegisterClass *RC = STI.isRV64() ?
     &RISCV::GPR64RegClass : &RISCV::GPRRegClass;
 
   if (Imm == 0)
@@ -139,7 +139,7 @@ RISCVInstrInfo::basePlusImmediate(unsigned DstReg, unsigned BaseReg,
   MachineFunction &MF = *MBB.getParent();
   MachineRegisterInfo &RegInfo = MBB.getParent()->getRegInfo();
   const RISCVSubtarget &STI = MF.getSubtarget<RISCVSubtarget>();
-  const TargetRegisterClass *RC = STI.is64Bit() ?
+  const TargetRegisterClass *RC = STI.isRV64() ?
     &RISCV::GPR64RegClass : &RISCV::GPRRegClass;
   unsigned ScratchReg = RegInfo.createVirtualRegister(RC);
 

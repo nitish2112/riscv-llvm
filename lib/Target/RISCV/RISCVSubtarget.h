@@ -76,8 +76,6 @@ public:
   const SelectionDAGTargetInfo *getSelectionDAGInfo() const override {
     return &TSInfo;
   }
-  bool is64Bit() const { return HasRV64; }
-
   bool isRV32() const { return RISCVArchVersion == RV32; };
   bool isRV64() const { return RISCVArchVersion == RV64; };
 

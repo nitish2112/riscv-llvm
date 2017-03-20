@@ -44,12 +44,62 @@ public:
   bool emitPseudoExpansionLowering(MCStreamer &OutStreamer,
                                    const MachineInstr *MI);
 
+  void printOperand(const MachineInstr *MI, int OpNum,
+                    raw_ostream &O, const char* Modifier = nullptr);
+  bool PrintAsmOperand(const MachineInstr *MI, unsigned OpNo,
+                       unsigned AsmVariant, const char *ExtraCode,
+                       raw_ostream &O) override;
+
   // Wrapper needed for tblgenned pseudo lowering.
   bool lowerOperand(const MachineOperand &MO, MCOperand &MCOp) const {
     return LowerRISCVMachineOperandToMCOperand(MO, MCOp, *this);
   }
 };
 }
+
+void RISCVAsmPrinter::printOperand(const MachineInstr *MI, int OpNum,
+                                   raw_ostream &O, const char *Modifier) {
+  const MachineOperand &MO = MI->getOperand(OpNum);
+
+  switch (MO.getType()) {
+  default: llvm_unreachable("Not implemented yet!");
+  case MachineOperand::MO_Register:
+    O << RISCVInstPrinter::getRegisterName(MO.getReg());
+    return;
+  case MachineOperand::MO_Immediate:
+    O << MO.getImm();
+    return;
+  case MachineOperand::MO_MachineBasicBlock:
+    MO.getMBB()->getSymbol()->print(O, MAI);
+    return;
+  }
+}
+
+/// PrintAsmOperand - Print out an operand for an inline asm expression.
+///
+bool RISCVAsmPrinter::PrintAsmOperand(const MachineInstr *MI, unsigned OpNo,
+                                      unsigned AsmVariant,
+                                      const char *ExtraCode, raw_ostream &O) {
+  // Does this asm operand have a single letter operand modifier?
+  if (ExtraCode && ExtraCode[0]) {
+    if (ExtraCode[1] != 0) return true; // Unknown modifier.
+
+    switch (ExtraCode[0]) {
+    default:
+      // See if this is a generic print operand
+      return AsmPrinter::PrintAsmOperand(MI, OpNo, AsmVariant, ExtraCode, O);
+    case 'c':
+      if (!MI->getOperand(OpNo).isImm())
+        return true;
+      O << MI->getOperand(OpNo).getImm();
+      return false;
+    }
+  }
+
+  printOperand(MI, OpNo, O);
+  return false;
+}
+
 
 // Simple pseudo-instructions have their lowering (with expansion to real
 // instructions) auto-generated.

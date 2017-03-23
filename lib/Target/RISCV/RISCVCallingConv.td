@@ -21,6 +21,7 @@ class CCIfNotAlign<string Align, CCAction A>:
 // RISCV 32-bit C return-value convention.
 def RetCC_RISCV32 : CallingConv<[
   CCIfType<[i1, i8, i16], CCPromoteToType<i32>>,
+  CCIfType<[v1i64, v2i32, v4i16, v8i8, v2f32], CCBitConvertToType<f64>>,
   CCIfType<[i32], CCAssignToReg<[X10_32, X11_32]>>,
   CCIfType<[i64], CCAssignToRegWithShadow<[X10_32], [X11_32]>>,
   CCIfType<[f32], CCBitConvertToType<i32>>

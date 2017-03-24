@@ -50,6 +50,11 @@ public:
 
   MachineBasicBlock *EmitStructByval(MachineInstr &MI,
                                      MachineBasicBlock *MBB) const;
+
+  /// getSetCCResultType - get the ISD::SETCC result ValueType
+  EVT getSetCCResultType(const DataLayout &DL, LLVMContext &Context,
+                         EVT VT) const override;
+
 private:
   // Lower incoming arguments, copy physregs into vregs
   SDValue LowerFormalArguments(SDValue Chain, CallingConv::ID CallConv,

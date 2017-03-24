@@ -1399,3 +1399,10 @@ RISCVTargetLowering::EmitStructByval(MachineInstr &MI,
   MI.eraseFromParent(); // The instruction is gone now.
   return BB;
 }
+
+EVT RISCVTargetLowering::getSetCCResultType(const DataLayout &, LLVMContext &,
+                                            EVT VT) const {
+  if (!VT.isVector())
+    return MVT::i32;
+  return VT.changeVectorElementTypeToInteger();
+}

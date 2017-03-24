@@ -61,6 +61,12 @@ private:
                       const SmallVectorImpl<ISD::OutputArg> &Outs,
                       const SmallVectorImpl<SDValue> &OutVals, const SDLoc &DL,
                       SelectionDAG &DAG) const override;
+
+  bool CanLowerReturn(CallingConv::ID CallConv,
+                      MachineFunction &MF, bool isVarArg,
+                      const SmallVectorImpl<ISD::OutputArg> &Outs,
+                      LLVMContext &Context) const override;
+
   SDValue LowerCall(TargetLowering::CallLoweringInfo &CLI,
                     SmallVectorImpl<SDValue> &InVals) const override;
   bool shouldConvertConstantLoadToIntImm(const APInt &Imm,

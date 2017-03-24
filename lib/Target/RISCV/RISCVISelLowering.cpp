@@ -1144,6 +1144,18 @@ RISCVTargetLowering::LowerCall(CallLoweringInfo &CLI,
   return Chain;
 }
 
+bool
+RISCVTargetLowering::CanLowerReturn(CallingConv::ID CallConv,
+                                    MachineFunction &MF, bool isVarArg,
+                                    const SmallVectorImpl<ISD::OutputArg> &Outs,
+                                    LLVMContext &Context) const
+{
+  SmallVector<CCValAssign, 16> RVLocs;
+  CCState CCInfo(CallConv, isVarArg, MF, RVLocs, Context);
+  return CCInfo.CheckReturn(Outs, RetCC_RISCV32);
+}
+
+
 SDValue
 RISCVTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
                                  bool IsVarArg,

@@ -29,6 +29,16 @@ namespace llvm {
 class StringRef;
 
 class RISCVSubtarget : public RISCVGenSubtargetInfo {
+private:
+  virtual void anchor();
+  RISCVInstrInfo InstrInfo;
+  RISCVFrameLowering FrameLowering;
+  RISCVTargetLowering TLInfo;
+  const SelectionDAGTargetInfo TSInfo;
+  bool HasRV64;
+
+  RISCVSubtarget &initializeSubtargetDependencies(StringRef CPU, StringRef FS);
+
 protected:
   enum RISCVArchEnum {
     RV32,
@@ -44,15 +54,6 @@ protected:
 
   bool UseSoftFloat;
 
-private:
-  virtual void anchor();
-  RISCVInstrInfo InstrInfo;
-  RISCVFrameLowering FrameLowering;
-  RISCVTargetLowering TLInfo;
-  const SelectionDAGTargetInfo TSInfo;
-  bool HasRV64;
-
-  RISCVSubtarget &initializeSubtargetDependencies(StringRef CPU, StringRef FS);
 
 public:
   // Initializes the data members to match that of the specified triple.

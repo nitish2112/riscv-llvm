@@ -158,7 +158,7 @@ def JAL : FUJ<0b1101111, (outs GPR:$rd), (ins simm21_lsb0:$imm20),
               "jal\t$rd, $imm20", []>;
 }
 
-let isTerminator=1, isBarrier=1 in {
+let isBranch = 1, isTerminator=1, isBarrier=1 in {
 def PseudoBR : Pseudo<(outs), (ins simm21_lsb0:$imm20), [(br bb:$imm20)]>,
                PseudoInstExpansion<(JAL X0_32, simm21_lsb0:$imm20)>;
 }

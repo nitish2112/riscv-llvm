@@ -53,6 +53,11 @@ public:
                         const DebugLoc &DL,
                         int *BytesAdded = nullptr) const override;
 
+  bool analyzeBranch(MachineBasicBlock &MBB, MachineBasicBlock *&TBB,
+                     MachineBasicBlock *&FBB,
+                     SmallVectorImpl<MachineOperand> &Cond,
+                     bool AllowModify) const override;
+
   // Adjust SP by Amount bytes.
   void adjustStackPtr(unsigned SP, int64_t Amount, MachineBasicBlock &MBB,
                       MachineBasicBlock::iterator I) const;
@@ -68,6 +73,10 @@ public:
 private:
   void BuildCondBr(MachineBasicBlock &MBB, MachineBasicBlock *TBB,
                    const DebugLoc &DL, ArrayRef<MachineOperand> Cond) const;
+
+  void AnalyzeCondBr(const MachineInstr *Inst, unsigned Opc,
+                     MachineBasicBlock *&BB,
+                     SmallVectorImpl<MachineOperand> &Cond) const;
 };
 }
 

@@ -161,8 +161,13 @@ RISCVInstrInfo::basePlusImmediate(unsigned DstReg, unsigned BaseReg,
 //===----------------------------------------------------------------------===//
 
 static bool isUncondBranch(unsigned Opcode) {
-
   if (Opcode == RISCV::PseudoBR)
+    return true;
+  return false;
+}
+
+static bool isIndirectBranch(unsigned Opcode) {
+  if (Opcode == RISCV::PseudoBRIND)
     return true;
   return false;
 }
@@ -250,4 +255,89 @@ unsigned RISCVInstrInfo::removeBranch(MachineBasicBlock &MBB,
   // Remove the branch.
   I->eraseFromParent();
   return 2;
+}
+
+void RISCVInstrInfo::AnalyzeCondBr(const MachineInstr *Inst, unsigned Opc,
+                                   MachineBasicBlock *&BB,
+                                   SmallVectorImpl<MachineOperand> &Cond) const {
+  int NumOp = Inst->getNumExplicitOperands();
+
+  // for both int and fp branches, the last explicit operand is the
+  // MBB.
+  BB = Inst->getOperand(NumOp-1).getMBB();
+  Cond.push_back(MachineOperand::CreateImm(Opc));
+
+  for (int i=0; i<NumOp-1; i++)
+    Cond.push_back(Inst->getOperand(i));
+}
+
+bool RISCVInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
+                                   MachineBasicBlock *&TBB,
+                                   MachineBasicBlock *&FBB,
+                                   SmallVectorImpl<MachineOperand> &Cond,
+                                   bool AllowModify) const {
+  // Start from the bottom of the block and work up, examining the
+  // terminator instructions.
+  MachineBasicBlock::iterator I = MBB.end();
+  while (I != MBB.begin()) {
+    --I;
+    if (I->isDebugValue())
+      continue;
+
+    // Working from the bottom, when we see a non-terminator
+    // instruction, we're done.
+    if (!isUnpredicatedTerminator(*I))
+      break;
+
+    // A terminator that isn't a branch can't easily be handled
+    // by this analysis.
+    if (!I->isBranch())
+      return true;
+
+    // Cannot handle indirect branches.
+    if (isIndirectBranch (I->getOpcode()))
+      return true;
+
+    // Handle unconditional branches.
+    if (isUncondBranch (I->getOpcode())) {
+      if (!AllowModify) {
+        TBB = I->getOperand(0).getMBB();
+        continue;
+      }
+
+      // If the block has any instructions after a J, delete them.
+      while (std::next(I) != MBB.end())
+        std::next(I)->eraseFromParent();
+      Cond.clear();
+      FBB = nullptr;
+
+      // Delete the J if it's equivalent to a fall-through.
+      if (MBB.isLayoutSuccessor(I->getOperand(0).getMBB())) {
+        TBB = nullptr;
+        I->eraseFromParent();
+        I = MBB.end();
+        continue;
+      }
+
+      // TBB is used to indicate the unconditinal destination.
+      TBB = I->getOperand(0).getMBB();
+      continue;
+    }
+
+    // Handle conditional branches.
+    if (isCondBranch (I->getOpcode())) {
+      // Working from the bottom, handle the first conditional branch.
+      if (!Cond.empty())
+        return true;
+
+      FBB = TBB;
+      MachineInstr *LastInst = &*I;
+      AnalyzeCondBr(LastInst, I->getOpcode(), TBB, Cond);
+      return false;
+    }
+
+    return true;
+  }
+
+  return false;
 }

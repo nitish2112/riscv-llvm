@@ -90,6 +90,8 @@ private:
   SDValue LowerFRAMEADDR(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerConstantPool(SDValue Op, SelectionDAG &DAG) const;
 
+  SDValue lowerUMULO_SMULO(SDValue Op, SelectionDAG &DAG) const;
+
 
   typedef SmallVector<std::pair<unsigned, SDValue>, 8> RegsToPassVector;
 

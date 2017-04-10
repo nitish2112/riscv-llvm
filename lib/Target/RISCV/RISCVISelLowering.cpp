@@ -58,6 +58,12 @@ RISCVTargetLowering::RISCVTargetLowering(const TargetMachine &TM,
     setLoadExtAction(ISD::SEXTLOAD, VT, MVT::i1,  Promote);
   }
 
+  // Custom lower UMULO/SMULO to correct the argument passing to __muldi3
+  if(Subtarget->isRV32()) {
+    setOperationAction(ISD::UMULO, MVT::i32, Custom);
+    setOperationAction(ISD::SMULO, MVT::i32, Custom);
+  }
+
   // Handle integer types.
   for (unsigned I = MVT::FIRST_INTEGER_VALUETYPE;
        I <= MVT::LAST_INTEGER_VALUETYPE;
@@ -184,6 +190,9 @@ SDValue RISCVTargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const
     return LowerFRAMEADDR(Op, DAG);
   case ISD::ConstantPool:
     return LowerConstantPool(Op, DAG);
+  case ISD::UMULO:
+  case ISD::SMULO:
+    return lowerUMULO_SMULO(Op, DAG);
   default:
     report_fatal_error("unimplemented operand");
   }
@@ -401,6 +410,67 @@ SDValue RISCVTargetLowering::LowerConstantPool(SDValue Op,
 //  } else {
 //    llvm_unreachable("Unable to LowerConstantPool");
 //  }
+}
+
+// Custom lower UMULO/SMULO to pass the test case 
+// c-c++-common/torture/builtin-arith-overflow-1.c UMULO testing.
+// UMULO: unsigned multiplication overflow (__builtin_mul_overflow)
+// UMULO will return true if the overflow occur.
+// Generic code will expand to wider length multiplication
+// and testing signed bit.
+// E.g. i32: UMULO will expand to call __muldi3 and testing signed bit.
+// However, generic call expand __muldi3 will passing arguments in wrong order.
+// So we customize the UMULO/SMULO lowering.
+SDValue RISCVTargetLowering::lowerUMULO_SMULO(SDValue Op,
+                                              SelectionDAG &DAG) const {
+  unsigned opcode = Op.getOpcode();
+  assert((opcode == ISD::UMULO || opcode == ISD::SMULO) && "Invalid Opcode.");
+
+  bool isSigned = (opcode == ISD::SMULO);
+  EVT VT = MVT::i32;
+  EVT WideVT = MVT::i64;
+  SDLoc dl(Op);
+  SDValue LHS = Op.getOperand(0);
+
+  if (LHS.getValueType() != VT)
+    return Op;
+
+  SDValue ShiftAmt = DAG.getConstant(31, dl, VT);
+
+  SDValue RHS = Op.getOperand(1);
+  SDValue HiLHS, HiRHS;
+
+  if (isSigned) {
+    HiLHS = DAG.getNode(ISD::SRA, dl, VT, LHS, ShiftAmt);
+    HiRHS = DAG.getNode(ISD::SRA, dl, MVT::i32, RHS, ShiftAmt);
+  } else {
+    HiLHS = HiRHS = DAG.getConstant(0, dl, VT);
+  }
+  // Arguments passing order
+  SDValue Args[] = { LHS, HiLHS, RHS, HiRHS };
+
+  SDValue MulResult = makeLibCall(DAG,
+                                  RTLIB::MUL_I64, WideVT,
+                                  Args, isSigned, dl).first;
+  SDValue BottomHalf = DAG.getNode(ISD::EXTRACT_ELEMENT, dl, VT,
+                                   MulResult, DAG.getIntPtrConstant(0, dl));
+  SDValue TopHalf = DAG.getNode(ISD::EXTRACT_ELEMENT, dl, VT,
+                                MulResult, DAG.getIntPtrConstant(1, dl));
+  if (isSigned) {
+    SDValue Tmp1 = DAG.getNode(ISD::SRA, dl, VT, BottomHalf, ShiftAmt);
+    TopHalf = DAG.getSetCC(dl, MVT::i32, TopHalf, Tmp1, ISD::SETNE);
+  } else {
+    TopHalf = DAG.getSetCC(dl, MVT::i32, TopHalf, DAG.getConstant(0, dl, VT),
+                           ISD::SETNE);
+  }
+  // MulResult is a node with an illegal type. Because such things are not
+  // generally permitted during this phase of legalization, ensure that
+  // nothing is left using the node. The above EXTRACT_ELEMENT nodes should have
+  // been folded.
+  assert(MulResult->use_empty() && "Illegally typed node still in use!");
+
+  SDValue Ops[2] = { BottomHalf, TopHalf } ;
+  return DAG.getMergeValues(Ops, dl);
 }
 
 MachineBasicBlock *

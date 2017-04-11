@@ -172,6 +172,23 @@ RISCVTargetLowering::RISCVTargetLowering(const TargetMachine &TM,
   MaxStoresPerMemmove = MaxStoresPerMemmoveOptSize = 128;
 }
 
+void
+RISCVTargetLowering::LowerOperationWrapper(SDNode *N,
+                                           SmallVectorImpl<SDValue> &Results,
+                                           SelectionDAG &DAG) const {
+  SDValue Res = LowerOperation(SDValue(N, 0), DAG);
+
+  for (unsigned I = 0, E = Res->getNumValues(); I != E; ++I)
+    Results.push_back(Res.getValue(I));
+}
+
+void
+RISCVTargetLowering::ReplaceNodeResults(SDNode *N,
+                                        SmallVectorImpl<SDValue> &Results,
+                                        SelectionDAG &DAG) const {
+  return LowerOperationWrapper(N, Results, DAG);
+}
+
 SDValue RISCVTargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const {
   switch (Op.getOpcode()) {
   case ISD::GlobalAddress:

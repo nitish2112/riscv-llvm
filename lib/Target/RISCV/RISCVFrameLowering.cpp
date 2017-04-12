@@ -23,10 +23,12 @@ using namespace llvm;
 
 bool RISCVFrameLowering::hasFP(const MachineFunction &MF) const {
   const MachineFrameInfo &MFI = MF.getFrameInfo();
+  const TargetRegisterInfo *TRI = MF.getSubtarget().getRegisterInfo();
 
   return (MF.getTarget().Options.DisableFramePointerElim(MF) ||
           MF.getFrameInfo().hasVarSizedObjects() ||
-          MFI.isFrameAddressTaken());
+          MFI.isFrameAddressTaken() ||
+          TRI->needsStackRealignment(MF));
 }
 
 void RISCVFrameLowering::emitPrologue(MachineFunction &MF,
@@ -40,6 +42,11 @@ void RISCVFrameLowering::emitPrologue(MachineFunction &MF,
 
   const RISCVInstrInfo &TII =
       *static_cast<const RISCVInstrInfo *>(MF.getSubtarget().getInstrInfo());
+  const RISCVRegisterInfo &TRI =
+      *static_cast<const RISCVRegisterInfo *>(MF.getSubtarget().getRegisterInfo());
+  const RISCVSubtarget &STI = MF.getSubtarget<RISCVSubtarget>();
+  const TargetRegisterClass *RC = STI.isRV64() ?
+    &RISCV::GPR64RegClass : &RISCV::GPRRegClass;
 
   MachineBasicBlock::iterator MBBI = MBB.begin();
   DebugLoc DL;
@@ -99,6 +106,24 @@ void RISCVFrameLowering::emitPrologue(MachineFunction &MF,
         nullptr, MRI->getDwarfRegNum(FP, true)));
     BuildMI(MBB, MBBI, DL, TII.get(TargetOpcode::CFI_INSTRUCTION))
         .addCFIIndex(CFIIndex);
+
+    // Realignment the stack for structure alignment
+    // E.g. pass structure by stack and the structure need 16 byte alignment.
+    // See the test case c-c++-common/torture/vector-shift2.c
+    // myfunc2 function will return structure by stack.
+    if (TRI.needsStackRealignment(MF)) {
+      unsigned SP = RISCV::X2_32;
+      unsigned ZERO = RISCV::X0_32;
+      // ADDI $Reg, $zero, -MaxAlignment
+      // AND  $sp, $sp, $Reg
+      unsigned VR = MF.getRegInfo().createVirtualRegister(RC);
+      assert(isInt<16>(MFI.getMaxAlignment()) &&
+             "Function's alignment size requirement is not supported.");
+      int MaxAlign = -(int)MFI.getMaxAlignment();
+
+      BuildMI(MBB, MBBI, DL, TII.get(RISCV::ADDI), VR).addReg(ZERO) .addImm(MaxAlign);
+      BuildMI(MBB, MBBI, DL, TII.get(RISCV::AND), SP).addReg(SP).addReg(VR);
+    }
   }
 }
 
@@ -106,17 +131,38 @@ void RISCVFrameLowering::emitEpilogue(MachineFunction &MF,
                                       MachineBasicBlock &MBB) const {
   unsigned SP = RISCV::X2_32;
   unsigned FP = RISCV::X8_32;
+  unsigned ZERO = RISCV::X0_32;
   unsigned ADDI = RISCV::ADDI;
 
   MachineFrameInfo &MFI = MF.getFrameInfo();
   const RISCVInstrInfo &TII =
       *static_cast<const RISCVInstrInfo *>(MF.getSubtarget().getInstrInfo());
+  const RISCVRegisterInfo &TRI =
+      *static_cast<const RISCVRegisterInfo *>(MF.getSubtarget().getRegisterInfo());
 
   MachineBasicBlock::iterator MBBI = MBB.getLastNonDebugInstr();
-  DebugLoc dl = MBBI->getDebugLoc();
+  DebugLoc DL = MBBI->getDebugLoc();
 
   // Get the number of bytes from FrameInfo
   uint64_t StackSize = MFI.getStackSize();
+
+  // Restore the stack pointer if framepointer enabled
+  // and the stack have been realign or have variable length object
+  if (hasFP(MF)) {
+    // Find the first instruction that restores a callee-saved register.
+    MachineBasicBlock::iterator I = MBBI;
+
+    for (unsigned i = 0; i < MFI.getCalleeSavedInfo().size(); ++i)
+      --I;
+
+    // Insert instruction "addi $sp, $fp, 0" at this location.
+    if (isInt<12>(-StackSize)) {
+      BuildMI(MBB, I, DL, TII.get(ADDI), SP).addReg(FP).addImm(-StackSize);
+    } else {
+      TII.loadImmediate (SP, -StackSize, MBB, I, DL);
+      BuildMI(MBB, I, DL, TII.get(RISCV::ADD), SP).addReg(FP).addReg(SP);
+    }
+  }
 
   if (!StackSize)
     return;

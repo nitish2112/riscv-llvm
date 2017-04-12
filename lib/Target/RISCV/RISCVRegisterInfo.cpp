@@ -101,6 +101,8 @@ void RISCVRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
   MachineFrameInfo &MFI = MF.getFrameInfo();
   const RISCVInstrInfo &TII =
        *static_cast<const RISCVInstrInfo *>(MF.getSubtarget().getInstrInfo());
+  const RISCVRegisterInfo &RegInfo =
+       *static_cast<const RISCVRegisterInfo *>(MF.getSubtarget().getRegisterInfo());
   const RISCVFrameLowering *TFI = getFrameLowering(MF);
   DebugLoc DL = MI.getDebugLoc();
   unsigned BasePtr = (TFI->hasFP(MF) ? FP : SP);
@@ -120,6 +122,10 @@ void RISCVRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
   //   swi     $fp, [$sp + (44)] <= use SP as base
   //   addi    $fp, $sp, 0
   if (FrameIndex >= MinCSFI && FrameIndex <= MaxCSFI)
+    BasePtr = SP;
+
+  // Setting Base Register to SP if we done stack alignment.
+  if (RegInfo.needsStackRealignment(MF))
     BasePtr = SP;
 
   // Use SP as Base if sp_offset (offset + stackSize)

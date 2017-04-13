@@ -364,6 +364,7 @@ RISCVTargetLowering::getReturnAddressFrameIndex(SelectionDAG &DAG) const {
 SDValue RISCVTargetLowering::LowerRETURNADDR(SDValue Op,
                                              SelectionDAG &DAG) const {
   MachineFrameInfo &MFI = DAG.getMachineFunction().getFrameInfo();
+  MachineFunction &MF = DAG.getMachineFunction();
   MFI.setReturnAddressIsTaken(true);
 
   if (verifyReturnAddressArgumentIsConstant(Op, DAG))
@@ -373,19 +374,13 @@ SDValue RISCVTargetLowering::LowerRETURNADDR(SDValue Op,
   SDLoc dl(Op);
   auto PtrVT = getPointerTy(DAG.getDataLayout());
 
+  // We don't support Depth > 0
   if (Depth > 0) {
-    SDValue FrameAddr = LowerFRAMEADDR(Op, DAG);
-    SDValue Offset =
-        DAG.getConstant(DAG.getDataLayout().getPointerSize(), dl, MVT::i32);
-    return DAG.getLoad(PtrVT, dl, DAG.getEntryNode(),
-                       DAG.getNode(ISD::ADD, dl, PtrVT, FrameAddr, Offset),
-                       MachinePointerInfo());
+    return DAG.getConstant(0, dl, MVT::i32);
   }
 
-  // Just load the return address.
-  SDValue RetAddrFI = getReturnAddressFrameIndex(DAG);
-  return DAG.getLoad(PtrVT, dl, DAG.getEntryNode(), RetAddrFI,
-                     MachinePointerInfo());
+  unsigned Reg = MF.addLiveIn(RISCV::X1_32, getRegClassFor(MVT::i32));
+  return DAG.getCopyFromReg(DAG.getEntryNode(), dl, Reg, PtrVT);
 }
 
 SDValue RISCVTargetLowering::LowerFRAMEADDR(SDValue Op,

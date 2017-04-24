@@ -124,10 +124,6 @@ void RISCVRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
   if (FrameIndex >= MinCSFI && FrameIndex <= MaxCSFI)
     BasePtr = SP;
 
-  // Setting Base Register to SP if we done stack alignment.
-  if (RegInfo.needsStackRealignment(MF))
-    BasePtr = SP;
-
   // Use SP as Base if sp_offset (offset + stackSize)
   // could fit in isInt<12>.
   // Then we could avoid expand new instruction for setting offset.
@@ -135,6 +131,19 @@ void RISCVRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
       !isInt<12>(Offset) &&
       isInt<12>(Offset + stackSize))
     BasePtr = SP;
+
+  // When dynamically realigning the stack, use the frame pointer for
+  // parameters, and the stack/base pointer for locals.
+  // see the function foo in the test case gcc.dg/torture/pr70421.c
+  if (RegInfo.needsStackRealignment(MF)) {
+    assert(TFI->hasFP(MF) && "dynamic stack realignment without a FP!");
+    bool isFixed = MFI.isFixedObjectIndex(FrameIndex);
+    if (isFixed) {
+      BasePtr = FP;
+    } else {
+      BasePtr = SP;
+    }
+  }
 
   if (BasePtr == SP)
     Offset += stackSize;

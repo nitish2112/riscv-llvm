@@ -125,6 +125,93 @@ RISCVTargetLowering::RISCVTargetLowering(const TargetMachine &TM,
     }
   }
 
+  //Some Atmoic ops are legal
+  if(Subtarget->hasA()) {
+    if(Subtarget->isRV64()) {
+      //push 32 bits up to 64
+      setOperationAction(ISD::ATOMIC_SWAP,      MVT::i32, Promote);
+      setOperationAction(ISD::ATOMIC_LOAD_ADD,  MVT::i32, Promote);
+      setOperationAction(ISD::ATOMIC_LOAD_AND,  MVT::i32, Promote);
+      setOperationAction(ISD::ATOMIC_LOAD_OR,   MVT::i32, Promote);
+      setOperationAction(ISD::ATOMIC_LOAD_XOR,  MVT::i32, Promote);
+      setOperationAction(ISD::ATOMIC_LOAD_MIN,  MVT::i32, Promote);
+      setOperationAction(ISD::ATOMIC_LOAD_MAX,  MVT::i32, Promote);
+      setOperationAction(ISD::ATOMIC_LOAD_UMIN, MVT::i32, Promote);
+      setOperationAction(ISD::ATOMIC_LOAD_UMAX, MVT::i32, Promote);
+      //Legal in RV64A
+      setOperationAction(ISD::ATOMIC_SWAP,      MVT::i64, Legal);
+      setOperationAction(ISD::ATOMIC_LOAD_ADD,  MVT::i64, Legal);
+      setOperationAction(ISD::ATOMIC_LOAD_AND,  MVT::i64, Legal);
+      setOperationAction(ISD::ATOMIC_LOAD_OR,   MVT::i64, Legal);
+      setOperationAction(ISD::ATOMIC_LOAD_XOR,  MVT::i64, Legal);
+      setOperationAction(ISD::ATOMIC_LOAD_MIN,  MVT::i64, Legal);
+      setOperationAction(ISD::ATOMIC_LOAD_MAX,  MVT::i64, Legal);
+      setOperationAction(ISD::ATOMIC_LOAD_UMIN, MVT::i64, Legal);
+      setOperationAction(ISD::ATOMIC_LOAD_UMAX, MVT::i64, Legal);
+      //These are not native instructions
+      setOperationAction(ISD::ATOMIC_CMP_SWAP,  MVT::i32, Expand);
+      setOperationAction(ISD::ATOMIC_CMP_SWAP,  MVT::i64, Expand);
+      setOperationAction(ISD::ATOMIC_LOAD_NAND, MVT::i32, Expand);
+      setOperationAction(ISD::ATOMIC_LOAD_SUB,  MVT::i32, Expand);
+      setOperationAction(ISD::ATOMIC_LOAD_NAND, MVT::i64, Expand);
+      setOperationAction(ISD::ATOMIC_LOAD_SUB,  MVT::i64, Expand);
+    } else {
+      //Legal in RV32A
+      setOperationAction(ISD::ATOMIC_SWAP,      MVT::i32, Legal);
+      setOperationAction(ISD::ATOMIC_LOAD_ADD,  MVT::i32, Legal);
+      setOperationAction(ISD::ATOMIC_LOAD_AND,  MVT::i32, Legal);
+      setOperationAction(ISD::ATOMIC_LOAD_OR,   MVT::i32, Legal);
+      setOperationAction(ISD::ATOMIC_LOAD_XOR,  MVT::i32, Legal);
+      setOperationAction(ISD::ATOMIC_LOAD_MIN,  MVT::i32, Legal);
+      setOperationAction(ISD::ATOMIC_LOAD_MAX,  MVT::i32, Legal);
+      setOperationAction(ISD::ATOMIC_LOAD_UMIN, MVT::i32, Legal);
+      setOperationAction(ISD::ATOMIC_LOAD_UMAX, MVT::i32, Legal);
+      //Expand 64 bit into 32?
+      setOperationAction(ISD::ATOMIC_SWAP,      MVT::i64, Expand);
+      setOperationAction(ISD::ATOMIC_LOAD_ADD,  MVT::i64, Expand);
+      setOperationAction(ISD::ATOMIC_LOAD_AND,  MVT::i64, Expand);
+      setOperationAction(ISD::ATOMIC_LOAD_OR,   MVT::i64, Expand);
+      setOperationAction(ISD::ATOMIC_LOAD_XOR,  MVT::i64, Expand);
+      setOperationAction(ISD::ATOMIC_LOAD_MIN,  MVT::i64, Expand);
+      setOperationAction(ISD::ATOMIC_LOAD_MAX,  MVT::i64, Expand);
+      setOperationAction(ISD::ATOMIC_LOAD_UMIN, MVT::i64, Expand);
+      setOperationAction(ISD::ATOMIC_LOAD_UMAX, MVT::i64, Expand);
+      //These are not native instructions
+      setOperationAction(ISD::ATOMIC_CMP_SWAP,  MVT::i32, Expand);
+      setOperationAction(ISD::ATOMIC_CMP_SWAP,  MVT::i64, Expand);
+      setOperationAction(ISD::ATOMIC_LOAD_NAND, MVT::i32, Expand);
+      setOperationAction(ISD::ATOMIC_LOAD_SUB,  MVT::i32, Expand);
+      setOperationAction(ISD::ATOMIC_LOAD_NAND, MVT::i64, Expand);
+      setOperationAction(ISD::ATOMIC_LOAD_SUB,  MVT::i64, Expand);
+    }
+  } else {
+    //No atomic ops so expand all
+    setOperationAction(ISD::ATOMIC_SWAP,      MVT::i32, Expand);
+    setOperationAction(ISD::ATOMIC_LOAD_ADD,  MVT::i32, Expand);
+    setOperationAction(ISD::ATOMIC_LOAD_AND,  MVT::i32, Expand);
+    setOperationAction(ISD::ATOMIC_LOAD_OR,   MVT::i32, Expand);
+    setOperationAction(ISD::ATOMIC_LOAD_XOR,  MVT::i32, Expand);
+    setOperationAction(ISD::ATOMIC_LOAD_MIN,  MVT::i32, Expand);
+    setOperationAction(ISD::ATOMIC_LOAD_MAX,  MVT::i32, Expand);
+    setOperationAction(ISD::ATOMIC_LOAD_UMIN, MVT::i32, Expand);
+    setOperationAction(ISD::ATOMIC_LOAD_UMAX, MVT::i32, Expand);
+    setOperationAction(ISD::ATOMIC_SWAP,      MVT::i64, Expand);
+    setOperationAction(ISD::ATOMIC_LOAD_ADD,  MVT::i64, Expand);
+    setOperationAction(ISD::ATOMIC_LOAD_AND,  MVT::i64, Expand);
+    setOperationAction(ISD::ATOMIC_LOAD_OR,   MVT::i64, Expand);
+    setOperationAction(ISD::ATOMIC_LOAD_XOR,  MVT::i64, Expand);
+    setOperationAction(ISD::ATOMIC_LOAD_MIN,  MVT::i64, Expand);
+    setOperationAction(ISD::ATOMIC_LOAD_MAX,  MVT::i64, Expand);
+    setOperationAction(ISD::ATOMIC_LOAD_UMIN, MVT::i64, Expand);
+    setOperationAction(ISD::ATOMIC_LOAD_UMAX, MVT::i64, Expand);
+    setOperationAction(ISD::ATOMIC_CMP_SWAP,  MVT::i32, Expand);
+    setOperationAction(ISD::ATOMIC_CMP_SWAP,  MVT::i64, Expand);
+    setOperationAction(ISD::ATOMIC_LOAD_NAND, MVT::i32, Expand);
+    setOperationAction(ISD::ATOMIC_LOAD_SUB,  MVT::i32, Expand);
+    setOperationAction(ISD::ATOMIC_LOAD_NAND, MVT::i64, Expand);
+    setOperationAction(ISD::ATOMIC_LOAD_SUB,  MVT::i64, Expand);
+  }
+
   // TODO: add all necessary setOperationAction calls
 
   setOperationAction(ISD::JumpTable, MVT::i32, Custom);

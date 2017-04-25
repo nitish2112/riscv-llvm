@@ -36,7 +36,7 @@ void RISCVInstPrinter::printRegName(raw_ostream &O, unsigned RegNo) const {
 }
 
 void RISCVInstPrinter::printOperand(const MCInst *MI, unsigned OpNo,
-                                  raw_ostream &O, const char *Modifier) {
+                                    raw_ostream &O, const char *Modifier) {
   assert((Modifier == 0 || Modifier[0] == 0) && "No modifiers supported");
   const MCOperand &MO = MI->getOperand(OpNo);
 
@@ -52,4 +52,12 @@ void RISCVInstPrinter::printOperand(const MCInst *MI, unsigned OpNo,
 
   assert(MO.isExpr() && "Unknown operand kind in printOperand");
   MO.getExpr()->print(O, &MAI);
+}
+
+void RISCVInstPrinter::printMemRegOperand(const MCInst *MI, int opNum,
+                                          raw_ostream &OS) {
+  OS << "0"; //No offset for this ever
+  OS << "(";
+  OS << getRegisterName(MI->getOperand(opNum).getReg());
+  OS << ")";
 }

@@ -172,3 +172,68 @@ class FUJ<bits<7> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
   let Inst{11-7} = rd;
   let Opcode = opcode;
 }
+
+//A-Type
+class InstA<string mnemonic, bits<7> op, bits<5> funct5, bits<3> funct3,
+            SDPatternOperator operator, RegisterClass cls1, 
+            Operand cls2>
+  : RISCVInst<(outs cls1:$dst), (ins cls1:$src1, cls2:$src2), 
+               mnemonic#"\t$dst, $src1, $src2", 
+               [(set cls1:$dst, (operator regaddr:$src2, cls1:$src1))], FrmOther> {
+  field bits<32> Inst;
+
+  bits<5> RD;
+  bits<5> RS1;
+  bits<5> RS2;
+
+  let Inst{31-27} = funct5;
+  let Inst{26} = 0;//aq
+  let Inst{25} = 0;//rl
+  let Inst{24-20} = RS2;
+  let Inst{19-15} = RS1;
+  let Inst{14-12} = funct3;
+  let Inst{11- 7} = RD;
+  let Inst{6 - 0} = op;
+}
+
+//LR/SC
+class InstLR<string mnemonic, bits<3> funct3,
+             RegisterClass cls1, Operand cls2>
+  : RISCVInst<(outs cls1:$dst), (ins cls2:$src2), 
+              mnemonic#"\t$dst, $src2", 
+              [], FrmOther> {
+  field bits<32> Inst;
+
+  bits<5> RD;
+  bits<5> RS1;
+
+  let Inst{31-27} = 0b00010;
+  let Inst{26} = 0;//aq
+  let Inst{25} = 0;//rl
+  let Inst{24-20} = 0b00000;
+  let Inst{19-15} = RS1;
+  let Inst{14-12} = funct3;
+  let Inst{11- 7} = RD;
+  let Inst{6 - 0} = 0b0101111;
+}
+
+class InstSC<string mnemonic, bits<3> funct3,
+             RegisterClass reg, Operand memOp>
+  : RISCVInst<(outs reg:$dst), (ins reg:$src2, memOp:$src1), 
+              mnemonic#"\t$dst, $src2, $src1", 
+              [], FrmOther> {
+  field bits<32> Inst;
+
+  bits<5> RD;
+  bits<5> RS1;
+  bits<5> RS2;
+
+  let Inst{31-27} = 0b00011;
+  let Inst{26} = 0;//aq
+  let Inst{25} = 0;//rl
+  let Inst{24-20} = RS2;
+  let Inst{19-15} = RS1;
+  let Inst{14-12} = funct3;
+  let Inst{11- 7} = RD;
+  let Inst{6 - 0} = 0b0101111;
+}

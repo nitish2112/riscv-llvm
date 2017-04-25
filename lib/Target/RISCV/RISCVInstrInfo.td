@@ -183,24 +183,16 @@ defm : LD_Pat<zextloadi16, LHU>;
 // reflecting the order these fields are specified in the instruction
 // encoding.
 
-class ST_ri<bits<3> funct3, string OpcodeStr> :
-      FS<funct3, 0b0100011, (outs), (ins GPR:$rs2, GPR:$rs1, simm12:$imm12),
-         OpcodeStr#"\t$rs2, ${imm12}(${rs1})", []> {
+class ST_ri<bits<3> funct3, string OpcodeStr, SDPatternOperator Op> :
+      FS<funct3, 0b0100011, (outs), (ins GPR:$rt, addr_reg_imm12s:$addr),
+         OpcodeStr#"\t$rt, $addr",
+	 [(Op GPR:$rt, addr_reg_imm12s:$addr)]> {
   let mayStore = 1;
 }
 
-multiclass ST_Pat<PatFrag StoreOp, RISCVInst Inst> {
-  def : Pat<(StoreOp GPR:$rs2, GPR:$rs1), (Inst GPR:$rs2, GPR:$rs1, 0)>;
-  def : Pat<(StoreOp GPR:$rs2, (add GPR:$rs1, simm12:$imm12)), (Inst GPR:$rs2, GPR:$rs1, simm12:$imm12)>;
-}
-
-def SB  : ST_ri<0b000, "sb">;
-def SH  : ST_ri<0b001, "sh">;
-def SW  : ST_ri<0b010, "sw">;
-
-defm : ST_Pat<truncstorei8, SB>;
-defm : ST_Pat<truncstorei16, SH>;
-defm : ST_Pat<store, SW>;
+def SB  : ST_ri<0b000, "sb", truncstorei8>;
+def SH  : ST_ri<0b001, "sh", truncstorei16>;
+def SW  : ST_ri<0b010, "sw", store>;
 
 class ALU_ri<bits<3> funct3, string OpcodeStr, SDPatternOperator OpNode> :
       FI<funct3, 0b0010011, (outs GPR:$rd), (ins GPR:$rs1, simm12:$imm12),

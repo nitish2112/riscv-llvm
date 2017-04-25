@@ -32,7 +32,7 @@ void RISCVInstPrinter::printInst(const MCInst *MI, raw_ostream &O,
 }
 
 void RISCVInstPrinter::printRegName(raw_ostream &O, unsigned RegNo) const {
-  O << getRegisterName(RegNo);
+  O << markup("<reg:") << getRegisterName(RegNo) << markup(">");
 }
 
 void RISCVInstPrinter::printOperand(const MCInst *MI, unsigned OpNo,
@@ -55,9 +55,23 @@ void RISCVInstPrinter::printOperand(const MCInst *MI, unsigned OpNo,
 }
 
 void RISCVInstPrinter::printMemRegOperand(const MCInst *MI, int opNum,
-                                          raw_ostream &OS) {
-  OS << "0"; //No offset for this ever
-  OS << "(";
-  OS << getRegisterName(MI->getOperand(opNum).getReg());
-  OS << ")";
+                                          raw_ostream &O) {
+  O << "0"; //No offset for this ever
+  O << "(";
+  O << getRegisterName(MI->getOperand(opNum).getReg());
+  O << ")";
+}
+
+// Print Imm(Reg) addressing mode
+void RISCVInstPrinter::printAddrRegImmOperand(const MCInst *MI, unsigned OpNum,
+                                              raw_ostream &O) {
+  const MCOperand &MO2 = MI->getOperand(OpNum + 1);
+
+  int32_t OffImm = (int32_t)MO2.getImm();
+
+  O << markup("<mem:");
+  O << markup("<imm:") << formatImm(OffImm) << markup(">");
+  O << "(";
+  O << getRegisterName(MI->getOperand(OpNum).getReg());
+  O << ")" << markup(">");
 }

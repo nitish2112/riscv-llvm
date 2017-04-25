@@ -77,6 +77,13 @@ def HI20 : SDNodeXForm<imm, [{
                                    SDLoc(N), MVT::i32);
 }]>;
 
+
+//===----------------------------------------------------------------------===//
+// Load/Store Operands
+//
+
+class MemOperand : Operand<i32> { let OperandType = "OPERAND_MEMORY"; }
+
 def memreg : Operand<i32> {
   let MIOperandInfo = (ops GPR);
   //let EncoderMethod = "getMemRegEncoding";
@@ -85,3 +92,16 @@ def memreg : Operand<i32> {
 }
 
 def regaddr : ComplexPattern<iPTR, 1, "selectRegAddr">;
+
+// addr_reg_imm12s := [reg + imm12s]
+def AddrRegImm12sAsmOperand : AsmOperandClass { let Name = "AddrRegImm12s"; }
+def addr_reg_imm12s : MemOperand,
+  ComplexPattern<i32, 2, "SelectAddrRegImm12s", []> {
+  // 12-bit signed immediate operand.
+  // Immediate access range would be +/- (imm12s << 1).
+
+  let MIOperandInfo = (ops GPR:$base, i32imm:$offsimm);
+  let PrintMethod = "printAddrRegImmOperand";
+  // Parser function not completed yet. Finish it later.
+  let ParserMatchClass = AddrRegImm12sAsmOperand;
+}

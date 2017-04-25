@@ -83,6 +83,7 @@ struct RISCVOperand : public MCParsedAsmOperand {
   enum KindTy {
     Token,
     Register,
+    Memory,
     Immediate,
   } Kind;
 
@@ -118,13 +119,16 @@ public:
     case Token:
       Tok = o.Tok;
       break;
+    case Memory:
+      //Todo
+      break;
     }
   }
 
   bool isToken() const override { return Kind == Token; }
   bool isReg() const override { return Kind == Register; }
   bool isImm() const override { return Kind == Immediate; }
-  bool isMem() const override { return false; }
+  bool isMem() const override { return Kind == Memory; }
 
   bool isConstantImm() const {
     return isImm() && dyn_cast<MCConstantExpr>(getImm());
@@ -186,6 +190,12 @@ public:
     return false;
   }
 
+  // Reg + imm12s
+  bool isAddrRegImm12s() const {
+    // ToDo
+    return false;
+  }
+
   bool isSImm21Lsb0() const {
     if (isConstantImm()) {
       return isShiftedInt<20, 1>(getConstantImm());
@@ -228,6 +238,9 @@ public:
       break;
     case Token:
       OS << "'" << getToken() << "'";
+      break;
+    case Memory:
+      // Todo
       break;
     }
   }
@@ -280,6 +293,10 @@ public:
   void addImmOperands(MCInst &Inst, unsigned N) const {
     assert(N == 1 && "Invalid number of operands!");
     addExpr(Inst, getImm());
+  }
+
+  void addAddrRegImm12sOperands(MCInst &Inst, unsigned N) const {
+    // Todo
   }
 };
 } // end anonymous namespace.

@@ -137,8 +137,6 @@ void RISCVFrameLowering::emitEpilogue(MachineFunction &MF,
   MachineFrameInfo &MFI = MF.getFrameInfo();
   const RISCVInstrInfo &TII =
       *static_cast<const RISCVInstrInfo *>(MF.getSubtarget().getInstrInfo());
-  const RISCVRegisterInfo &TRI =
-      *static_cast<const RISCVRegisterInfo *>(MF.getSubtarget().getRegisterInfo());
 
   MachineBasicBlock::iterator MBBI = MBB.getLastNonDebugInstr();
   DebugLoc DL = MBBI->getDebugLoc();
@@ -260,5 +258,3 @@ int RISCVFrameLowering::getFrameIndexReference(const MachineFunction &MF,
 bool RISCVFrameLowering::hasReservedCallFrame(const MachineFunction &MF) const {
   return !MF.getFrameInfo().hasVarSizedObjects();
 }
-
-

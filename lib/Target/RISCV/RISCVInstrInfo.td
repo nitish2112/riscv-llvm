@@ -154,30 +154,22 @@ let usesCustomInserter = 1 in {
                        (SelectCC GPR:$lhs, GPR:$rhs, (i32 imm:$imm), GPR:$src, GPR:$src2))]>;
 }
 
-class LD_ri<bits<3> funct3, string OpcodeStr> :
-      FI<funct3, 0b0000011, (outs GPR:$rd), (ins GPR:$rs1, simm12:$imm12),
-         OpcodeStr#"\t$rd, ${imm12}(${rs1})", []> {
+class LD_ri<bits<3> funct3, string OpcodeStr, SDPatternOperator Op> :
+      FI<funct3, 0b0000011, (outs GPR:$rd), (ins addr_reg_imm12s:$addr),
+         OpcodeStr#"\t$rd, $addr",
+	 [(set GPR:$rd, (Op addr_reg_imm12s:$addr))]> {
   let mayLoad = 1;
 }
 
-def LB   : LD_ri<0b000, "lb">;
-def LH   : LD_ri<0b001, "lh">;
-def LW   : LD_ri<0b010, "lw">;
-def LBU  : LD_ri<0b100, "lbu">;
-def LHU  : LD_ri<0b101, "lhu">;
+def LB   : LD_ri<0b000, "lb", sextloadi8>;
+def LH   : LD_ri<0b001, "lh", sextloadi16>;
+def LW   : LD_ri<0b010, "lw", load>;
+def LBU  : LD_ri<0b100, "lbu", zextloadi8>;
+def LHU  : LD_ri<0b101, "lhu", zextloadi16>;
 
-multiclass LD_Pat<PatFrag LoadOp, RISCVInst Inst> {
-  def : Pat<(LoadOp GPR:$rs1), (Inst GPR:$rs1, 0)>;
-  def : Pat<(LoadOp (add GPR:$rs1, simm12:$imm12)), (Inst GPR:$rs1, simm12:$imm12)>;
-}
-
-defm : LD_Pat<sextloadi8, LB>;
-defm : LD_Pat<extloadi8, LB>;
-defm : LD_Pat<sextloadi16, LH>;
-defm : LD_Pat<extloadi16, LH>;
-defm : LD_Pat<load, LW>;
-defm : LD_Pat<zextloadi8, LBU>;
-defm : LD_Pat<zextloadi16, LHU>;
+// load patterns
+def : Pat<(i32 (extloadi16 addr_reg_imm12s:$src)), (LHU addr_reg_imm12s:$src)>;
+def : Pat<(i32 (extloadi8 addr_reg_imm12s:$src)), (LBU addr_reg_imm12s:$src)>;
 
 // Operands for stores are in the order srcreg, base, offset rather than
 // reflecting the order these fields are specified in the instruction

@@ -152,9 +152,34 @@ RISCVInstrInfo::basePlusImmediate(unsigned DstReg, unsigned BaseReg,
     .addReg(BaseReg);
 
   return ScratchReg;
-
 }
 
+unsigned
+RISCVInstrInfo::basePlusImmediateStripOffset(unsigned BaseReg, int64_t &Imm,
+                                             MachineBasicBlock &MBB,
+                                             MachineBasicBlock::iterator II,
+                                             const DebugLoc &DL) const {
+  MachineFunction &MF = *MBB.getParent();
+  MachineRegisterInfo &RegInfo = MBB.getParent()->getRegInfo();
+  const RISCVSubtarget &STI = MF.getSubtarget<RISCVSubtarget>();
+  const TargetRegisterClass *RC = STI.isRV64() ?
+    &RISCV::GPR64RegClass : &RISCV::GPRRegClass;
+  unsigned ScratchReg1 = RegInfo.createVirtualRegister(RC);
+  unsigned ScratchReg2 = RegInfo.createVirtualRegister(RC);
+
+  int64_t LuiImm = ((Imm + 0x800) >> 12) & 0xfffff;
+
+  BuildMI(MBB, II, DL, get(RISCV::LUI), ScratchReg1)
+    .addImm(LuiImm);
+
+  BuildMI(MBB, II, DL, get(RISCV::ADD), ScratchReg2)
+    .addReg(ScratchReg1, getKillRegState (true))
+    .addReg(BaseReg);
+
+  Imm = SignExtend64<12> (Imm);
+
+  return ScratchReg2;
+}
 
 //===----------------------------------------------------------------------===//
 // Branch Analysis

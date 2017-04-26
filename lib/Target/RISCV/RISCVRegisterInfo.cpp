@@ -157,9 +157,14 @@ void RISCVRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
     MI.getOperand(FIOperandNum + 1).ChangeToImmediate(Offset);
     return;
   } else {
-    unsigned ScratchReg = TII.basePlusImmediate(0, BasePtr, Offset,
-                                                MBB, II, DL);
+    // Generate following code when Offset exceed 12-bit signed
+    //   lui     ra, 1048544
+    //   add     ra, ra, s0
+    //   sw      a0, -176(ra)
+    unsigned ScratchReg = TII.basePlusImmediateStripOffset(BasePtr, Offset,
+                                                           MBB, II, DL);
     MI.getOperand(FIOperandNum).ChangeToRegister(ScratchReg, false, false, true);
+    MI.getOperand(FIOperandNum + 1).ChangeToImmediate(Offset);
   }
 }
 

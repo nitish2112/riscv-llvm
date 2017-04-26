@@ -70,6 +70,10 @@ public:
                              MachineBasicBlock::iterator II,
                              const DebugLoc &DL) const;
 
+  unsigned basePlusImmediateStripOffset(unsigned BaseReg, int64_t &Imm,
+                                        MachineBasicBlock &MBB,
+                                        MachineBasicBlock::iterator II,
+                                        const DebugLoc &DL) const;
 private:
   void BuildCondBr(MachineBasicBlock &MBB, MachineBasicBlock *TBB,
                    const DebugLoc &DL, ArrayRef<MachineOperand> Cond) const;

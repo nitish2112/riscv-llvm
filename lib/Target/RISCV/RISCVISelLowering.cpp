@@ -934,6 +934,8 @@ SDValue RISCVTargetLowering::LowerFormalArguments(
 
   CCAssignFn *CC = IsVarArg ? CC_RISCV32_VAR : CC_RISCV32;
   CCInfo.AnalyzeFormalArguments(Ins, CC);
+  FI->setFormalArgInfo(CCInfo.getNextStackOffset(),
+                       CCInfo.getInRegsParamsCount() > 0);
 
   unsigned CurArgIdx = 0;
 

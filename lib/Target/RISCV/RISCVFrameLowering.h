@@ -53,6 +53,9 @@ public:
                             RegScavenger *RS) const override;
 
   bool hasReservedCallFrame(const MachineFunction &MF) const override;
+
+protected:
+  uint64_t estimateStackSize(const MachineFunction &MF) const;
 };
 }
 #endif

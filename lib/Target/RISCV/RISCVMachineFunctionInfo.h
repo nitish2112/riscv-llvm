@@ -33,6 +33,12 @@ class RISCVMachineFunctionInfo : public MachineFunctionInfo {
   /// VarArgsFrameIndex - FrameIndex for start of varargs area.
   int VarArgsFrameIndex;
 
+  /// True if function has a byval argument.
+  bool HasByvalArg;
+
+  /// Size of incoming argument area.
+  unsigned IncomingArgSize;
+
 public:
   RISCVMachineFunctionInfo() : CalleeSavedFrameSize(0) {}
 
@@ -47,6 +53,13 @@ public:
 
   int getVarArgsFrameIndex() const { return VarArgsFrameIndex;}
   void setVarArgsFrameIndex(int Index) { VarArgsFrameIndex = Index; }
+
+  void setFormalArgInfo(unsigned Size, bool HasByval) {
+    IncomingArgSize = Size;
+    HasByvalArg = HasByval;
+  }
+
+  unsigned getIncomingArgSize() const { return IncomingArgSize; }
 };
 
 } // End llvm namespace

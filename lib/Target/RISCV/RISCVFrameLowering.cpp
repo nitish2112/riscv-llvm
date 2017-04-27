@@ -13,11 +13,13 @@
 
 #include "RISCVFrameLowering.h"
 #include "RISCVSubtarget.h"
+#include "RISCVMachineFunctionInfo.h"
 #include "llvm/CodeGen/MachineFrameInfo.h"
 #include "llvm/CodeGen/MachineFunction.h"
 #include "llvm/CodeGen/MachineModuleInfo.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
+#include "llvm/CodeGen/RegisterScavenging.h"
 
 using namespace llvm;
 
@@ -234,6 +236,41 @@ static void setAliasRegs(MachineFunction &MF, BitVector &SavedRegs,
     SavedRegs.set(*AI);
 }
 
+uint64_t RISCVFrameLowering::estimateStackSize(const MachineFunction &MF) const {
+  const MachineFrameInfo &MFI = MF.getFrameInfo();
+  const RISCVSubtarget &STI = MF.getSubtarget<RISCVSubtarget>();
+  const TargetRegisterInfo &TRI = *STI.getRegisterInfo();
+
+  int64_t Offset = 0;
+
+  // Iterate over fixed sized objects.
+  for (int I = MFI.getObjectIndexBegin(); I != 0; ++I)
+    Offset = std::max(Offset, -MFI.getObjectOffset(I));
+
+  // Conservatively assume all callee-saved registers will be saved.
+  for (const MCPhysReg *R = TRI.getCalleeSavedRegs(&MF); *R; ++R) {
+    unsigned Size = TRI.getMinimalPhysRegClass(*R)->getSize();
+    Offset = alignTo(Offset + Size, Size);
+  }
+
+  unsigned MaxAlign = MFI.getMaxAlignment();
+
+  // Check that MaxAlign is not zero if there is a stack object that is not a
+  // callee-saved spill.
+  assert(!MFI.getObjectIndexEnd() || MaxAlign);
+
+  // Iterate over other objects.
+  for (unsigned I = 0, E = MFI.getObjectIndexEnd(); I != E; ++I)
+    Offset = alignTo(Offset + MFI.getObjectSize(I), MaxAlign);
+
+  // Call frame.
+  if (MFI.adjustsStack() && hasReservedCallFrame(MF))
+    Offset = alignTo(Offset + MFI.getMaxCallFrameSize(),
+                     std::max(MaxAlign, getStackAlignment()));
+
+  return alignTo(Offset, getStackAlignment());
+}
+
 void RISCVFrameLowering::determineCalleeSaves(MachineFunction &MF,
                                               BitVector &SavedRegs,
                                               RegScavenger *RS) const {
@@ -242,6 +279,20 @@ void RISCVFrameLowering::determineCalleeSaves(MachineFunction &MF,
   // Mark $fp as used if function has dedicated frame pointer.
   if (hasFP(MF))
     setAliasRegs(MF, SavedRegs, RISCV::X8_32);
+
+  // Set scavenging frame index if necessary.
+  uint64_t MaxSPOffset = MF.getInfo<RISCVMachineFunctionInfo>()->getIncomingArgSize() +
+    estimateStackSize(MF);
+
+  if (isInt<12>(MaxSPOffset))
+    return;
+
+  const RISCVSubtarget &STI = MF.getSubtarget<RISCVSubtarget>();
+  const TargetRegisterClass *RC =
+      STI.isRV64() ? &RISCV::GPR64RegClass : &RISCV::GPRRegClass;
+  int FI = MF.getFrameInfo().CreateStackObject(RC->getSize(),
+                                               RC->getAlignment(), false);
+  RS->addScavengingFrameIndex(FI);
 }
 
 int RISCVFrameLowering::getFrameIndexReference(const MachineFunction &MF,

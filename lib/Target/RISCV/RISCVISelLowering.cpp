@@ -42,14 +42,20 @@ STATISTIC(NumLoopByVals, "Number of loops generated for byval arguments");
 RISCVTargetLowering::RISCVTargetLowering(const TargetMachine &TM,
                                          const RISCVSubtarget &STI)
     : TargetLowering(TM), Subtarget(&STI) {
-
+  MVT PtrVT = Subtarget->isRV64() ? MVT::i64 : MVT::i32;
   // Set up the register classes.
   addRegisterClass(MVT::i32, &RISCV::GPRRegClass);
+
+  if(Subtarget->isRV64())
+    addRegisterClass(MVT::i64,  &RISCV::GPR64RegClass);
 
   // Compute derived properties from the register classes
   computeRegisterProperties(STI.getRegisterInfo());
 
-  setStackPointerRegisterToSaveRestore(RISCV::X2_32);
+  if(Subtarget->isRV64())
+    setStackPointerRegisterToSaveRestore(RISCV::X2_64);
+  else
+    setStackPointerRegisterToSaveRestore(RISCV::X2_32);
 
   // Load extented operations for i1 types must be promoted
   for (MVT VT : MVT::integer_valuetypes()) {
@@ -214,7 +220,7 @@ RISCVTargetLowering::RISCVTargetLowering(const TargetMachine &TM,
 
   // TODO: add all necessary setOperationAction calls
 
-  setOperationAction(ISD::JumpTable, MVT::i32, Custom);
+  setOperationAction(ISD::JumpTable, PtrVT, Custom);
   setOperationAction(ISD::BR_JT, MVT::Other, Expand);
 
   setOperationAction(ISD::ROTR, MVT::i32, Expand);
@@ -234,7 +240,7 @@ RISCVTargetLowering::RISCVTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::VACOPY,           MVT::Other, Expand);
   setOperationAction(ISD::VAEND,            MVT::Other, Expand);
 
-  setOperationAction(ISD::DYNAMIC_STACKALLOC, MVT::i32, Expand);
+  setOperationAction(ISD::DYNAMIC_STACKALLOC, PtrVT, Expand);
   setOperationAction(ISD::DYNAMIC_STACKALLOC, MVT::i64, Expand);
 
   setOperationAction(ISD::STACKSAVE,        MVT::Other, Expand);
@@ -243,9 +249,9 @@ RISCVTargetLowering::RISCVTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::BSWAP,            MVT::i32,   Expand);
   setOperationAction(ISD::BSWAP,            MVT::i64,   Expand);
 
-  setOperationAction(ISD::GlobalAddress, MVT::i32, Custom);
-  setOperationAction(ISD::BlockAddress, MVT::i32, Custom);
-  setOperationAction(ISD::ConstantPool, MVT::i32, Custom);
+  setOperationAction(ISD::GlobalAddress, PtrVT, Custom);
+  setOperationAction(ISD::BlockAddress,  PtrVT, Custom);
+  setOperationAction(ISD::ConstantPool,  PtrVT, Custom);
 
   setBooleanContents(ZeroOrOneBooleanContent);
 

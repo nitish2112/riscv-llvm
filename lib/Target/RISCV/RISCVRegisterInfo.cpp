@@ -31,11 +31,15 @@
 
 using namespace llvm;
 
-RISCVRegisterInfo::RISCVRegisterInfo() : RISCVGenRegisterInfo(RISCV::X1_32) {}
+RISCVRegisterInfo::RISCVRegisterInfo(const RISCVSubtarget &STI)
+      : RISCVGenRegisterInfo(RISCV::X1_32), Subtarget(STI) {}
 
 const MCPhysReg *
 RISCVRegisterInfo::getCalleeSavedRegs(const MachineFunction *MF) const {
-  return CSR_SaveList;
+  if(Subtarget.isRV64())
+    return CSR_RV64_SaveList;
+  else
+    return CSR_RV32_SaveList;
 }
 
 BitVector RISCVRegisterInfo::getReservedRegs(const MachineFunction &MF) const {
@@ -96,8 +100,8 @@ void RISCVRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
                << "spOffset   : " << Offset << "\n"
                << "stackSize  : " << stackSize << "\n");
 
-  unsigned SP = RISCV::X2_32;
-  unsigned FP = RISCV::X8_32;
+  unsigned SP = Subtarget.isRV64() ? RISCV::X2_64 : RISCV::X2_32;
+  unsigned FP = Subtarget.isRV64() ? RISCV::X8_64 : RISCV::X8_32;
   MachineFrameInfo &MFI = MF.getFrameInfo();
   const RISCVInstrInfo &TII =
        *static_cast<const RISCVInstrInfo *>(MF.getSubtarget().getInstrInfo());
@@ -170,11 +174,17 @@ void RISCVRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
 
 unsigned RISCVRegisterInfo::getFrameRegister(const MachineFunction &MF) const {
   const RISCVFrameLowering *TFI = getFrameLowering(MF);
-  return TFI->hasFP(MF) ? RISCV::X8_32 : RISCV::X2_32;
+  if(Subtarget.isRV64())
+    return TFI->hasFP(MF) ? RISCV::X8_64 : RISCV::X2_64;
+  else
+    return TFI->hasFP(MF) ? RISCV::X8_32 : RISCV::X2_32;
 }
 
 const uint32_t *
 RISCVRegisterInfo::getCallPreservedMask(const MachineFunction & /*MF*/,
                                         CallingConv::ID /*CC*/) const {
-  return CSR_RegMask;
+  if(Subtarget.isRV64())
+    return CSR_RV64_RegMask;
+  else
+    return CSR_RV32_RegMask;
 }

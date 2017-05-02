@@ -40,5 +40,6 @@ RISCVSubtarget &RISCVSubtarget::initializeSubtargetDependencies(StringRef CPU,
 
 RISCVSubtarget::RISCVSubtarget(const Triple &TT, const std::string &CPU,
                                const std::string &FS, const TargetMachine &TM)
-    : RISCVGenSubtargetInfo(TT, CPU, FS), InstrInfo(), FrameLowering(*this),
+    : RISCVGenSubtargetInfo(TT, CPU, FS),
+      InstrInfo(initializeSubtargetDependencies(CPU, FS)), FrameLowering(*this),
       TLInfo(TM, *this), RISCVArchVersion(RV32), HasM(true), HasA(true){}

@@ -22,11 +22,13 @@
 
 namespace llvm {
 
+class RISCVSubtarget;
 class RISCVInstrInfo : public RISCVGenInstrInfo {
   const RISCVRegisterInfo RI;
+  RISCVSubtarget &STI;
 
 public:
-  RISCVInstrInfo();
+  explicit RISCVInstrInfo(RISCVSubtarget &STI);
 
   const RISCVRegisterInfo &getRegisterInfo() const { return RI; }
 

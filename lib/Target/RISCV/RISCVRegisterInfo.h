@@ -21,9 +21,13 @@
 
 namespace llvm {
 
-struct RISCVRegisterInfo : public RISCVGenRegisterInfo {
+class RISCVSubtarget;
 
-  RISCVRegisterInfo();
+struct RISCVRegisterInfo : public RISCVGenRegisterInfo {
+public:
+  const RISCVSubtarget &Subtarget;
+
+  RISCVRegisterInfo(const RISCVSubtarget &STI);
 
   const uint32_t *getCallPreservedMask(const MachineFunction &MF,
                                        CallingConv::ID) const override;

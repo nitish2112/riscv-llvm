@@ -35,8 +35,11 @@ bool RISCVFrameLowering::hasFP(const MachineFunction &MF) const {
 
 void RISCVFrameLowering::emitPrologue(MachineFunction &MF,
                                       MachineBasicBlock &MBB) const {
-  unsigned SP = RISCV::X2_32;
-  unsigned FP = RISCV::X8_32;
+  const RISCVSubtarget &STI = MF.getSubtarget<RISCVSubtarget>();
+
+  unsigned SP = STI.isRV64() ? RISCV::X2_64 : RISCV::X2_32;
+  unsigned FP = STI.isRV64() ? RISCV::X8_64 : RISCV::X8_32;
+  unsigned ZERO = STI.isRV64() ? RISCV::X0_64 :RISCV::X0_32;
   unsigned ADDI = RISCV::ADDI;
 
   assert(&MF.front() == &MBB && "Shrink-wrapping not yet supported");
@@ -46,7 +49,6 @@ void RISCVFrameLowering::emitPrologue(MachineFunction &MF,
       *static_cast<const RISCVInstrInfo *>(MF.getSubtarget().getInstrInfo());
   const RISCVRegisterInfo &TRI =
       *static_cast<const RISCVRegisterInfo *>(MF.getSubtarget().getRegisterInfo());
-  const RISCVSubtarget &STI = MF.getSubtarget<RISCVSubtarget>();
   const TargetRegisterClass *RC = STI.isRV64() ?
     &RISCV::GPR64RegClass : &RISCV::GPRRegClass;
 
@@ -114,8 +116,6 @@ void RISCVFrameLowering::emitPrologue(MachineFunction &MF,
     // See the test case c-c++-common/torture/vector-shift2.c
     // myfunc2 function will return structure by stack.
     if (TRI.needsStackRealignment(MF)) {
-      unsigned SP = RISCV::X2_32;
-      unsigned ZERO = RISCV::X0_32;
       // ADDI $Reg, $zero, -MaxAlignment
       // AND  $sp, $sp, $Reg
       unsigned VR = MF.getRegInfo().createVirtualRegister(RC);
@@ -131,9 +131,11 @@ void RISCVFrameLowering::emitPrologue(MachineFunction &MF,
 
 void RISCVFrameLowering::emitEpilogue(MachineFunction &MF,
                                       MachineBasicBlock &MBB) const {
-  unsigned SP = RISCV::X2_32;
-  unsigned FP = RISCV::X8_32;
-  unsigned ZERO = RISCV::X0_32;
+  const RISCVSubtarget &STI = MF.getSubtarget<RISCVSubtarget>();
+
+  unsigned SP = STI.isRV64() ? RISCV::X2_64 : RISCV::X2_32;
+  unsigned FP = STI.isRV64() ? RISCV::X8_64 : RISCV::X8_32;
+  unsigned ZERO = STI.isRV64() ? RISCV::X0_64 :RISCV::X0_32;
   unsigned ADDI = RISCV::ADDI;
 
   MachineFrameInfo &MFI = MF.getFrameInfo();
@@ -275,10 +277,12 @@ void RISCVFrameLowering::determineCalleeSaves(MachineFunction &MF,
                                               BitVector &SavedRegs,
                                               RegScavenger *RS) const {
   TargetFrameLowering::determineCalleeSaves(MF, SavedRegs, RS);
+  const RISCVSubtarget &STI = MF.getSubtarget<RISCVSubtarget>();
 
+  unsigned FP = STI.isRV64() ? RISCV::X8_64 : RISCV::X8_32;
   // Mark $fp as used if function has dedicated frame pointer.
   if (hasFP(MF))
-    setAliasRegs(MF, SavedRegs, RISCV::X8_32);
+    setAliasRegs(MF, SavedRegs, FP);
 
   // Set scavenging frame index if necessary.
   uint64_t MaxSPOffset = MF.getInfo<RISCVMachineFunctionInfo>()->getIncomingArgSize() +
@@ -287,7 +291,6 @@ void RISCVFrameLowering::determineCalleeSaves(MachineFunction &MF,
   if (isInt<12>(MaxSPOffset))
     return;
 
-  const RISCVSubtarget &STI = MF.getSubtarget<RISCVSubtarget>();
   const TargetRegisterClass *RC =
       STI.isRV64() ? &RISCV::GPR64RegClass : &RISCV::GPRRegClass;
   int FI = MF.getFrameInfo().CreateStackObject(RC->getSize(),
@@ -299,8 +302,12 @@ int RISCVFrameLowering::getFrameIndexReference(const MachineFunction &MF,
                                                int FI,
                                                unsigned &FrameReg) const {
   const MachineFrameInfo &MFI = MF.getFrameInfo();
+  const RISCVSubtarget &STI = MF.getSubtarget<RISCVSubtarget>();
 
-  FrameReg = hasFP(MF) ? RISCV::X8_32 : RISCV::X2_32;
+  unsigned SP = STI.isRV64() ? RISCV::X2_64 : RISCV::X2_32;
+  unsigned FP = STI.isRV64() ? RISCV::X8_64 : RISCV::X8_32;
+
+  FrameReg = hasFP(MF) ? FP : SP;
 
   return MFI.getObjectOffset(FI) + MFI.getStackSize() -
          getOffsetOfLocalArea() + MFI.getOffsetAdjustment();

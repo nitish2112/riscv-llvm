@@ -296,15 +296,9 @@ def : Pat<(simm12:$imm), (ADDI X0_32, simm12:$imm)>;
 def : Pat<(i32 imm:$imm), (ADDI (LUI (HI20 imm:$imm)), (LO12Sext imm:$imm))>;
 
 //===----------------------------------------------------------------------===//
-// M Instructions
-//
+// Subtarget features
+//===----------------------------------------------------------------------===//
 
+include "RISCVInstrInfoRV64.td"
 include "RISCVInstrInfoM.td"
-
-//===----------------------------------------------------------------------===//
-// A Instructions
-//
-
 include "RISCVInstrInfoA.td"
-
-//===----------------------------------------------------------------------===//

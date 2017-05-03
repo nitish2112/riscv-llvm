@@ -237,3 +237,26 @@ class InstSC<string mnemonic, bits<3> funct3,
   let Inst{11- 7} = RD;
   let Inst{6 - 0} = 0b0101111;
 }
+
+//Load-Type
+class InstLoad<string mnemonic, bits<7> op, bits<3> funct3,
+               SDPatternOperator opNode,
+               RegisterClass cls1,
+               Operand memOp>
+  : RISCVInst<(outs cls1:$dst), (ins memOp:$addr),
+              mnemonic#"\t$dst, $addr",
+              [(set cls1:$dst, (opNode addr_reg_imm12s_i64:$addr))],
+              FrmOther> {
+  field bits<32> Inst;
+
+  bits<5> RD;
+  bits<5> RS1;
+  bits<12> IMM;
+
+  let Inst{31-27} = RD;
+  let Inst{26-22} = RS1;
+  let Inst{21-17} = IMM{11-7};
+  let Inst{16-10} = IMM{6 -0};
+  let Inst{9 - 7} = funct3;
+  let Inst{6 - 0} = op;
+}

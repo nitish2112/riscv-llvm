@@ -135,3 +135,22 @@ def addr_reg_imm12s : MemOperand,
   // Parser function not completed yet. Finish it later.
   let ParserMatchClass = AddrRegImm12sAsmOperand;
 }
+
+// addr_reg_imm12s_i64 := [reg + imm12s]
+def addr_reg_imm12s_i64 : MemOperand,
+  ComplexPattern<i64, 2, "SelectAddrRegImm12s", []> {
+  // 12-bit signed immediate operand.
+  // Immediate access range would be +/- (imm12s << 1).
+
+  let MIOperandInfo = (ops GPR64:$base, i64imm:$offsimm);
+  let PrintMethod = "printAddrRegImmOperand";
+  // Parser function not completed yet. Finish it later.
+  let ParserMatchClass = AddrRegImm12sAsmOperand;
+}
+
+def mem64 : Operand<i64> {
+  let MIOperandInfo = (ops imm64sx12, GPR64);
+  //let EncoderMethod = "getMemRegEncoding";
+  let OperandType = "OPERAND_MEMORY";
+  let PrintMethod = "printMemRegOperand";
+}

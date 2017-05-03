@@ -89,7 +89,8 @@ def JAL : FUJ<0b1101111, (outs GPR:$rd), (ins simm21_lsb0:$imm20),
 
 let isBranch = 1, isTerminator=1, isBarrier=1 in {
 def PseudoBR : Pseudo<(outs), (ins simm21_lsb0:$imm20), [(br bb:$imm20)]>,
-               PseudoInstExpansion<(JAL X0_32, simm21_lsb0:$imm20)>;
+               PseudoInstExpansion<(JAL X0_32, simm21_lsb0:$imm20)>,
+               Requires<[IsRV32]>;
 }
 
 let isCall=1 in {
@@ -99,17 +100,20 @@ def JALR : FI<0b000, 0b1100111, (outs GPR:$rd), (ins GPR:$rs1, simm12:$imm12),
 
 let isBranch = 1, isBarrier = 1, isTerminator = 1, isIndirectBranch = 1 in {
   def PseudoBRIND : Pseudo<(outs), (ins GPR:$rs1), [(brind GPR:$rs1)]>,
-                    PseudoInstExpansion<(JALR X0_32, GPR:$rs1, 0)>;
+                    PseudoInstExpansion<(JALR X0_32, GPR:$rs1, 0)>,
+                    Requires<[IsRV32]>;
 }
 
 let isCall=1, Defs=[X1_32] in {
   def PseudoCALL : Pseudo<(outs), (ins GPR:$rs1), [(Call GPR:$rs1)]>,
-                   PseudoInstExpansion<(JALR X1_32, GPR:$rs1, 0)>;
+                   PseudoInstExpansion<(JALR X1_32, GPR:$rs1, 0)>,
+                   Requires<[IsRV32]>;
 }
 
 let isReturn=1, isTerminator=1, isBarrier=1 in {
   def PseudoRET : Pseudo<(outs), (ins), [(RetFlag)]>,
-                  PseudoInstExpansion<(JALR X0_32, X1_32, 0)>;
+                  PseudoInstExpansion<(JALR X0_32, X1_32, 0)>,
+                  Requires<[IsRV32]>;
 }
 
 // Pessimstically assume the stack pointer will be clobbered
@@ -161,15 +165,15 @@ class LD_ri<bits<3> funct3, string OpcodeStr, SDPatternOperator Op> :
   let mayLoad = 1;
 }
 
-def LB   : LD_ri<0b000, "lb", sextloadi8>;
-def LH   : LD_ri<0b001, "lh", sextloadi16>;
-def LW   : LD_ri<0b010, "lw", load>;
-def LBU  : LD_ri<0b100, "lbu", zextloadi8>;
-def LHU  : LD_ri<0b101, "lhu", zextloadi16>;
+def LB   : LD_ri<0b000, "lb", sextloadi8>, Requires<[IsRV32]>;
+def LH   : LD_ri<0b001, "lh", sextloadi16>, Requires<[IsRV32]>;
+def LW   : LD_ri<0b010, "lw", load>, Requires<[IsRV32]>;
+def LBU  : LD_ri<0b100, "lbu", zextloadi8>, Requires<[IsRV32]>;
+def LHU  : LD_ri<0b101, "lhu", zextloadi16>, Requires<[IsRV32]>;
 
 // load patterns
-def : Pat<(i32 (extloadi16 addr_reg_imm12s:$src)), (LHU addr_reg_imm12s:$src)>;
-def : Pat<(i32 (extloadi8 addr_reg_imm12s:$src)), (LBU addr_reg_imm12s:$src)>;
+def : Pat<(i32 (extloadi16 addr_reg_imm12s:$src)), (LHU addr_reg_imm12s:$src)>, Requires<[IsRV32]>;
+def : Pat<(i32 (extloadi8 addr_reg_imm12s:$src)), (LBU addr_reg_imm12s:$src)>, Requires<[IsRV32]>;
 
 // Operands for stores are in the order srcreg, base, offset rather than
 // reflecting the order these fields are specified in the instruction
@@ -182,9 +186,9 @@ class ST_ri<bits<3> funct3, string OpcodeStr, SDPatternOperator Op> :
   let mayStore = 1;
 }
 
-def SB  : ST_ri<0b000, "sb", truncstorei8>;
-def SH  : ST_ri<0b001, "sh", truncstorei16>;
-def SW  : ST_ri<0b010, "sw", store>;
+def SB  : ST_ri<0b000, "sb", truncstorei8>, Requires<[IsRV32]>;
+def SH  : ST_ri<0b001, "sh", truncstorei16>, Requires<[IsRV32]>;
+def SW  : ST_ri<0b010, "sw", store>, Requires<[IsRV32]>;
 
 class ALU_ri<bits<3> funct3, string OpcodeStr, SDPatternOperator OpNode> :
       FI<funct3, 0b0010011, (outs GPR:$rd), (ins GPR:$rs1, simm12:$imm12),
@@ -192,7 +196,7 @@ class ALU_ri<bits<3> funct3, string OpcodeStr, SDPatternOperator OpNode> :
 {
 }
 
-def ADDI  : ALU_ri<0b000, "addi", add>;
+def ADDI  : ALU_ri<0b000, "addi", add>, Requires<[IsRV32]>;
 def SLTI  : ALU_ri<0b010, "slti", setlt>;
 def SLTIU : ALU_ri<0b011, "sltiu", setult>;
 def XORI  : ALU_ri<0b100, "xori", xor>;
@@ -205,9 +209,9 @@ class SHIFT32_ri<bit arithshift, bits<3> funct3, string OpcodeStr, SDPatternOper
 {
 }
 
-def SLLI : SHIFT32_ri<0, 0b001, "slli", shl>;
-def SRLI : SHIFT32_ri<0, 0b101, "srli", srl>;
-def SRAI : SHIFT32_ri<1, 0b101, "srai", sra>;
+def SLLI : SHIFT32_ri<0, 0b001, "slli", shl>, Requires<[IsRV32]>;
+def SRLI : SHIFT32_ri<0, 0b101, "srli", srl>, Requires<[IsRV32]>;
+def SRAI : SHIFT32_ri<1, 0b101, "srai", sra>, Requires<[IsRV32]>;
 
 class ALU_rr<bits<7> funct7, bits<3> funct3, string OpcodeStr, SDPatternOperator OpNode> :
       FR<funct7, funct3, 0b0110011, (outs GPR:$rd), (ins GPR:$rs1, GPR:$rs2),
@@ -215,14 +219,14 @@ class ALU_rr<bits<7> funct7, bits<3> funct3, string OpcodeStr, SDPatternOperator
 {
 }
 
-def ADD  : ALU_rr<0b0000000, 0b000, "add", add>;
-def SUB  : ALU_rr<0b0100000, 0b000, "sub", sub>;
-def SLL  : ALU_rr<0b0000000, 0b001, "sll", shl>;
+def ADD  : ALU_rr<0b0000000, 0b000, "add", add>, Requires<[IsRV32]>;
+def SUB  : ALU_rr<0b0100000, 0b000, "sub", sub>, Requires<[IsRV32]>;
+def SLL  : ALU_rr<0b0000000, 0b001, "sll", shl>, Requires<[IsRV32]>;
 def SLT  : ALU_rr<0b0000000, 0b010, "slt", setlt>;
 def SLTU : ALU_rr<0b0000000, 0b011, "sltu", setult>;
 def XOR  : ALU_rr<0b0000000, 0b100, "xor", xor>;
-def SRL  : ALU_rr<0b0000000, 0b101, "srl", srl>;
-def SRA  : ALU_rr<0b0100000, 0b101, "sra", sra>;
+def SRL  : ALU_rr<0b0000000, 0b101, "srl", srl>, Requires<[IsRV32]>;
+def SRA  : ALU_rr<0b0100000, 0b101, "sra", sra>, Requires<[IsRV32]>;
 def OR   : ALU_rr<0b0000000, 0b110, "or", or>;
 def AND  : ALU_rr<0b0000000, 0b111, "and", and>;
 

@@ -77,6 +77,36 @@ def HI20 : SDNodeXForm<imm, [{
                                    SDLoc(N), MVT::i32);
 }]>;
 
+//===----------------------------------------------------------------------===//
+// Immediate asm operands.
+//===----------------------------------------------------------------------===//
+
+class ImmediateAsmOperand<string name>
+  : AsmOperandClass {
+  let Name = name;
+  //let RenderMethod = "addImmOperands";
+}
+
+def S12Imm : ImmediateAsmOperand<"S12Imm">;
+
+//===----------------------------------------------------------------------===//
+// 64-bit immediates
+//===----------------------------------------------------------------------===//
+
+// Constructs both a DAG pattern and instruction operand for an immediate
+// of type VT.  PRED returns true if a node is acceptable and XFORM returns
+// the operand value associated with the node.  ASMOP is the name of the
+// associated asm operand, and also forms the basis of the asm print method.
+class Immediate<ValueType vt, code pred, SDNodeXForm xform, string asmop>
+  : PatLeaf<(vt imm), pred, xform>, Operand<vt> {
+  let PrintMethod = "print"##asmop##"Operand";
+  //let ParserMatchClass = !cast<AsmOperandClass>(asmop);
+}
+
+//sign-extended 12 bit immediate
+def imm64sx12 : Immediate<i64, [{
+  return isInt<12>(N->getSExtValue());
+}], NOOP_SDNodeXForm, "S12Imm">;
 
 //===----------------------------------------------------------------------===//
 // Load/Store Operands

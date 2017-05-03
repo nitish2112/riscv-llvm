@@ -149,6 +149,10 @@ public:
     return (isConstantImm() && isUInt<5>(getConstantImm()));
   }
 
+  bool isS12Imm() const {
+    isSImm12();
+  }
+
   bool isSImm12() const {
     if (isConstantImm()) {
       return isInt<12>(getConstantImm());

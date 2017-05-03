@@ -75,3 +75,13 @@ void RISCVInstPrinter::printAddrRegImmOperand(const MCInst *MI, unsigned OpNum,
   O << getRegisterName(MI->getOperand(OpNum).getReg());
   O << ")" << markup(">");
 }
+
+void RISCVInstPrinter::printS12ImmOperand(const MCInst *MI, int OpNum,
+                                           raw_ostream &O) {
+  if(MI->getOperand(OpNum).isImm()){
+    int64_t Value = MI->getOperand(OpNum).getImm();
+    assert(isInt<12>(Value) && "Invalid s12imm argument");
+    O << Value;
+  }else
+    printOperand(MI, OpNum, O);
+}

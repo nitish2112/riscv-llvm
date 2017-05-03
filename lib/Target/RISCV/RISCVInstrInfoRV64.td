@@ -80,3 +80,13 @@ def : Pat<(extloadi32 addr_reg_imm12s_i64:$addr), (LW64   addr_reg_imm12s_i64:$a
 //def : Pat<(i32 (extloadi1  addr_reg_imm12s_i64:$addr)), (LBU64_32 addr_reg_imm12s_i64:$addr)>, Requires<[IsRV64]>;
 def : Pat<(i32 (extloadi8  addr_reg_imm12s_i64:$addr)), (LBU64_32 addr_reg_imm12s_i64:$addr)>, Requires<[IsRV64]>;
 //def : Pat<(i32 (extloadi16 addr_reg_imm12s_i64:$addr)), (LHU64_32 addr_reg_imm12s_i64:$addr)>, Requires<[IsRV64]>;
+
+let mayStore = 1 in {
+  def SD : InstStore <"sd"  , 0b0100011, 0b011, store, GPR64, mem64>, Requires<[IsRV64]>;
+  def SW64 : InstStore<"sw" , 0b0100011, 0b010, truncstorei32, GPR64, mem64>, Requires<[IsRV64]>;
+  def SH64 : InstStore<"sh" , 0b0100011, 0b001, truncstorei16, GPR64, mem64>, Requires<[IsRV64]>;
+  def SB64 : InstStore<"sb" , 0b0100011, 0b000, truncstorei8 , GPR64, mem64>, Requires<[IsRV64]>;
+  def SW64_32 : InstStore<"sw" , 0b0100011, 0b010, store, GPR, mem64>, Requires<[IsRV64]>;
+  def SH64_32 : InstStore<"sh" , 0b0100011, 0b001, truncstorei16, GPR, mem64>, Requires<[IsRV64]>;
+  def SB64_32 : InstStore<"sb" , 0b0100011, 0b000, truncstorei8 , GPR, mem64>, Requires<[IsRV64]>;
+}

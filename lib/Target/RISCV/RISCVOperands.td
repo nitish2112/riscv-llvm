@@ -126,23 +126,11 @@ def regaddr : ComplexPattern<iPTR, 1, "selectRegAddr">;
 // addr_reg_imm12s := [reg + imm12s]
 def AddrRegImm12sAsmOperand : AsmOperandClass { let Name = "AddrRegImm12s"; }
 def addr_reg_imm12s : MemOperand,
-  ComplexPattern<i32, 2, "SelectAddrRegImm12s", []> {
+  ComplexPattern<iPTR, 2, "SelectAddrRegImm12s", []> {
   // 12-bit signed immediate operand.
   // Immediate access range would be +/- (imm12s << 1).
 
-  let MIOperandInfo = (ops GPR:$base, i32imm:$offsimm);
-  let PrintMethod = "printAddrRegImmOperand";
-  // Parser function not completed yet. Finish it later.
-  let ParserMatchClass = AddrRegImm12sAsmOperand;
-}
-
-// addr_reg_imm12s_i64 := [reg + imm12s]
-def addr_reg_imm12s_i64 : MemOperand,
-  ComplexPattern<i64, 2, "SelectAddrRegImm12s", []> {
-  // 12-bit signed immediate operand.
-  // Immediate access range would be +/- (imm12s << 1).
-
-  let MIOperandInfo = (ops GPR64:$base, i64imm:$offsimm);
+  let MIOperandInfo = (ops GPR:$base, iPTR:$offsimm);
   let PrintMethod = "printAddrRegImmOperand";
   // Parser function not completed yet. Finish it later.
   let ParserMatchClass = AddrRegImm12sAsmOperand;

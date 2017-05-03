@@ -245,7 +245,7 @@ class InstLoad<string mnemonic, bits<7> op, bits<3> funct3,
                Operand memOp>
   : RISCVInst<(outs cls1:$dst), (ins memOp:$addr),
               mnemonic#"\t$dst, $addr",
-              [(set cls1:$dst, (opNode addr_reg_imm12s_i64:$addr))],
+              [(set cls1:$dst, (opNode addr_reg_imm12s:$addr))],
               FrmOther> {
   field bits<32> Inst;
 
@@ -267,7 +267,7 @@ class InstStore<string mnemonic, bits<7> op, bits<3> funct3,
                 Operand memOp>
   : RISCVInst<(outs), (ins cls1:$src, memOp:$addr),
               mnemonic#"\t$src, $addr",
-              [(opNode cls1:$src, addr_reg_imm12s_i64:$addr)],
+              [(opNode cls1:$src, addr_reg_imm12s:$addr)],
               FrmOther> {
   field bits<32> Inst;
 

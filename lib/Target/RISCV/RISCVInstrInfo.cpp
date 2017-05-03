@@ -38,13 +38,15 @@ void RISCVInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                                  unsigned DestinationRegister,
                                  unsigned SourceRegister,
                                  bool KillSource) const {
-  if (!RISCV::GPRRegClass.contains(DestinationRegister, SourceRegister)) {
-    llvm_unreachable("Impossible reg-to-reg copy");
-  }
-
-  BuildMI(MBB, Position, DL, get(RISCV::ADDI), DestinationRegister)
+  if (STI.isRV64()) {
+    BuildMI(MBB, Position, DL, get(RISCV::ADDI64), DestinationRegister)
       .addReg(SourceRegister, getKillRegState(KillSource))
       .addImm(0);
+  } else {
+    BuildMI(MBB, Position, DL, get(RISCV::ADDI), DestinationRegister)
+      .addReg(SourceRegister, getKillRegState(KillSource))
+      .addImm(0);
+  }
 }
 
 void RISCVInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
@@ -101,9 +103,7 @@ void RISCVInstrInfo::loadImmediate(unsigned ScratchReg,
                                    int64_t Imm, MachineBasicBlock &MBB,
                                    MachineBasicBlock::iterator II,
                                    const DebugLoc &DL) const {
-  MachineFunction &MF = *MBB.getParent();
   MachineRegisterInfo &RegInfo = MBB.getParent()->getRegInfo();
-  const RISCVSubtarget &STI = MF.getSubtarget<RISCVSubtarget>();
   const TargetRegisterClass *RC = STI.isRV64() ?
     &RISCV::GPR64RegClass : &RISCV::GPRRegClass;
 
@@ -138,9 +138,7 @@ RISCVInstrInfo::basePlusImmediate(unsigned DstReg, unsigned BaseReg,
                                   int64_t Imm, MachineBasicBlock &MBB,
                                   MachineBasicBlock::iterator II,
                                   const DebugLoc &DL) const {
-  MachineFunction &MF = *MBB.getParent();
   MachineRegisterInfo &RegInfo = MBB.getParent()->getRegInfo();
-  const RISCVSubtarget &STI = MF.getSubtarget<RISCVSubtarget>();
   const TargetRegisterClass *RC = STI.isRV64() ?
     &RISCV::GPR64RegClass : &RISCV::GPRRegClass;
   unsigned ScratchReg = RegInfo.createVirtualRegister(RC);
@@ -161,9 +159,7 @@ RISCVInstrInfo::basePlusImmediateStripOffset(unsigned BaseReg, int64_t &Imm,
                                              MachineBasicBlock &MBB,
                                              MachineBasicBlock::iterator II,
                                              const DebugLoc &DL) const {
-  MachineFunction &MF = *MBB.getParent();
   MachineRegisterInfo &RegInfo = MBB.getParent()->getRegInfo();
-  const RISCVSubtarget &STI = MF.getSubtarget<RISCVSubtarget>();
   const TargetRegisterClass *RC = STI.isRV64() ?
     &RISCV::GPR64RegClass : &RISCV::GPRRegClass;
   unsigned ScratchReg1 = RegInfo.createVirtualRegister(RC);

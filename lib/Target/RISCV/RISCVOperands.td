@@ -26,7 +26,7 @@ def uimm4 : Operand<i32> {
   let DecoderMethod = "decodeUImmOperand<4>";
 }
 
-def uimm5 : Operand<i32>, ImmLeaf<i32, [{return isUInt<5>(Imm);}]> {
+def uimm5 : Operand<iPTR>, ImmLeaf<iPTR, [{return isUInt<5>(Imm);}]> {
   let ParserMatchClass = UImmAsmOperand<5>;
   let DecoderMethod = "decodeUImmOperand<5>";
 }

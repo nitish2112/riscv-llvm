@@ -50,6 +50,15 @@ def XORI64: ALU64_ri<0b100, "xori", xor>, Requires<[IsRV64]>;
 def ORI64 : ALU64_ri<0b110,  "ori",  or>, Requires<[IsRV64]>;
 def ANDI64: ALU64_ri<0b111, "andi", and>, Requires<[IsRV64]>;
 
+class SHIFT64_ri<bit arithshift, bits<3> funct3, string OpcodeStr, SDPatternOperator OpNode> :
+      FI32Shift<arithshift, funct3, 0b0010011, (outs GPR64:$rd), (ins GPR64:$rs1, uimm5:$shamt),
+         OpcodeStr#"\t$rd, $rs1, $shamt", [(set GPR64:$rd, (OpNode GPR64:$rs1, uimm5:$shamt))]>;
+
+def SLLI64: SHIFT64_ri<0, 0b001 , "slli", shl>, Requires<[IsRV64]>;
+def SRLI64: SHIFT64_ri<0, 0b101 , "srli", srl>, Requires<[IsRV64]>;
+def SRAI64: SHIFT64_ri<1, 0b101 , "srai", sra>, Requires<[IsRV64]>;
+
+
 //Load/Store Instructions
 let mayLoad = 1 in {
   def LWU : InstLoad <"lwu" , 0b0000011, 0b110, zextloadi32,  GPR64, mem64>, Requires<[IsRV64]>;

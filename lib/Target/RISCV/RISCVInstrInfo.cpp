@@ -49,6 +49,20 @@ void RISCVInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
   }
 }
 
+void RISCVInstrInfo::getLoadStoreOpcodes(const TargetRegisterClass *RC,
+                                         unsigned &LoadOpcode,
+                                         unsigned &StoreOpcode) const {
+  if (RC == &RISCV::GPRRegClass ){
+    LoadOpcode = STI.isRV64() ? RISCV::LW64_32 : RISCV::LW;
+    StoreOpcode = STI.isRV64() ? RISCV::SW64_32 : RISCV::SW;
+  } else if (RC == &RISCV::GPR64RegClass) {
+    LoadOpcode = RISCV::LD;
+    StoreOpcode = RISCV::SD;
+  } else
+    llvm_unreachable("Unsupported regclass to load or store");
+}
+
+
 void RISCVInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
                                          MachineBasicBlock::iterator I,
                                          unsigned SrcReg, bool IsKill, int FI,
@@ -58,13 +72,13 @@ void RISCVInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
   if (I != MBB.end())
     DL = I->getDebugLoc();
 
-  if (RC == &RISCV::GPRRegClass)
-    BuildMI(MBB, I, DL, get(RISCV::SW))
-        .addReg(SrcReg, getKillRegState(IsKill))
-        .addFrameIndex(FI)
-        .addImm(0);
-  else
-    llvm_unreachable("Can't store this register to stack slot");
+  unsigned LoadOpcode, StoreOpcode;
+  getLoadStoreOpcodes(RC, LoadOpcode, StoreOpcode);
+
+  BuildMI(MBB, I, DL, get(StoreOpcode))
+      .addReg(SrcReg, getKillRegState(IsKill))
+      .addFrameIndex(FI)
+      .addImm(0);
 }
 
 void RISCVInstrInfo::loadRegFromStackSlot(MachineBasicBlock &MBB,
@@ -76,10 +90,10 @@ void RISCVInstrInfo::loadRegFromStackSlot(MachineBasicBlock &MBB,
   if (I != MBB.end())
     DL = I->getDebugLoc();
 
-  if (RC == &RISCV::GPRRegClass)
-    BuildMI(MBB, I, DL, get(RISCV::LW), DestReg).addFrameIndex(FI).addImm(0);
-  else
-    llvm_unreachable("Can't load this register from stack slot");
+  unsigned LoadOpcode, StoreOpcode;
+  getLoadStoreOpcodes(RC, LoadOpcode, StoreOpcode);
+
+  BuildMI(MBB, I, DL, get(LoadOpcode), DestReg).addFrameIndex(FI).addImm(0);
 }
 
 /// Adjust SP by Amount bytes.

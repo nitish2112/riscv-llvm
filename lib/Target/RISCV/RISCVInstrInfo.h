@@ -36,6 +36,10 @@ public:
                    const DebugLoc &DL, unsigned DestinationRegister,
                    unsigned SourceRegister, bool KillSource) const override;
 
+  // Get the load and store opcodes for a given register class.
+  void getLoadStoreOpcodes(const TargetRegisterClass *RC,
+                           unsigned &LoadOpcode, unsigned &StoreOpcode) const;
+
   void storeRegToStackSlot(MachineBasicBlock &MBB,
                            MachineBasicBlock::iterator MBBI, unsigned SrcReg,
                            bool isKill, int FrameIndex,

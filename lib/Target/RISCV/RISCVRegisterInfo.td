@@ -12,72 +12,103 @@
 //===----------------------------------------------------------------------===//
 
 let Namespace = "RISCV" in {
-  def sub_32 : SubRegIndex<32>;
-
-  class RISCVReg32<bits<5> Enc, string n, list<string> alt = []> : Register<n> {
-    let HWEncoding{4-0} = Enc;
-    let AltNames = alt;
-  }
-
-  // RISCV64 registers don't define an AsmName or AltName. If they specified
-  // names aliasing the RISCVReg32 registers, the generation of the default
-  // MatchRegisterName/MatchRegisterAltName would fail. When necessary,
-  // RISCVAsmParser will need to convert a register number from a RISCVReg32
-  // to the equivalent RISCVReg64.
-  class RISCVReg64<RISCVReg32 subreg> : Register<""> {
-    let HWEncoding{4-0} = subreg.HWEncoding{4-0};
-    let SubRegs = [subreg];
-    let SubRegIndices = [sub_32];
-  }
-
-  def ABIRegAltName : RegAltNameIndex;
+def sub_32     : SubRegIndex<32>;
 }
 
-// Integer registers
-let RegAltNameIndices = [ABIRegAltName] in {
-  def X0_32    : RISCVReg32<0, "x0", ["zero"]>, DwarfRegNum<[0]>;
-  def X1_32    : RISCVReg32<1, "x1", ["ra"]>, DwarfRegNum<[1]>;
-  def X2_32    : RISCVReg32<2, "x2", ["sp"]>, DwarfRegNum<[2]>;
-  def X3_32    : RISCVReg32<3, "x3", ["gp"]>, DwarfRegNum<[3]>;
-  def X4_32    : RISCVReg32<4, "x4", ["tp"]>, DwarfRegNum<[4]>;
-  def X5_32    : RISCVReg32<5, "x5", ["t0"]>, DwarfRegNum<[5]>;
-  def X6_32    : RISCVReg32<6, "x6", ["t1"]>, DwarfRegNum<[6]>;
-  def X7_32    : RISCVReg32<7, "x7", ["t2"]>, DwarfRegNum<[7]>;
-  def X8_32    : RISCVReg32<8, "x8", ["s0"]>, DwarfRegNum<[8]>;
-  def X9_32    : RISCVReg32<9, "x9", ["s1"]>, DwarfRegNum<[9]>;
-  def X10_32   : RISCVReg32<10,"x10", ["a0"]>, DwarfRegNum<[10]>;
-  def X11_32   : RISCVReg32<11,"x11", ["a1"]>, DwarfRegNum<[11]>;
-  def X12_32   : RISCVReg32<12,"x12", ["a2"]>, DwarfRegNum<[12]>;
-  def X13_32   : RISCVReg32<13,"x13", ["a3"]>, DwarfRegNum<[13]>;
-  def X14_32   : RISCVReg32<14,"x14", ["a4"]>, DwarfRegNum<[14]>;
-  def X15_32   : RISCVReg32<15,"x15", ["a5"]>, DwarfRegNum<[15]>;
-  def X16_32   : RISCVReg32<16,"x16", ["a6"]>, DwarfRegNum<[16]>;
-  def X17_32   : RISCVReg32<17,"x17", ["a7"]>, DwarfRegNum<[17]>;
-  def X18_32   : RISCVReg32<18,"x18", ["s2"]>, DwarfRegNum<[18]>;
-  def X19_32   : RISCVReg32<19,"x19", ["s3"]>, DwarfRegNum<[19]>;
-  def X20_32   : RISCVReg32<20,"x20", ["s4"]>, DwarfRegNum<[20]>;
-  def X21_32   : RISCVReg32<21,"x21", ["s5"]>, DwarfRegNum<[21]>;
-  def X22_32   : RISCVReg32<22,"x22", ["s6"]>, DwarfRegNum<[22]>;
-  def X23_32   : RISCVReg32<23,"x23", ["s7"]>, DwarfRegNum<[23]>;
-  def X24_32   : RISCVReg32<24,"x24", ["s8"]>, DwarfRegNum<[24]>;
-  def X25_32   : RISCVReg32<25,"x25", ["s9"]>, DwarfRegNum<[25]>;
-  def X26_32   : RISCVReg32<26,"x26", ["s10"]>, DwarfRegNum<[26]>;
-  def X27_32   : RISCVReg32<27,"x27", ["s11"]>, DwarfRegNum<[27]>;
-  def X28_32   : RISCVReg32<28,"x28", ["t3"]>, DwarfRegNum<[28]>;
-  def X29_32   : RISCVReg32<29,"x29", ["t4"]>, DwarfRegNum<[29]>;
-  def X30_32   : RISCVReg32<30,"x30", ["t5"]>, DwarfRegNum<[30]>;
-  def X31_32   : RISCVReg32<31,"x31", ["t6"]>, DwarfRegNum<[31]>;
+// We have banks of 32 registers each.
+class RISCVReg<bits<16> Enc, string n> : Register<n> {
+  let HWEncoding = Enc;
+  let Namespace = "RISCV";
 }
 
-foreach Index = 0-31 in {
-  def X#Index#_64 : RISCVReg64<!cast<RISCVReg32>("X"#Index#"_32")>, DwarfRegNum<[Index]>;
+class RISCVRegWithSubRegs<bits<16> Enc, string n, list<Register> subregs>
+  : RegisterWithSubRegs<n, subregs> {
+  let HWEncoding = Enc;
+  let Namespace = "RISCV";
 }
 
-// We currently define separate register classes for the 32-bit and 64-bit
-// GPRs. Once variable-sized register classes
-// <http://lists.llvm.org/pipermail/llvm-dev/2016-September/105027.html> or
-// similar are implemented, we can just use one 'GPR' class for most
-// instruction definitions.
+// RISCV CPU Registers
+class RISCVGPRReg<bits<16> Enc, string n> : RISCVReg<Enc, n>;
+
+// RISCV 64-bit CPU Registers
+class RISCV64GPRReg<bits<16> Enc, string n, list<Register> subregs>
+  : RISCVRegWithSubRegs<Enc, n, subregs> {
+  let SubRegIndices = [sub_32];
+}
+
+//===----------------------------------------------------------------------===//
+//  Registers
+//===----------------------------------------------------------------------===//
+
+let Namespace = "RISCV" in {
+  // General Purpose Registers
+  def X0_32   : RISCVGPRReg< 0,  "zero">, DwarfRegNum<[0]>;
+  def X1_32   : RISCVGPRReg< 1,  "ra">,   DwarfRegNum<[1]>;
+  def X2_32   : RISCVGPRReg< 2,  "sp">,   DwarfRegNum<[2]>;
+  def X3_32   : RISCVGPRReg< 3,  "gp">,   DwarfRegNum<[3]>;
+  def X4_32   : RISCVGPRReg< 4,  "tp">,   DwarfRegNum<[4]>;
+  def X5_32   : RISCVGPRReg< 5,  "t0">,   DwarfRegNum<[5]>;
+  def X6_32   : RISCVGPRReg< 6,  "t1">,   DwarfRegNum<[6]>;
+  def X7_32   : RISCVGPRReg< 7,  "t2">,   DwarfRegNum<[7]>;
+  def X8_32   : RISCVGPRReg< 8,  "s0">,   DwarfRegNum<[8]>;
+  def X9_32   : RISCVGPRReg< 9,  "s1">,   DwarfRegNum<[9]>;
+  def X10_32  : RISCVGPRReg< 10, "a0">,   DwarfRegNum<[10]>;
+  def X11_32  : RISCVGPRReg< 11, "a1">,   DwarfRegNum<[11]>;
+  def X12_32  : RISCVGPRReg< 12, "a2">,   DwarfRegNum<[12]>;
+  def X13_32  : RISCVGPRReg< 13, "a3">,   DwarfRegNum<[13]>;
+  def X14_32  : RISCVGPRReg< 14, "a4">,   DwarfRegNum<[14]>;
+  def X15_32  : RISCVGPRReg< 15, "a5">,   DwarfRegNum<[15]>;
+  def X16_32  : RISCVGPRReg< 16, "a6">,   DwarfRegNum<[16]>;
+  def X17_32  : RISCVGPRReg< 17, "a7">,   DwarfRegNum<[17]>;
+  def X18_32  : RISCVGPRReg< 18, "s2">,   DwarfRegNum<[18]>;
+  def X19_32  : RISCVGPRReg< 19, "s3">,   DwarfRegNum<[19]>;
+  def X20_32  : RISCVGPRReg< 20, "s4">,   DwarfRegNum<[20]>;
+  def X21_32  : RISCVGPRReg< 21, "s5">,   DwarfRegNum<[21]>;
+  def X22_32  : RISCVGPRReg< 22, "s6">,   DwarfRegNum<[22]>;
+  def X23_32  : RISCVGPRReg< 23, "s7">,   DwarfRegNum<[23]>;
+  def X24_32  : RISCVGPRReg< 24, "s8">,   DwarfRegNum<[24]>;
+  def X25_32  : RISCVGPRReg< 25, "s9">,   DwarfRegNum<[25]>;
+  def X26_32  : RISCVGPRReg< 26, "s10">,  DwarfRegNum<[26]>;
+  def X27_32  : RISCVGPRReg< 27, "s11">,  DwarfRegNum<[27]>;
+  def X28_32  : RISCVGPRReg< 28, "t3">,   DwarfRegNum<[28]>;
+  def X29_32  : RISCVGPRReg< 29, "t4">,   DwarfRegNum<[29]>;
+  def X30_32  : RISCVGPRReg< 30, "t5">,   DwarfRegNum<[30]>;
+  def X31_32  : RISCVGPRReg< 31, "t6">,   DwarfRegNum<[31]>;
+
+  // General Purpose 64-bit Registers
+  def X0_64   : RISCV64GPRReg< 0,  "zero", [X0_32]>,  DwarfRegNum<[0]>;
+  def X1_64   : RISCV64GPRReg< 1,  "ra",   [X1_32]>,  DwarfRegNum<[1]>;
+  def X2_64   : RISCV64GPRReg< 2,  "sp",   [X2_32]>,  DwarfRegNum<[2]>;
+  def X3_64   : RISCV64GPRReg< 3,  "gp",   [X3_32]>,  DwarfRegNum<[3]>;
+  def X4_64   : RISCV64GPRReg< 4,  "tp",   [X4_32]>,  DwarfRegNum<[4]>;
+  def X5_64   : RISCV64GPRReg< 5,  "t0",   [X5_32]>,  DwarfRegNum<[5]>;
+  def X6_64   : RISCV64GPRReg< 6,  "t1",   [X6_32]>,  DwarfRegNum<[6]>;
+  def X7_64   : RISCV64GPRReg< 7,  "t2",   [X7_32]>,  DwarfRegNum<[7]>;
+  def X8_64   : RISCV64GPRReg< 8,  "s0",   [X8_32]>,  DwarfRegNum<[8]>;
+  def X9_64   : RISCV64GPRReg< 9,  "s1",   [X9_32]>,  DwarfRegNum<[9]>;
+  def X10_64  : RISCV64GPRReg< 10, "a0",   [X10_32]>, DwarfRegNum<[10]>;
+  def X11_64  : RISCV64GPRReg< 11, "a1",   [X11_32]>, DwarfRegNum<[11]>;
+  def X12_64  : RISCV64GPRReg< 12, "a2",   [X12_32]>, DwarfRegNum<[12]>;
+  def X13_64  : RISCV64GPRReg< 13, "a3",   [X13_32]>, DwarfRegNum<[13]>;
+  def X14_64  : RISCV64GPRReg< 14, "a4",   [X14_32]>, DwarfRegNum<[14]>;
+  def X15_64  : RISCV64GPRReg< 15, "a5",   [X15_32]>, DwarfRegNum<[15]>;
+  def X16_64  : RISCV64GPRReg< 16, "a6",   [X16_32]>, DwarfRegNum<[16]>;
+  def X17_64  : RISCV64GPRReg< 17, "a7",   [X17_32]>, DwarfRegNum<[17]>;
+  def X18_64  : RISCV64GPRReg< 18, "s2",   [X18_32]>, DwarfRegNum<[18]>;
+  def X19_64  : RISCV64GPRReg< 19, "s3",   [X19_32]>, DwarfRegNum<[19]>;
+  def X20_64  : RISCV64GPRReg< 20, "s4",   [X20_32]>, DwarfRegNum<[20]>;
+  def X21_64  : RISCV64GPRReg< 21, "s5",   [X21_32]>, DwarfRegNum<[21]>;
+  def X22_64  : RISCV64GPRReg< 22, "s6",   [X22_32]>, DwarfRegNum<[22]>;
+  def X23_64  : RISCV64GPRReg< 23, "s7",   [X23_32]>, DwarfRegNum<[23]>;
+  def X24_64  : RISCV64GPRReg< 24, "s8",   [X24_32]>, DwarfRegNum<[24]>;
+  def X25_64  : RISCV64GPRReg< 25, "s9",   [X25_32]>, DwarfRegNum<[25]>;
+  def X26_64  : RISCV64GPRReg< 26, "x10",  [X26_32]>, DwarfRegNum<[26]>;
+  def X27_64  : RISCV64GPRReg< 27, "s11",  [X27_32]>, DwarfRegNum<[27]>;
+  def X28_64  : RISCV64GPRReg< 28, "t3",   [X28_32]>, DwarfRegNum<[28]>;
+  def X29_64  : RISCV64GPRReg< 29, "t4",   [X29_32]>, DwarfRegNum<[29]>;
+  def X30_64  : RISCV64GPRReg< 30, "t5",   [X30_32]>, DwarfRegNum<[30]>;
+  def X31_64  : RISCV64GPRReg< 31, "t6",   [X31_32]>, DwarfRegNum<[31]>;
+}
 
 // The order of registers represents the preferred allocation sequence.
 // Registers are listed in the order caller-save, callee-save, specials.

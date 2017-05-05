@@ -130,7 +130,7 @@ def addr_reg_imm12s : MemOperand,
   // 12-bit signed immediate operand.
   // Immediate access range would be +/- (imm12s << 1).
 
-  let MIOperandInfo = (ops GPR:$base, iPTR:$offsimm);
+  let MIOperandInfo = (ops ptr_rc, iPTR:$offsimm);
   let PrintMethod = "printAddrRegImmOperand";
   // Parser function not completed yet. Finish it later.
   let ParserMatchClass = AddrRegImm12sAsmOperand;

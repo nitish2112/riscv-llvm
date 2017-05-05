@@ -51,6 +51,10 @@ public:
                            RegScavenger *RS = nullptr) const override;
 
   unsigned getFrameRegister(const MachineFunction &MF) const override;
+
+  // Let ptr_rc could transfer to correct register class
+  const TargetRegisterClass *getPointerRegClass(const MachineFunction &MF,
+                                                unsigned Kind) const override;
 };
 }
 

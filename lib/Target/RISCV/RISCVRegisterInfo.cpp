@@ -188,3 +188,12 @@ RISCVRegisterInfo::getCallPreservedMask(const MachineFunction & /*MF*/,
   else
     return CSR_RV32_RegMask;
 }
+
+const TargetRegisterClass *
+RISCVRegisterInfo::getPointerRegClass(const MachineFunction &MF,
+                                      unsigned Kind) const {
+  if(Subtarget.isRV64())
+    return &RISCV::GPR64RegClass;
+  else
+    return &RISCV::GPRRegClass;
+}

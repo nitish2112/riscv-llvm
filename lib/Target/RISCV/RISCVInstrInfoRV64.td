@@ -55,7 +55,7 @@ def SLTI64 : ALU64_ri<0b010, "slti",  setlt>,  Requires<[IsRV64]>;
 def SLTIU64: ALU64_ri<0b011, "sltiu", setult>, Requires<[IsRV64]>;
 
 // signed 12-bit immediate
-def : RV64Pat<(simm12:$imm), (ADDI64 X0_64, simm12:$imm)>;
+def : RV64Pat<(imm64sx12:$imm), (ADDI64 X0_64, imm64sx12:$imm)>;
 
 def : RV64Pat<(seteq GPR64:$rs1, GPR64:$rs2), (SLTIU64 (XOR64 GPR64:$rs1, GPR64:$rs2), 1)>;
 def : RV64Pat<(setne GPR64:$rs1, GPR64:$rs2), (SLTU64 X0_64, (XOR64 GPR64:$rs1, GPR64:$rs2))>;

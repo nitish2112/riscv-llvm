@@ -31,7 +31,7 @@ def uimm5 : Operand<iPTR>, ImmLeaf<iPTR, [{return isUInt<5>(Imm);}]> {
   let DecoderMethod = "decodeUImmOperand<5>";
 }
 
-def simm12 : Operand<i32>, ImmLeaf<i32, [{return isInt<12>(Imm);}]> {
+def simm12 : Operand<iPTR>, ImmLeaf<iPTR, [{return isInt<12>(Imm);}]> {
   let ParserMatchClass = SImmAsmOperand<12>;
   let EncoderMethod = "getImmOpValue";
   let DecoderMethod = "decodeSImmOperand<12>";

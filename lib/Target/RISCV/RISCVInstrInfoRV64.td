@@ -151,7 +151,7 @@ class Bcc64<bits<3> funct3, string OpcodeStr, PatFrag CondOp> :
       FSB<funct3, 0b1100011, (outs),
           (ins GPR64:$rs1, GPR64:$rs2, simm13_lsb0:$imm12),
           OpcodeStr#"\t$rs1, $rs2, $imm12",
-          [(brcond (i64 (CondOp GPR64:$rs1, GPR64:$rs2)), bb:$imm12)]> {
+          [(brcond (i32 (CondOp GPR64:$rs1, GPR64:$rs2)), bb:$imm12)]> {
   let isBranch = 1;
   let isTerminator = 1;
 }
@@ -164,7 +164,7 @@ def BLTU64  : Bcc64<0b110, "bltu", setult>;
 def BGEU64  : Bcc64<0b111, "bgeu", setuge>;
 
 class Bcc_SwapPat64<PatFrag CondOp, RISCVInst InstBcc> : Pat<
-  (brcond (i64 (CondOp GPR64:$rs1, GPR64:$rs2)), bb:$imm12),
+  (brcond (i32 (CondOp GPR64:$rs1, GPR64:$rs2)), bb:$imm12),
   (InstBcc GPR64:$rs2, GPR64:$rs1, bb:$imm12)>;
 
 // Condition codes that don't have matching RISC-V branch instructions, but

@@ -176,3 +176,15 @@ def : Bcc_SwapPat64<setule, BGEU64>;
 
 def : Pat<(brcond GPR64:$cond, bb:$imm12),
           (BNE64 GPR64:$cond, X0_64, bb:$imm12)>;
+
+let isCall=1, Defs=[X1_64] in {
+  def PseudoCALL64 : Pseudo<(outs), (ins GPR64:$rs1), [(Call GPR64:$rs1)]>,
+                     PseudoInstExpansion<(JALR64 X1_64, GPR64:$rs1, 0)>,
+                     Requires<[IsRV64]>;
+}
+
+let isReturn=1, isTerminator=1, isBarrier=1 in {
+  def PseudoRET64 : Pseudo<(outs), (ins), [(RetFlag)]>,
+                    PseudoInstExpansion<(JALR64 X0_64, X1_64, 0)>,
+                    Requires<[IsRV64]>;
+}

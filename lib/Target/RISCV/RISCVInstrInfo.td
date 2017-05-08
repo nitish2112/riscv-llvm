@@ -44,10 +44,10 @@ class RV64Pat<dag pattern, dag result> : Pat<pattern, result> {
 // Type Profiles.
 //===----------------------------------------------------------------------===//
 
-def SDT_RISCVCallSeqStart : SDCallSeqStart<[SDTCisVT<0, i32>]>;
-def SDT_RISCVCallSeqEnd   : SDCallSeqEnd<[SDTCisVT<0, i32>,
-                                         SDTCisVT<1, i32>]>;
-def SDT_RISCVCall         : SDTypeProfile<0, -1, [SDTCisVT<0, i32>]>;
+def SDT_RISCVCallSeqStart : SDCallSeqStart<[SDTCisVT<0, iPTR>]>;
+def SDT_RISCVCallSeqEnd   : SDCallSeqEnd<[SDTCisVT<0, iPTR>,
+                                          SDTCisVT<1, iPTR>]>;
+def SDT_RISCVCall         : SDTypeProfile<0, -1, [SDTCisVT<0, iPTR>]>;
 def SDT_RISCVSelectCC     : SDTypeProfile<1, 5, [SDTCisSameAs<1, 2>,
                                                  SDTCisSameAs<0, 4>,
                                                  SDTCisSameAs<4, 5>]>;

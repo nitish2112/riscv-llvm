@@ -119,3 +119,60 @@ let mayStore = 1 in {
   def SH64_32 : InstStore<"sh" , 0b0100011, 0b001, truncstorei16, GPR, mem64>, Requires<[IsRV64]>;
   def SB64_32 : InstStore<"sb" , 0b0100011, 0b000, truncstorei8 , GPR, mem64>, Requires<[IsRV64]>;
 }
+
+//===----------------------------------------------------------------------===//
+// Branch and Call Instructions
+//===----------------------------------------------------------------------===//
+
+let isCall=1 in {
+def JAL64 : FUJ<0b1101111, (outs GPR64:$rd), (ins simm21_lsb0:$imm20),
+                "jal\t$rd, $imm20", []>;
+}
+
+let isBranch = 1, isTerminator=1, isBarrier=1 in {
+def PseudoBR64 : Pseudo<(outs), (ins simm21_lsb0:$imm20), [(br bb:$imm20)]>,
+                 PseudoInstExpansion<(JAL64 X0_64, simm21_lsb0:$imm20)>,
+                 Requires<[IsRV64]>;
+}
+
+let isCall=1 in {
+def JALR64 : FI<0b000, 0b1100111, (outs GPR64:$rd),
+                (ins GPR64:$rs1, simm12:$imm12),
+                "jalr\t$rd, $rs1, $imm12", []>;
+}
+
+let isBranch = 1, isBarrier = 1, isTerminator = 1, isIndirectBranch = 1 in {
+  def PseudoBRIND64 : Pseudo<(outs), (ins GPR64:$rs1), [(brind GPR64:$rs1)]>,
+                      PseudoInstExpansion<(JALR64 X0_64, GPR64:$rs1, 0)>,
+                      Requires<[IsRV64]>;
+}
+
+class Bcc64<bits<3> funct3, string OpcodeStr, PatFrag CondOp> :
+      FSB<funct3, 0b1100011, (outs),
+          (ins GPR64:$rs1, GPR64:$rs2, simm13_lsb0:$imm12),
+          OpcodeStr#"\t$rs1, $rs2, $imm12",
+          [(brcond (i64 (CondOp GPR64:$rs1, GPR64:$rs2)), bb:$imm12)]> {
+  let isBranch = 1;
+  let isTerminator = 1;
+}
+
+def BEQ64   : Bcc64<0b000, "beq", seteq>;
+def BNE64   : Bcc64<0b001, "bne", setne>;
+def BLT64   : Bcc64<0b100, "blt", setlt>;
+def BGE64   : Bcc64<0b101, "bge", setge>;
+def BLTU64  : Bcc64<0b110, "bltu", setult>;
+def BGEU64  : Bcc64<0b111, "bgeu", setuge>;
+
+class Bcc_SwapPat64<PatFrag CondOp, RISCVInst InstBcc> : Pat<
+  (brcond (i64 (CondOp GPR64:$rs1, GPR64:$rs2)), bb:$imm12),
+  (InstBcc GPR64:$rs2, GPR64:$rs1, bb:$imm12)>;
+
+// Condition codes that don't have matching RISC-V branch instructions, but
+// are trivially supported by swapping the two input operands
+def : Bcc_SwapPat64<setgt, BLT64>;
+def : Bcc_SwapPat64<setle, BGE64>;
+def : Bcc_SwapPat64<setugt, BLTU64>;
+def : Bcc_SwapPat64<setule, BGEU64>;
+
+def : Pat<(brcond GPR64:$cond, bb:$imm12),
+          (BNE64 GPR64:$cond, X0_64, bb:$imm12)>;

@@ -130,17 +130,17 @@ void RISCVDAGToDAGISel::Select(SDNode *Node) {
   switch (Node->getOpcode()) {
   default: break;
   case ISD::FrameIndex: {
-    assert(Node->getValueType(0) == MVT::i32);
+    MVT PtrVT = Subtarget.isRV64() ? MVT::i64 : MVT::i32;
+    unsigned addi = Subtarget.isRV64() ? RISCV::ADDI64 : RISCV::ADDI;
     int FI = cast<FrameIndexSDNode>(Node)->getIndex();
-    SDValue TFI = CurDAG->getTargetFrameIndex(FI, MVT::i32);
+    SDValue TFI = CurDAG->getTargetFrameIndex(FI, PtrVT);
     if (Node->hasOneUse()) {
-      CurDAG->SelectNodeTo(Node, RISCV::ADDI, MVT::i32, TFI,
-                           CurDAG->getTargetConstant(0, DL, MVT::i32));
+      CurDAG->SelectNodeTo(Node, addi, PtrVT, TFI,
+                           CurDAG->getTargetConstant(0, DL, PtrVT));
       return;
     }
-    ReplaceNode(Node, CurDAG->getMachineNode(
-                          RISCV::ADDI, DL, MVT::i32, TFI,
-                          CurDAG->getTargetConstant(0, DL, MVT::i32)));
+    ReplaceNode(Node, CurDAG->getMachineNode(addi, DL, PtrVT, TFI,
+                          CurDAG->getTargetConstant(0, DL, PtrVT)));
     return;
   }
   }

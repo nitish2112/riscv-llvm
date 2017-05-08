@@ -39,6 +39,8 @@ def SRL64  : ALU64_rr<0b0000000, 0b101, "srl", srl>, Requires<[IsRV64]>;
 def SRA64  : ALU64_rr<0b0100000, 0b101, "sra", sra>, Requires<[IsRV64]>;
 def OR64   : ALU64_rr<0b0000000, 0b110, "or" , or>,  Requires<[IsRV64]>;
 def AND64  : ALU64_rr<0b0000000, 0b111, "and", and>, Requires<[IsRV64]>;
+def SLT64  : ALU64_rr<0b0000000, 0b010, "slt",  setlt>,  Requires<[IsRV64]>;
+def SLTU64 : ALU64_rr<0b0000000, 0b011, "sltu", setult>, Requires<[IsRV64]>;
 
 class ALU64_ri<bits<3> funct3, string OpcodeStr, SDPatternOperator OpNode> :
       FI<funct3, 0b0010011, (outs GPR64:$rd), (ins GPR64:$rs1, imm64sx12:$imm12),
@@ -49,6 +51,17 @@ def ADDI64: ALU64_ri<0b000, "addi", add>, Requires<[IsRV64]>;
 def XORI64: ALU64_ri<0b100, "xori", xor>, Requires<[IsRV64]>;
 def ORI64 : ALU64_ri<0b110,  "ori",  or>, Requires<[IsRV64]>;
 def ANDI64: ALU64_ri<0b111, "andi", and>, Requires<[IsRV64]>;
+def SLTI64 : ALU64_ri<0b010, "slti",  setlt>,  Requires<[IsRV64]>;
+def SLTIU64: ALU64_ri<0b011, "sltiu", setult>, Requires<[IsRV64]>;
+
+def : RV64Pat<(seteq GPR64:$rs1, GPR64:$rs2), (SLTIU64 (XOR64 GPR64:$rs1, GPR64:$rs2), 1)>;
+def : RV64Pat<(setne GPR64:$rs1, GPR64:$rs2), (SLTU64 X0_64, (XOR64 GPR64:$rs1, GPR64:$rs2))>;
+def : RV64Pat<(setugt GPR64:$rs1, GPR64:$rs2), (SLTU64 GPR64:$rs2, GPR64:$rs1)>;
+def : RV64Pat<(setuge GPR64:$rs1, GPR64:$rs2), (XORI64 (SLTU64 GPR64:$rs1, GPR64:$rs2), 1)>;
+def : RV64Pat<(setule GPR64:$rs1, GPR64:$rs2), (XORI64 (SLTU64 GPR64:$rs2, GPR64:$rs1), 1)>;
+def : RV64Pat<(setgt GPR64:$rs1, GPR64:$rs2), (SLT64 GPR64:$rs2, GPR64:$rs1)>;
+def : RV64Pat<(setge GPR64:$rs1, GPR64:$rs2), (XORI64 (SLT64 GPR64:$rs1, GPR64:$rs2), 1)>;
+def : RV64Pat<(setle GPR64:$rs1, GPR64:$rs2), (XORI64 (SLT64 GPR64:$rs2, GPR64:$rs1), 1)>;
 
 class SHIFT64_ri<bit arithshift, bits<3> funct3, string OpcodeStr, SDPatternOperator OpNode> :
       FI32Shift<arithshift, funct3, 0b0010011, (outs GPR64:$rd), (ins GPR64:$rs1, uimm5:$shamt),
@@ -93,9 +106,9 @@ def : Pat<(i32 (extloadi16 addr_reg_imm12s:$addr)), (LHU64_32 addr_reg_imm12s:$a
 def : Pat<(extloadi16 addr_reg_imm12s:$addr), (LHU64 addr_reg_imm12s:$addr)>;
 def : Pat<(i64 (extloadi32 addr_reg_imm12s:$addr)), (LW64   addr_reg_imm12s:$addr)>;
 def : Pat<(extloadi32 addr_reg_imm12s:$addr), (LW64   addr_reg_imm12s:$addr)>;
-//def : Pat<(i32 (extloadi1  addr_reg_imm12s:$addr)), (LBU64_32 addr_reg_imm12s:$addr)>, Requires<[IsRV64]>;
-def : Pat<(i32 (extloadi8  addr_reg_imm12s:$addr)), (LBU64_32 addr_reg_imm12s:$addr)>, Requires<[IsRV64]>;
-//def : Pat<(i32 (extloadi16 addr_reg_imm12s:$addr)), (LHU64_32 addr_reg_imm12s:$addr)>, Requires<[IsRV64]>;
+//def : RV64Pat<(i32 (extloadi1  addr_reg_imm12s:$addr)), (LBU64_32 addr_reg_imm12s:$addr)>;
+def : RV64Pat<(i32 (extloadi8  addr_reg_imm12s:$addr)), (LBU64_32 addr_reg_imm12s:$addr)>;
+//def : RV64Pat<(i32 (extloadi16 addr_reg_imm12s:$addr)), (LHU64_32 addr_reg_imm12s:$addr)>;
 
 let mayStore = 1 in {
   def SD : InstStore <"sd"  , 0b0100011, 0b011, store, GPR64, mem64>, Requires<[IsRV64]>;

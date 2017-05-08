@@ -31,6 +31,15 @@ include "RISCVInstrFormats.td"
  def HasA   :    Predicate<"Subtarget.hasA()">,
                  AssemblerPredicate<"FeatureA">; 
 
+// RV32Pat - Same as Pat<>, but requires has RISCV32 ISA support.
+class RV32Pat<dag pattern, dag result> : Pat<pattern, result> {
+    list<Predicate> Predicates = [IsRV32];
+}
+// RV64Pat - Same as Pat<>, but requires has RISCV64 ISA support.
+class RV64Pat<dag pattern, dag result> : Pat<pattern, result> {
+    list<Predicate> Predicates = [IsRV64];
+}
+
 //===----------------------------------------------------------------------===//
 // Type Profiles.
 //===----------------------------------------------------------------------===//
@@ -233,14 +242,14 @@ def AND  : ALU_rr<0b0000000, 0b111, "and", and>;
 // Define pattern expansions for setcc operations that aren't directly
 // handled by a RISC-V instruction
 
-def : Pat<(seteq GPR:$rs1, GPR:$rs2), (SLTIU (XOR GPR:$rs1, GPR:$rs2), 1)>;
-def : Pat<(setne GPR:$rs1, GPR:$rs2), (SLTU X0_32, (XOR GPR:$rs1, GPR:$rs2))>;
-def : Pat<(setugt GPR:$rs1, GPR:$rs2), (SLTU GPR:$rs2, GPR:$rs1)>;
-def : Pat<(setuge GPR:$rs1, GPR:$rs2), (XORI (SLTU GPR:$rs1, GPR:$rs2), 1)>;
-def : Pat<(setule GPR:$rs1, GPR:$rs2), (XORI (SLTU GPR:$rs2, GPR:$rs1), 1)>;
-def : Pat<(setgt GPR:$rs1, GPR:$rs2), (SLT GPR:$rs2, GPR:$rs1)>;
-def : Pat<(setge GPR:$rs1, GPR:$rs2), (XORI (SLT GPR:$rs1, GPR:$rs2), 1)>;
-def : Pat<(setle GPR:$rs1, GPR:$rs2), (XORI (SLT GPR:$rs2, GPR:$rs1), 1)>;
+def : RV32Pat<(seteq GPR:$rs1, GPR:$rs2), (SLTIU (XOR GPR:$rs1, GPR:$rs2), 1)>;
+def : RV32Pat<(setne GPR:$rs1, GPR:$rs2), (SLTU X0_32, (XOR GPR:$rs1, GPR:$rs2))>;
+def : RV32Pat<(setugt GPR:$rs1, GPR:$rs2), (SLTU GPR:$rs2, GPR:$rs1)>;
+def : RV32Pat<(setuge GPR:$rs1, GPR:$rs2), (XORI (SLTU GPR:$rs1, GPR:$rs2), 1)>;
+def : RV32Pat<(setule GPR:$rs1, GPR:$rs2), (XORI (SLTU GPR:$rs2, GPR:$rs1), 1)>;
+def : RV32Pat<(setgt GPR:$rs1, GPR:$rs2), (SLT GPR:$rs2, GPR:$rs1)>;
+def : RV32Pat<(setge GPR:$rs1, GPR:$rs2), (XORI (SLT GPR:$rs1, GPR:$rs2), 1)>;
+def : RV32Pat<(setle GPR:$rs1, GPR:$rs2), (XORI (SLT GPR:$rs2, GPR:$rs1), 1)>;
 
 def FENCE : FI<0b000, 0b0001111, (outs), (ins uimm4:$pred, uimm4:$succ),
                "fence\t$pred, $succ", []> {

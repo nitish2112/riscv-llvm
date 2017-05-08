@@ -198,13 +198,15 @@ RISCVInstrInfo::basePlusImmediateStripOffset(unsigned BaseReg, int64_t &Imm,
 //===----------------------------------------------------------------------===//
 
 static bool isUncondBranch(unsigned Opcode) {
-  if (Opcode == RISCV::PseudoBR)
+  if (Opcode == RISCV::PseudoBR ||
+      Opcode == RISCV::PseudoBR64)
     return true;
   return false;
 }
 
 static bool isIndirectBranch(unsigned Opcode) {
-  if (Opcode == RISCV::PseudoBRIND)
+  if (Opcode == RISCV::PseudoBRIND ||
+      Opcode == RISCV::PseudoBRIND64)
     return true;
   return false;
 }
@@ -216,7 +218,13 @@ static bool isCondBranch(unsigned Opcode) {
       Opcode == RISCV::BLT ||
       Opcode == RISCV::BGE ||
       Opcode == RISCV::BLTU ||
-      Opcode == RISCV::BGEU)
+      Opcode == RISCV::BGEU ||
+      Opcode == RISCV::BEQ64 ||
+      Opcode == RISCV::BNE64 ||
+      Opcode == RISCV::BLT64 ||
+      Opcode == RISCV::BGE64 ||
+      Opcode == RISCV::BLTU64 ||
+      Opcode == RISCV::BGEU64)
     return true;
   return false;
 }

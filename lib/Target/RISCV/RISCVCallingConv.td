@@ -82,6 +82,65 @@ def CC_RISCV32 : CallingConv<[
   CCIfType<[i64, f64], CCAssignToStack<8, 8>>
 ]>;
 
+// RISCV 64-bit C return-value convention.
+def RetCC_RISCV64 : CallingConv<[
+  CCIfType<[f32], CCBitConvertToType<i32>>,
+  CCIfType<[i1, i8, i16, i32], CCPromoteToType<i64>>,
+  CCIfType<[v1i64, v2i32, v4i16, v8i8, v2f32], CCBitConvertToType<f64>>,
+  CCIfType<[i64], CCAssignToRegWithShadow<[X10_64], [X11_64]>>
+]>;
+
+// RISCV 64-bit C Calling convention for variable argument.
+def CC_RISCV64_VAR : CallingConv<[
+  CCIfType<[f32], CCBitConvertToType<i32>>,
+  CCIfType<[i1, i8, i16, i32], CCPromoteToType<i64>>,
+
+  // Pass by value if the byval attribute is given
+  CCIfByVal<CCPassByVal<8, 8>>,
+
+  // (and the same is true for f64 if VFP is not enabled)
+  CCIfType<[i64], CCIfNotAlign<"16",
+                     CCAssignToReg<[X10_64, X11_64, X12_64, X13_64,
+                                    X14_64, X15_64, X16_64, X17_64]>>>,
+
+  CCIfType<[i64], CCIfAlign<"16",
+           CCAssignToRegWithShadow<[X10_64, X12_64, X14_64, X16_64],
+                                   [X10_64, X11_64, X13_64, X15_64]>>>,
+
+  // If a part of argument assign to stack, shadow the argument registers.
+  // To avoid a double argument assign to stack and register in the same time.
+  CCIfType<[i64], CCIfAlign<"16", CCAssignToStackWithShadow<8, 16,
+                                         [X10_64, X11_64, X12_64, X13_64,
+                                          X14_64, X15_64, X16_64, X17_64]>>>,
+
+  CCIfType<[i64, f64], CCAssignToRegWithShadow<[X10_64, X12_64, X14_64, X16_64],
+                                               [X11_64, X13_64, X15_64, X17_64]>>,
+
+  CCIfType<[i64, f64], CCAssignToStack<8, 8>>
+]>;
+
+def CC_RISCV64 : CallingConv<[
+  CCIfType<[f32], CCBitConvertToType<i32>>,
+  CCIfType<[i1, i8, i16, i32], CCPromoteToType<i64>>,
+
+  // Pass by value if the byval attribute is given
+  CCIfByVal<CCPassByVal<8, 8>>,
+
+  CCIfType<[i64], CCAssignToReg<[X10_64, X11_64, X12_64, X13_64,
+                                 X14_64, X15_64, X16_64, X17_64]>>,
+
+  // If a part of argument assign to stack, shadow the argument registers.
+  // To avoid a double argument assign to stack and register in the same time.
+  CCIfType<[i64], CCIfAlign<"16", CCAssignToStackWithShadow<8, 16,
+                                         [X10_64, X11_64, X12_64, X13_64,
+                                          X14_64, X15_64, X16_64, X17_64]>>>,
+
+  CCIfType<[i64, f64], CCAssignToRegWithShadow<[X10_64, X12_64, X14_64, X16_64],
+                                               [X11_64, X13_64, X15_64, X17_64]>>,
+
+  CCIfType<[i64, f64], CCAssignToStack<8, 8>>
+]>;
+
 
 def CSR_RV32 : CalleeSavedRegs<(add X1_32, X3_32, X4_32, X8_32, X9_32,
                                (sequence "X%u_32", 18, 27))>;

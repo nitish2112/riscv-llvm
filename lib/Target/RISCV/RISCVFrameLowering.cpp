@@ -40,7 +40,8 @@ void RISCVFrameLowering::emitPrologue(MachineFunction &MF,
   unsigned SP = STI.isRV64() ? RISCV::X2_64 : RISCV::X2_32;
   unsigned FP = STI.isRV64() ? RISCV::X8_64 : RISCV::X8_32;
   unsigned ZERO = STI.isRV64() ? RISCV::X0_64 :RISCV::X0_32;
-  unsigned ADDI = RISCV::ADDI;
+  unsigned ADDI = STI.isRV64() ? RISCV::ADDI64 :RISCV::ADDI;
+  unsigned AND = STI.isRV64() ? RISCV::AND64 :RISCV::AND;
 
   assert(&MF.front() == &MBB && "Shrink-wrapping not yet supported");
   MachineFrameInfo &MFI = MF.getFrameInfo();
@@ -123,8 +124,8 @@ void RISCVFrameLowering::emitPrologue(MachineFunction &MF,
              "Function's alignment size requirement is not supported.");
       int MaxAlign = -(int)MFI.getMaxAlignment();
 
-      BuildMI(MBB, MBBI, DL, TII.get(RISCV::ADDI), VR).addReg(ZERO) .addImm(MaxAlign);
-      BuildMI(MBB, MBBI, DL, TII.get(RISCV::AND), SP).addReg(SP).addReg(VR);
+      BuildMI(MBB, MBBI, DL, TII.get(ADDI), VR).addReg(ZERO) .addImm(MaxAlign);
+      BuildMI(MBB, MBBI, DL, TII.get(AND), SP).addReg(SP).addReg(VR);
     }
   }
 }
@@ -136,7 +137,7 @@ void RISCVFrameLowering::emitEpilogue(MachineFunction &MF,
   unsigned SP = STI.isRV64() ? RISCV::X2_64 : RISCV::X2_32;
   unsigned FP = STI.isRV64() ? RISCV::X8_64 : RISCV::X8_32;
   unsigned ZERO = STI.isRV64() ? RISCV::X0_64 :RISCV::X0_32;
-  unsigned ADDI = RISCV::ADDI;
+  unsigned ADDI = STI.isRV64() ? RISCV::ADDI64 :RISCV::ADDI;
 
   MachineFrameInfo &MFI = MF.getFrameInfo();
   const RISCVInstrInfo &TII =

@@ -84,10 +84,14 @@ def CC_RISCV32 : CallingConv<[
 
 // RISCV 64-bit C return-value convention.
 def RetCC_RISCV64 : CallingConv<[
-  CCIfType<[f32], CCBitConvertToType<i32>>,
-  CCIfType<[i1, i8, i16, i32], CCPromoteToType<i64>>,
+  CCIfType<[i8, i16, i32, i64], CCIfInReg<CCPromoteToType<i64>>>,
+  CCIfType<[i64], CCAssignToReg<[X10_64, X11_64]>>,
+  CCIfType<[i128], CCAssignToRegWithShadow<[X10_64], [X11_64]>>,
+
   CCIfType<[v1i64, v2i32, v4i16, v8i8, v2f32], CCBitConvertToType<f64>>,
-  CCIfType<[i64], CCAssignToRegWithShadow<[X10_64], [X11_64]>>
+  CCIfType<[f32], CCPromoteToType<f64>>,
+  CCIfType<[f64], CCAssignToReg<[X10_64, X11_64]>>,
+  CCDelegateTo<RetCC_RISCV32>
 ]>;
 
 // RISCV 64-bit C Calling convention for variable argument.

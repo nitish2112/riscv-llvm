@@ -42,6 +42,13 @@ def AND64  : ALU64_rr<0b0000000, 0b111, "and", and>, Requires<[IsRV64]>;
 def SLT64  : ALU64_rr<0b0000000, 0b010, "slt",  setlt>,  Requires<[IsRV64]>;
 def SLTU64 : ALU64_rr<0b0000000, 0b011, "sltu", setult>, Requires<[IsRV64]>;
 
+class SLT_rr<bits<7> funct7, bits<3> funct3, string OpcodeStr, SDPatternOperator OpNode> :
+      FR<funct7, funct3, 0b0110011, (outs GPR:$rd), (ins GPR64:$rs1, GPR64:$rs2),
+         OpcodeStr#"\t$rd, $rs1, $rs2", [(set GPR:$rd, (OpNode GPR64:$rs1, GPR64:$rs2))]>;
+
+def SLT32  : SLT_rr<0b0000000, 0b010, "slt",  setlt>,  Requires<[IsRV64]>;
+def SLTU32 : SLT_rr<0b0000000, 0b011, "sltu", setult>, Requires<[IsRV64]>;
+
 class ALU64_ri<bits<3> funct3, string OpcodeStr, SDPatternOperator OpNode> :
       FI<funct3, 0b0010011, (outs GPR64:$rd), (ins GPR64:$rs1, imm64sx12:$imm12),
          OpcodeStr#"\t$rd, $rs1, $imm12", [(set GPR64:$rd, (OpNode GPR64:$rs1, imm64sx12:$imm12))]>;
@@ -54,15 +61,26 @@ def ANDI64: ALU64_ri<0b111, "andi", and>, Requires<[IsRV64]>;
 def SLTI64 : ALU64_ri<0b010, "slti",  setlt>,  Requires<[IsRV64]>;
 def SLTIU64: ALU64_ri<0b011, "sltiu", setult>, Requires<[IsRV64]>;
 
+class SLT_ri<bits<3> funct3, string OpcodeStr, SDPatternOperator OpNode> :
+      FI<funct3, 0b0010011, (outs GPR:$rd), (ins GPR64:$rs1, imm64sx12:$imm12),
+         OpcodeStr#"\t$rd, $rs1, $imm12", [(set GPR:$rd, (OpNode GPR64:$rs1, imm64sx12:$imm12))]>;
+
+def SLTI32 : SLT_ri<0b010, "slti",  setlt>,  Requires<[IsRV64]>;
+def SLTIU32: SLT_ri<0b011, "sltiu", setult>, Requires<[IsRV64]>;
+
 // signed 12-bit immediate
 def : RV64Pat<(imm64sx12:$imm), (ADDI64 X0_64, imm64sx12:$imm)>;
 
 def : RV64Pat<(seteq GPR64:$rs1, GPR64:$rs2), (SLTIU64 (XOR64 GPR64:$rs1, GPR64:$rs2), 1)>;
+def : RV64Pat<(seteq GPR64:$rs1, GPR64:$rs2), (SLTIU32 (XOR64 GPR64:$rs1, GPR64:$rs2), 1)>;
 def : RV64Pat<(setne GPR64:$rs1, GPR64:$rs2), (SLTU64 X0_64, (XOR64 GPR64:$rs1, GPR64:$rs2))>;
+def : RV64Pat<(setne GPR64:$rs1, GPR64:$rs2), (SLTU32 X0_64, (XOR64 GPR64:$rs1, GPR64:$rs2))>;
 def : RV64Pat<(setugt GPR64:$rs1, GPR64:$rs2), (SLTU64 GPR64:$rs2, GPR64:$rs1)>;
+def : RV64Pat<(setugt GPR64:$rs1, GPR64:$rs2), (SLTU32 GPR64:$rs2, GPR64:$rs1)>;
 def : RV64Pat<(setuge GPR64:$rs1, GPR64:$rs2), (XORI64 (SLTU64 GPR64:$rs1, GPR64:$rs2), 1)>;
 def : RV64Pat<(setule GPR64:$rs1, GPR64:$rs2), (XORI64 (SLTU64 GPR64:$rs2, GPR64:$rs1), 1)>;
 def : RV64Pat<(setgt GPR64:$rs1, GPR64:$rs2), (SLT64 GPR64:$rs2, GPR64:$rs1)>;
+def : RV64Pat<(setgt GPR64:$rs1, GPR64:$rs2), (SLT32 GPR64:$rs2, GPR64:$rs1)>;
 def : RV64Pat<(setge GPR64:$rs1, GPR64:$rs2), (XORI64 (SLT64 GPR64:$rs1, GPR64:$rs2), 1)>;
 def : RV64Pat<(setle GPR64:$rs1, GPR64:$rs2), (XORI64 (SLT64 GPR64:$rs2, GPR64:$rs1), 1)>;
 

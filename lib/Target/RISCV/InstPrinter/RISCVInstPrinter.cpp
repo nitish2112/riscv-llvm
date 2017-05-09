@@ -67,7 +67,7 @@ void RISCVInstPrinter::printAddrRegImmOperand(const MCInst *MI, unsigned OpNum,
                                               raw_ostream &O) {
   const MCOperand &MO2 = MI->getOperand(OpNum + 1);
 
-  int32_t OffImm = (int32_t)MO2.getImm();
+  int64_t OffImm = (int64_t)MO2.getImm();
 
   O << markup("<mem:");
   O << markup("<imm:") << formatImm(OffImm) << markup(">");

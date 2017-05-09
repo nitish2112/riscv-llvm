@@ -241,9 +241,8 @@ class InstSC<string mnemonic, bits<3> funct3,
 //Load-Type
 class InstLoad<string mnemonic, bits<7> op, bits<3> funct3,
                SDPatternOperator opNode,
-               RegisterClass cls1,
-               Operand memOp>
-  : RISCVInst<(outs cls1:$dst), (ins memOp:$addr),
+               RegisterClass cls1>
+  : RISCVInst<(outs cls1:$dst), (ins addr_reg_imm12s:$addr),
               mnemonic#"\t$dst, $addr",
               [(set cls1:$dst, (opNode addr_reg_imm12s:$addr))],
               FrmOther> {
@@ -263,9 +262,8 @@ class InstLoad<string mnemonic, bits<7> op, bits<3> funct3,
 
 class InstStore<string mnemonic, bits<7> op, bits<3> funct3,
                 SDPatternOperator opNode,
-                RegisterClass cls1,
-                Operand memOp>
-  : RISCVInst<(outs), (ins cls1:$src, memOp:$addr),
+                RegisterClass cls1>
+  : RISCVInst<(outs), (ins cls1:$src, addr_reg_imm12s:$addr),
               mnemonic#"\t$src, $addr",
               [(opNode cls1:$src, addr_reg_imm12s:$addr)],
               FrmOther> {

@@ -941,6 +941,61 @@ void RISCVTargetLowering::HandleByVal(CCState *State, unsigned &Size,
   State->addInRegsParamInfo(FirstRegIndex, FirstRegIndex + NumRegs);
 }
 
+static SDValue UnpackFromArgumentSlot(SDValue Val, const CCValAssign &VA,
+                                      EVT ArgVT, const SDLoc &DL,
+                                      SelectionDAG &DAG) {
+  MVT LocVT = VA.getLocVT();
+  EVT ValVT = VA.getValVT();
+
+  // Shift into the upper bits if necessary.
+  switch (VA.getLocInfo()) {
+  default:
+    break;
+  case CCValAssign::AExtUpper:
+  case CCValAssign::SExtUpper:
+  case CCValAssign::ZExtUpper: {
+    unsigned ValSizeInBits = ArgVT.getSizeInBits();
+    unsigned LocSizeInBits = VA.getLocVT().getSizeInBits();
+    unsigned Opcode =
+        VA.getLocInfo() == CCValAssign::ZExtUpper ? ISD::SRL : ISD::SRA;
+    Val = DAG.getNode(
+        Opcode, DL, VA.getLocVT(), Val,
+        DAG.getConstant(LocSizeInBits - ValSizeInBits, DL, VA.getLocVT()));
+    break;
+  }
+  }
+
+  // If this is an value smaller than the argument slot size (32-bit for RISCV32,
+  // 64-bit for RISCV64), it has been promoted in some way to the argument slot
+  // size. Extract the value and insert any appropriate assertions regarding
+  // sign/zero extension.
+  switch (VA.getLocInfo()) {
+  default:
+    llvm_unreachable("Unknown loc info!");
+  case CCValAssign::Full:
+    break;
+  case CCValAssign::AExtUpper:
+  case CCValAssign::AExt:
+    Val = DAG.getNode(ISD::TRUNCATE, DL, ValVT, Val);
+    break;
+  case CCValAssign::SExtUpper:
+  case CCValAssign::SExt:
+    Val = DAG.getNode(ISD::AssertSext, DL, LocVT, Val, DAG.getValueType(ValVT));
+    Val = DAG.getNode(ISD::TRUNCATE, DL, ValVT, Val);
+    break;
+  case CCValAssign::ZExtUpper:
+  case CCValAssign::ZExt:
+    Val = DAG.getNode(ISD::AssertZext, DL, LocVT, Val, DAG.getValueType(ValVT));
+    Val = DAG.getNode(ISD::TRUNCATE, DL, ValVT, Val);
+    break;
+  case CCValAssign::BCvt:
+    Val = DAG.getNode(ISD::BITCAST, DL, ValVT, Val);
+    break;
+  }
+
+  return Val;
+}
+
 // Transform physical registers into virtual registers
 SDValue RISCVTargetLowering::LowerFormalArguments(
     SDValue Chain, CallingConv::ID CallConv, bool IsVarArg,
@@ -1006,6 +1061,12 @@ SDValue RISCVTargetLowering::LowerFormalArguments(
       // physical registers into virtual ones
       unsigned Reg = addLiveIn(DAG.getMachineFunction(), ArgReg, RC);
       SDValue ArgValue = DAG.getCopyFromReg(Chain, DL, Reg, RegVT);
+
+      // All integral types are promoted to the GPR width in RISCV Clang,
+      // So we have to handle the integer argument smaller then GPR width.
+      // See gcc.c-torture/execute/20000205-1.c testcase argument passing
+      // of f for RISCV64 target.
+      ArgValue = UnpackFromArgumentSlot(ArgValue, VA, Ins[i].ArgVT, DL, DAG);
 
       InVals.push_back(ArgValue);
     } else { // VA.isRegLoc()

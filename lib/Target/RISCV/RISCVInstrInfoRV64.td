@@ -100,7 +100,10 @@ def SLLIW: SHIFTW_ri<0, 0b001 , "slliw", shl>, Requires<[IsRV64]>;
 def SRLIW: SHIFTW_ri<0, 0b101 , "srliw", srl>, Requires<[IsRV64]>;
 def SRAIW: SHIFTW_ri<1, 0b101 , "sraiw", sra>, Requires<[IsRV64]>;
 
-//Load/Store Instructions
+//===----------------------------------------------------------------------===//
+// Load and Store Instructions
+//===----------------------------------------------------------------------===//
+
 let mayLoad = 1 in {
   def LWU : InstLoad <"lwu" , 0b0000011, 0b110, zextloadi32,  GPR64>, Requires<[IsRV64]>;
   def LD  : InstLoad <"ld"  , 0b0000011, 0b011, load,  GPR64>, Requires<[IsRV64]>;
@@ -209,3 +212,6 @@ let isReturn=1, isTerminator=1, isBarrier=1 in {
                     PseudoInstExpansion<(JALR64 X0_64, X1_64, 0)>,
                     Requires<[IsRV64]>;
 }
+
+// Get i32 value from GPR64 register
+def :Pat<(i32 (trunc GPR64:$src)), (EXTRACT_SUBREG GPR64:$src, sub_32)>;

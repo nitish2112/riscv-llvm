@@ -215,3 +215,8 @@ let isReturn=1, isTerminator=1, isBarrier=1 in {
 
 // Get i32 value from GPR64 register
 def :Pat<(i32 (trunc GPR64:$src)), (EXTRACT_SUBREG GPR64:$src, sub_32)>;
+
+// Extension patterns
+def : Pat<(i64 (zext GPR:$val)), (SUBREG_TO_REG (i64 0), GPR:$val, sub_32)>;
+def : Pat<(i64 (sext GPR:$val)), (SUBREG_TO_REG (i64 0), GPR:$val, sub_32)>;
+def : Pat<(i64 (anyext GPR:$val)), (SUBREG_TO_REG (i64 0), GPR:$val, sub_32)>;

@@ -85,3 +85,13 @@ void RISCVInstPrinter::printS12ImmOperand(const MCInst *MI, int OpNum,
   }else
     printOperand(MI, OpNum, O);
 }
+
+void RISCVInstPrinter::printU20ImmOperand(const MCInst *MI, int OpNum,
+                                           raw_ostream &O) {
+  if(MI->getOperand(OpNum).isImm()){
+    int64_t Value = MI->getOperand(OpNum).getImm();
+    assert(isUInt<20>(Value) && "Invalid u20imm argument");
+    O << Value;
+  }else
+    printOperand(MI, OpNum, O);
+}

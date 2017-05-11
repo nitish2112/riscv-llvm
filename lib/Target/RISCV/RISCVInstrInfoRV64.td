@@ -220,3 +220,6 @@ def :Pat<(i32 (trunc GPR64:$src)), (EXTRACT_SUBREG GPR64:$src, sub_32)>;
 def : Pat<(i64 (zext GPR:$val)), (SUBREG_TO_REG (i64 0), GPR:$val, sub_32)>;
 def : Pat<(i64 (sext GPR:$val)), (SUBREG_TO_REG (i64 0), GPR:$val, sub_32)>;
 def : Pat<(i64 (anyext GPR:$val)), (SUBREG_TO_REG (i64 0), GPR:$val, sub_32)>;
+
+def LUI64 : FU<0b0110111, (outs GPR64:$rd), (ins imm64sxu20:$imm20),
+               "lui\t$rd, $imm20", []>;

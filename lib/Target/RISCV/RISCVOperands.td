@@ -93,6 +93,21 @@ def S12Imm : ImmediateAsmOperand<"S12Imm">;
 // 64-bit immediates
 //===----------------------------------------------------------------------===//
 
+// Extract least significant 12 bits from an immediate value and sign extend
+// them.
+def LO12SextI64 : SDNodeXForm<imm, [{
+  return CurDAG->getTargetConstant(SignExtend64<12>(N->getZExtValue()),
+                                   SDLoc(N), MVT::i64);
+}]>;
+
+// Extract the most significant 20 bits from an immediate value. Add 1 if bit
+// 11 is 1, to compensate for the low 12 bits in the matching immediate addi
+// or ld/st being negative.
+def HI20I64 : SDNodeXForm<imm, [{
+  return CurDAG->getTargetConstant(((N->getZExtValue()+0x800) >> 12) & 0xfffff,
+                                   SDLoc(N), MVT::i64);
+}]>;
+
 // Constructs both a DAG pattern and instruction operand for an immediate
 // of type VT.  PRED returns true if a node is acceptable and XFORM returns
 // the operand value associated with the node.  ASMOP is the name of the
@@ -111,6 +126,11 @@ def imm64sx12 : Immediate<i64, [{
 def imm64sxu20 : Immediate<i64, [{
   return isUInt<20>(N->getSExtValue());
 }], NOOP_SDNodeXForm, "U20Imm">;
+
+//sign-extended 32bit immediate for LUI/ADDI
+def imm64sxu32 : Immediate<i64, [{
+  return isUInt<32>(N->getSExtValue());
+}], NOOP_SDNodeXForm, "U32Imm">;
 
 //===----------------------------------------------------------------------===//
 // Load/Store Operands

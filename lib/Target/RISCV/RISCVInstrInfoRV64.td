@@ -68,8 +68,14 @@ class SLT_ri<bits<3> funct3, string OpcodeStr, SDPatternOperator OpNode> :
 def SLTI32 : SLT_ri<0b010, "slti",  setlt>,  Requires<[IsRV64]>;
 def SLTIU32: SLT_ri<0b011, "sltiu", setult>, Requires<[IsRV64]>;
 
+def LUI64 : FU<0b0110111, (outs GPR64:$rd), (ins imm64sxu20:$imm20),
+               "lui\t$rd, $imm20", []>;
+
 // signed 12-bit immediate
 def : RV64Pat<(imm64sx12:$imm), (ADDI64 X0_64, imm64sx12:$imm)>;
+
+// 32-bit immediate
+def : RV64Pat<(imm64sxu32:$imm), (ADDI64 (LUI64 (HI20I64 imm:$imm)), (LO12SextI64 imm:$imm))>;
 
 def : RV64Pat<(seteq GPR64:$rs1, GPR64:$rs2), (SLTIU64 (XOR64 GPR64:$rs1, GPR64:$rs2), 1)>;
 def : RV64Pat<(seteq GPR64:$rs1, GPR64:$rs2), (SLTIU32 (XOR64 GPR64:$rs1, GPR64:$rs2), 1)>;
@@ -220,9 +226,6 @@ def :Pat<(i32 (trunc GPR64:$src)), (EXTRACT_SUBREG GPR64:$src, sub_32)>;
 def : Pat<(i64 (zext GPR:$val)), (SUBREG_TO_REG (i64 0), GPR:$val, sub_32)>;
 def : Pat<(i64 (sext GPR:$val)), (SUBREG_TO_REG (i64 0), GPR:$val, sub_32)>;
 def : Pat<(i64 (anyext GPR:$val)), (SUBREG_TO_REG (i64 0), GPR:$val, sub_32)>;
-
-def LUI64 : FU<0b0110111, (outs GPR64:$rd), (ins imm64sxu20:$imm20),
-               "lui\t$rd, $imm20", []>;
 
 let usesCustomInserter = 1 in {
   def Select64 : Pseudo<(outs GPR64:$dst),

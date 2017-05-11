@@ -20,7 +20,7 @@ namespace llvm {
       unsigned Opc, ImmOpnd;
       Inst(unsigned Opc, unsigned ImmOpnd);
     };
-    typedef SmallVector<Inst, 7 > InstSeq;
+    typedef SmallVector<Inst, 10> InstSeq;
 
     /// Analyze - Get an instruction sequence to load immediate Imm. The last
     /// instruction in the sequence must be an ADDI if LastInstrIsADDI is
@@ -35,10 +35,6 @@ namespace llvm {
     /// GetInstSeqLsADDI - Get instruction sequences which end with an ADDI to
     /// load immediate Imm
     void GetInstSeqLsADDI(uint64_t Imm, unsigned RemSize, InstSeqLs &SeqLs);
-
-    /// GetInstSeqLsORI - Get instrutcion sequences which end with an ORI to
-    /// load immediate Imm
-    void GetInstSeqLsORI(uint64_t Imm, unsigned RemSize, InstSeqLs &SeqLs);
 
     /// GetInstSeqLsSLL - Get instruction sequences which end with a SLL to
     /// load immediate Imm

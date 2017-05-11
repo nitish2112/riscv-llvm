@@ -223,3 +223,11 @@ def : Pat<(i64 (anyext GPR:$val)), (SUBREG_TO_REG (i64 0), GPR:$val, sub_32)>;
 
 def LUI64 : FU<0b0110111, (outs GPR64:$rd), (ins imm64sxu20:$imm20),
                "lui\t$rd, $imm20", []>;
+
+let usesCustomInserter = 1 in {
+  def Select64 : Pseudo<(outs GPR64:$dst),
+                        (ins GPR:$lhs, GPR:$rhs, i32imm:$imm, GPR64:$src, GPR64:$src2),
+                        [(set i64:$dst,
+                         (SelectCC GPR:$lhs, GPR:$rhs, (i32 imm:$imm), GPR64:$src, GPR64:$src2))]>,
+                 Requires<[IsRV64]>;
+}

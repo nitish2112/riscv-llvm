@@ -231,7 +231,8 @@ RISCVTargetLowering::RISCVTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::BR_CC, MVT::i32, Expand);
   setOperationAction(ISD::BR_CC, MVT::i64, Expand);
   setOperationAction(ISD::SELECT_CC, MVT::i32, Custom);
-  setOperationAction(ISD::SELECT_CC, MVT::i64, Custom);
+  if(Subtarget->isRV64())
+    setOperationAction(ISD::SELECT_CC, MVT::i64, Custom);
   setOperationAction(ISD::SELECT, MVT::i32, Expand);
   setOperationAction(ISD::SELECT, MVT::i64, Expand);
 
@@ -403,7 +404,6 @@ SDValue RISCVTargetLowering::lowerSELECT_CC(SDValue Op, SelectionDAG &DAG) const
   SDValue TrueV = Op.getOperand(2);
   SDValue FalseV = Op.getOperand(3);
   ISD::CondCode CC = cast<CondCodeSDNode>(Op.getOperand(4))->get();
-  MVT PtrVT = Subtarget->isRV64() ? MVT::i64 : MVT::i32;
   SDLoc DL(Op);
 
   switch (CC) {
@@ -418,7 +418,7 @@ SDValue RISCVTargetLowering::lowerSELECT_CC(SDValue Op, SelectionDAG &DAG) const
     break;
   }
 
-  SDValue TargetCC = DAG.getConstant(CC, DL, PtrVT);
+  SDValue TargetCC = DAG.getConstant(CC, DL, MVT::i32);
 
   SDVTList VTs = DAG.getVTList(Op.getValueType(), MVT::Glue);
   SDValue Ops[] = {LHS, RHS, TargetCC, TrueV, FalseV};
@@ -591,6 +591,7 @@ RISCVTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
                                                  MachineBasicBlock *BB) const {
   const TargetInstrInfo &TII = *BB->getParent()->getSubtarget().getInstrInfo();
   DebugLoc DL = MI.getDebugLoc();
+  bool Is64RV = Subtarget->isRV64();
 
   switch (MI.getOpcode()) {
   case RISCV::COPY_STRUCT_BYVAL_I32:
@@ -598,8 +599,6 @@ RISCVTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
     return EmitStructByval(MI, BB);
   default: break;
   }
-
-  assert(MI.getOpcode() == RISCV::Select && "Unexpected instr type to insert");
 
   // To "insert" a SELECT instruction, we actually have to insert the diamond
   // control-flow pattern.  The incoming instruction knows the destination vreg
@@ -636,22 +635,22 @@ RISCVTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
   unsigned Opcode = -1;
   switch (CC) {
   case ISD::SETEQ:
-    Opcode = RISCV::BEQ;
+    Opcode = Is64RV ? RISCV::BEQ64 : RISCV::BEQ;
     break;
   case ISD::SETNE:
-    Opcode = RISCV::BNE;
+    Opcode = Is64RV ? RISCV::BNE64 : RISCV::BNE;
     break;
   case ISD::SETLT:
-    Opcode = RISCV::BLT;
+    Opcode = Is64RV ? RISCV::BLT64 : RISCV::BLT;
     break;
   case ISD::SETGE:
-    Opcode = RISCV::BGE;
+    Opcode = Is64RV ? RISCV::BGE64 : RISCV::BGE;
     break;
   case ISD::SETULT:
-    Opcode = RISCV::BLTU;
+    Opcode = Is64RV ? RISCV::BLTU64 : RISCV::BLTU;
     break;
   case ISD::SETUGE:
-    Opcode = RISCV::BGEU;
+    Opcode = Is64RV ? RISCV::BGEU64 : RISCV::BGEU;
     break;
   default:
     report_fatal_error("unimplemented select CondCode " + Twine(CC));

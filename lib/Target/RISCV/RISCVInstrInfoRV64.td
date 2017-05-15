@@ -228,9 +228,15 @@ def : Pat<(i64 (sext GPR:$val)), (SUBREG_TO_REG (i64 0), GPR:$val, sub_32)>;
 def : Pat<(i64 (anyext GPR:$val)), (SUBREG_TO_REG (i64 0), GPR:$val, sub_32)>;
 
 let usesCustomInserter = 1 in {
-  def Select64 : Pseudo<(outs GPR64:$dst),
+  def Select32 : Pseudo<(outs GPR64:$dst),
                         (ins GPR:$lhs, GPR:$rhs, i32imm:$imm, GPR64:$src, GPR64:$src2),
                         [(set i64:$dst,
                          (SelectCC GPR:$lhs, GPR:$rhs, (i32 imm:$imm), GPR64:$src, GPR64:$src2))]>,
+                 Requires<[IsRV64]>;
+
+  def Select64 : Pseudo<(outs GPR64:$dst),
+                        (ins GPR64:$lhs, GPR64:$rhs, i32imm:$imm, GPR64:$src, GPR64:$src2),
+                        [(set i64:$dst,
+                         (SelectCC GPR64:$lhs, GPR64:$rhs, (i32 imm:$imm), GPR64:$src, GPR64:$src2))]>,
                  Requires<[IsRV64]>;
 }

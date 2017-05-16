@@ -254,4 +254,10 @@ let usesCustomInserter = 1 in {
                         [(set i64:$dst,
                          (SelectCC GPR64:$lhs, GPR64:$rhs, (i32 imm:$imm), GPR64:$src, GPR64:$src2))]>,
                  Requires<[IsRV64]>;
+
+def Select64_32 : Pseudo<(outs GPR:$dst),
+                         (ins GPR64:$lhs, GPR64:$rhs, i32imm:$imm, GPR:$src, GPR:$src2),
+                         [(set i32:$dst,
+                          (SelectCC GPR64:$lhs, GPR64:$rhs, (i32 imm:$imm), GPR:$src, GPR:$src2))]>,
+                  Requires<[IsRV64]>;
 }

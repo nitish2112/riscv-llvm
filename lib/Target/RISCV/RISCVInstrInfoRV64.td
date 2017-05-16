@@ -81,6 +81,8 @@ def : RV64Pat<(imm64sx12:$imm), (ADDI64 X0_64, imm64sx12:$imm)>;
 
 // 32-bit immediate
 def : RV64Pat<(imm64sxu32:$imm), (ADDI64 (LUI64 (HI20I64 imm:$imm)), (LO12SextI64 imm:$imm))>;
+// negative 32-bit immediate
+def : RV64Pat<(imm64sx32:$imm), (ADDI64 (LUI64 (HI20I64 imm:$imm)), (LO12SextI64 imm:$imm))>;
 
 def : RV64Pat<(seteq GPR64:$rs1, GPR64:$rs2), (SLTIU64 (XOR64 GPR64:$rs1, GPR64:$rs2), 1)>;
 def : RV64Pat<(seteq GPR64:$rs1, GPR64:$rs2), (SLTIU32 (XOR64 GPR64:$rs1, GPR64:$rs2), 1)>;

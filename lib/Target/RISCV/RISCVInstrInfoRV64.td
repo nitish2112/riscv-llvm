@@ -106,6 +106,14 @@ def SLLIW: SHIFTW_ri<0, 0b001 , "slliw", shl>, Requires<[IsRV64]>;
 def SRLIW: SHIFTW_ri<0, 0b101 , "srliw", srl>, Requires<[IsRV64]>;
 def SRAIW: SHIFTW_ri<1, 0b101 , "sraiw", sra>, Requires<[IsRV64]>;
 
+// variable shift instructions patterns
+def : Pat<(shl GPR64:$rt, (i32 (trunc GPR64:$rs))),
+          (SLL64 GPR64:$rt, (EXTRACT_SUBREG GPR64:$rs, sub_32))>;
+def : Pat<(srl GPR64:$rt, (i32 (trunc GPR64:$rs))),
+          (SRL64 GPR64:$rt, (EXTRACT_SUBREG GPR64:$rs, sub_32))>;
+def : Pat<(sra GPR64:$rt, (i32 (trunc GPR64:$rs))),
+          (SRA64 GPR64:$rt, (EXTRACT_SUBREG GPR64:$rs, sub_32))>;
+
 //===----------------------------------------------------------------------===//
 // Load and Store Instructions
 //===----------------------------------------------------------------------===//

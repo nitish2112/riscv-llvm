@@ -51,6 +51,12 @@ public:
                              SmallVectorImpl<SDValue> &Results,
                              SelectionDAG &DAG) const override;
 
+  // To avoid SelectionDAGBuilder.cpp: visitShift create extra ZERO_EXTNED
+  // for riscv64 target.
+  MVT getScalarShiftAmountTy(const DataLayout &, EVT) const override {
+    return MVT::i32;
+  }
+
   // This method returns the name of a target specific DAG node.
   const char *getTargetNodeName(unsigned Opcode) const override;
 

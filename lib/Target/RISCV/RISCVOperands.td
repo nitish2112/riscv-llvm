@@ -26,7 +26,7 @@ def uimm4 : Operand<i32> {
   let DecoderMethod = "decodeUImmOperand<4>";
 }
 
-def uimm5 : Operand<iPTR>, ImmLeaf<iPTR, [{return isUInt<5>(Imm);}]> {
+def uimm5 : Operand<i32>, ImmLeaf<i32, [{return isUInt<5>(Imm);}]> {
   let ParserMatchClass = UImmAsmOperand<5>;
   let DecoderMethod = "decodeUImmOperand<5>";
 }
@@ -122,6 +122,10 @@ class Immediate<ValueType vt, code pred, SDNodeXForm xform, string asmop>
 def imm64sx12 : Immediate<i64, [{
   return isInt<12>(N->getSExtValue());
 }], NOOP_SDNodeXForm, "S12Imm">;
+
+def imm64sxu5 : Immediate<i64, [{
+  return isUInt<5>(N->getSExtValue());
+}], NOOP_SDNodeXForm, "U5Imm">;
 
 def imm64sxu20 : Immediate<i64, [{
   return isUInt<20>(N->getSExtValue());

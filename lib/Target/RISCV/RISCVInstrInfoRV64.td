@@ -33,14 +33,19 @@ class ALU64_rr<bits<7> funct7, bits<3> funct3, string OpcodeStr, SDPatternOperat
 //Integer arithmetic register-register
 def ADD64  : ALU64_rr<0b0000000, 0b000, "add", add>, Requires<[IsRV64]>;
 def SUB64  : ALU64_rr<0b0100000, 0b000, "sub", sub>, Requires<[IsRV64]>;
-def SLL64  : ALU64_rr<0b0000000, 0b001, "sll", shl>, Requires<[IsRV64]>;
 def XOR64  : ALU64_rr<0b0000000, 0b100, "xor", xor>, Requires<[IsRV64]>;
-def SRL64  : ALU64_rr<0b0000000, 0b101, "srl", srl>, Requires<[IsRV64]>;
-def SRA64  : ALU64_rr<0b0100000, 0b101, "sra", sra>, Requires<[IsRV64]>;
 def OR64   : ALU64_rr<0b0000000, 0b110, "or" , or>,  Requires<[IsRV64]>;
 def AND64  : ALU64_rr<0b0000000, 0b111, "and", and>, Requires<[IsRV64]>;
 def SLT64  : ALU64_rr<0b0000000, 0b010, "slt",  setlt>,  Requires<[IsRV64]>;
 def SLTU64 : ALU64_rr<0b0000000, 0b011, "sltu", setult>, Requires<[IsRV64]>;
+
+class SHIFT64_rr<bits<7> funct7, bits<3> funct3, string OpcodeStr, SDPatternOperator OpNode> :
+      FR<funct7, funct3, 0b0110011, (outs GPR64:$rd), (ins GPR64:$rs1, GPR:$rs2),
+         OpcodeStr#"\t$rd, $rs1, $rs2", [(set GPR64:$rd, (OpNode GPR64:$rs1, GPR:$rs2))]>;
+
+def SLL64  : SHIFT64_rr<0b0000000, 0b001, "sll", shl>, Requires<[IsRV64]>;
+def SRL64  : SHIFT64_rr<0b0000000, 0b101, "srl", srl>, Requires<[IsRV64]>;
+def SRA64  : SHIFT64_rr<0b0100000, 0b101, "sra", sra>, Requires<[IsRV64]>;
 
 class SLT_rr<bits<7> funct7, bits<3> funct3, string OpcodeStr, SDPatternOperator OpNode> :
       FR<funct7, funct3, 0b0110011, (outs GPR:$rd), (ins GPR64:$rs1, GPR64:$rs2),
@@ -91,8 +96,8 @@ def : RV64Pat<(setge GPR64:$rs1, GPR64:$rs2), (XORI64 (SLT64 GPR64:$rs1, GPR64:$
 def : RV64Pat<(setle GPR64:$rs1, GPR64:$rs2), (XORI64 (SLT64 GPR64:$rs2, GPR64:$rs1), 1)>;
 
 class SHIFT64_ri<bit arithshift, bits<3> funct3, string OpcodeStr, SDPatternOperator OpNode> :
-      FI32Shift<arithshift, funct3, 0b0010011, (outs GPR64:$rd), (ins GPR64:$rs1, imm64sxu5:$shamt),
-         OpcodeStr#"\t$rd, $rs1, $shamt", [(set GPR64:$rd, (OpNode GPR64:$rs1, imm64sxu5:$shamt))]>;
+      FI32Shift<arithshift, funct3, 0b0010011, (outs GPR64:$rd), (ins GPR64:$rs1, uimm5:$shamt),
+         OpcodeStr#"\t$rd, $rs1, $shamt", [(set GPR64:$rd, (OpNode GPR64:$rs1, uimm5:$shamt))]>;
 
 def SLLI64: SHIFT64_ri<0, 0b001 , "slli", shl>, Requires<[IsRV64]>;
 def SRLI64: SHIFT64_ri<0, 0b101 , "srli", srl>, Requires<[IsRV64]>;

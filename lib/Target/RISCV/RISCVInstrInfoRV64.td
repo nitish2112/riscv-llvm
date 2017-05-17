@@ -91,11 +91,15 @@ def : RV64Pat<(setne GPR64:$rs1, GPR64:$rs2), (SLTU32 X0_64, (XOR64 GPR64:$rs1, 
 def : RV64Pat<(setugt GPR64:$rs1, GPR64:$rs2), (SLTU64 GPR64:$rs2, GPR64:$rs1)>;
 def : RV64Pat<(setugt GPR64:$rs1, GPR64:$rs2), (SLTU32 GPR64:$rs2, GPR64:$rs1)>;
 def : RV64Pat<(setuge GPR64:$rs1, GPR64:$rs2), (XORI64 (SLTU64 GPR64:$rs1, GPR64:$rs2), 1)>;
+def : RV64Pat<(setuge GPR64:$rs1, GPR64:$rs2), (XORI (SLTU32 GPR64:$rs1, GPR64:$rs2), 1)>;
 def : RV64Pat<(setule GPR64:$rs1, GPR64:$rs2), (XORI64 (SLTU64 GPR64:$rs2, GPR64:$rs1), 1)>;
+def : RV64Pat<(setule GPR64:$rs1, GPR64:$rs2), (XORI (SLTU32 GPR64:$rs2, GPR64:$rs1), 1)>;
 def : RV64Pat<(setgt GPR64:$rs1, GPR64:$rs2), (SLT64 GPR64:$rs2, GPR64:$rs1)>;
 def : RV64Pat<(setgt GPR64:$rs1, GPR64:$rs2), (SLT32 GPR64:$rs2, GPR64:$rs1)>;
 def : RV64Pat<(setge GPR64:$rs1, GPR64:$rs2), (XORI64 (SLT64 GPR64:$rs1, GPR64:$rs2), 1)>;
+def : RV64Pat<(setge GPR64:$rs1, GPR64:$rs2), (XORI (SLT32 GPR64:$rs1, GPR64:$rs2), 1)>;
 def : RV64Pat<(setle GPR64:$rs1, GPR64:$rs2), (XORI64 (SLT64 GPR64:$rs2, GPR64:$rs1), 1)>;
+def : RV64Pat<(setle GPR64:$rs1, GPR64:$rs2), (XORI (SLT32 GPR64:$rs2, GPR64:$rs1), 1)>;
 
 class SHIFT64_ri<bit arithshift, bits<3> funct3, string OpcodeStr, SDPatternOperator OpNode> :
       FI32Shift<arithshift, funct3, 0b0010011, (outs GPR64:$rd), (ins GPR64:$rs1, uimm5:$shamt),

@@ -39,9 +39,15 @@ void RISCVInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                                  unsigned SourceRegister,
                                  bool KillSource) const {
   if (STI.isRV64()) {
-    BuildMI(MBB, Position, DL, get(RISCV::ADDI64), DestinationRegister)
-      .addReg(SourceRegister, getKillRegState(KillSource))
-      .addImm(0);
+    if (RISCV::GPRRegClass.contains(DestinationRegister)) {
+      BuildMI(MBB, Position, DL, get(RISCV::ADDIW), DestinationRegister)
+        .addReg(SourceRegister, getKillRegState(KillSource))
+        .addImm(0);
+    } else {
+      BuildMI(MBB, Position, DL, get(RISCV::ADDI64), DestinationRegister)
+        .addReg(SourceRegister, getKillRegState(KillSource))
+        .addImm(0);
+    }
   } else {
     BuildMI(MBB, Position, DL, get(RISCV::ADDI), DestinationRegister)
       .addReg(SourceRegister, getKillRegState(KillSource))

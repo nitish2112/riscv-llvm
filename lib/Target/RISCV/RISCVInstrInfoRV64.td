@@ -80,6 +80,7 @@ def LUI64 : FU<0b0110111, (outs GPR64:$rd), (ins imm64sxu20:$imm20),
 def : RV64Pat<(imm64sx12:$imm), (ADDI64 X0_64, imm64sx12:$imm)>;
 
 // 32-bit immediate
+def : RV64Pat<(i32 imm:$imm), (ADDIW (LUI (HI20 imm:$imm)), (LO12Sext imm:$imm))>;
 def : RV64Pat<(imm64sxu32:$imm), (ADDI64 (LUI64 (HI20I64 imm:$imm)), (LO12SextI64 imm:$imm))>;
 // negative 32-bit immediate
 def : RV64Pat<(imm64sx32:$imm), (ADDI64 (LUI64 (HI20I64 imm:$imm)), (LO12SextI64 imm:$imm))>;

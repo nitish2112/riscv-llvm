@@ -242,7 +242,7 @@ let isReturn=1, isTerminator=1, isBarrier=1 in {
 def :Pat<(i32 (trunc GPR64:$src)), (ADDIW (EXTRACT_SUBREG GPR64:$src, sub_32), 0)>;
 
 // Extension patterns
-def : Pat<(i64 (zext GPR:$val)), (SUBREG_TO_REG (i64 0), GPR:$val, sub_32)>;
+def : Pat<(i64 (zext GPR:$val)), (SRLI64 (SLLI64 (SUBREG_TO_REG (i64 0), GPR:$val, sub_32), 32), 32)>;
 def : Pat<(i64 (sext GPR:$val)), (SUBREG_TO_REG (i64 0), GPR:$val, sub_32)>;
 def : Pat<(i64 (anyext GPR:$val)), (SUBREG_TO_REG (i64 0), GPR:$val, sub_32)>;
 

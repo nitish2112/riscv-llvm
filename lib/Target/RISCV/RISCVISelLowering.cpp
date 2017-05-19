@@ -1406,10 +1406,40 @@ RISCVTargetLowering::LowerCall(CallLoweringInfo &CLI,
 
   // Copy all of the result registers out of their specified physreg.
   for (unsigned I = 0; I != RVLocs.size(); ++I) {
-    Chain = DAG.getCopyFromReg(Chain, DL, RVLocs[I].getLocReg(),
-                               RVLocs[I].getValVT(), InFlag).getValue(1);
-    InFlag = Chain.getValue(2);
-    InVals.push_back(Chain.getValue(0));
+    CCValAssign &VA = RVLocs[I];
+    SDValue Val = DAG.getCopyFromReg(Chain, DL, VA.getLocReg(),
+                                     VA.getLocVT(), InFlag);
+    Chain = Val.getValue(1);
+    InFlag = Val.getValue(2);
+
+    // Generate extension node for getting i32 return value from X10_64
+    switch (VA.getLocInfo()) {
+    default:
+      llvm_unreachable("Unknown loc info!");
+    case CCValAssign::Full:
+      break;
+    case CCValAssign::BCvt:
+      Val = DAG.getNode(ISD::BITCAST, DL, VA.getValVT(), Val);
+      break;
+    case CCValAssign::AExt:
+    case CCValAssign::AExtUpper:
+      Val = DAG.getNode(ISD::TRUNCATE, DL, VA.getValVT(), Val);
+      break;
+    case CCValAssign::ZExt:
+    case CCValAssign::ZExtUpper:
+      Val = DAG.getNode(ISD::AssertZext, DL, VA.getLocVT(), Val,
+                        DAG.getValueType(VA.getValVT()));
+      Val = DAG.getNode(ISD::TRUNCATE, DL, VA.getValVT(), Val);
+      break;
+    case CCValAssign::SExt:
+    case CCValAssign::SExtUpper:
+      Val = DAG.getNode(ISD::AssertSext, DL, VA.getLocVT(), Val,
+                        DAG.getValueType(VA.getValVT()));
+      Val = DAG.getNode(ISD::TRUNCATE, DL, VA.getValVT(), Val);
+      break;
+    }
+
+    InVals.push_back(Val);
   }
 
   return Chain;

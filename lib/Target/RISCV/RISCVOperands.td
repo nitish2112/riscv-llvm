@@ -127,14 +127,14 @@ def imm64sxu20 : Immediate<i64, [{
   return isUInt<20>(N->getSExtValue());
 }], NOOP_SDNodeXForm, "U20Imm">;
 
-//sign-extended 32bit immediate for LUI/ADDI
+//sign-extended 32bit immediate for LUI/ADDIW
 def imm64sxu32 : Immediate<i64, [{
   return isUInt<32>(N->getSExtValue());
 }], NOOP_SDNodeXForm, "U32Imm">;
 
 //sign-extended 32bit immediate for LUI/ADDI
 def imm64sx32 : Immediate<i64, [{
-  return isInt<32>(N->getSExtValue() && (N->getSExtValue() < 0));
+  return isInt<32>(N->getSExtValue()) && (N->getSExtValue() < 0);
 }], NOOP_SDNodeXForm, "U32Imm">;
 
 //===----------------------------------------------------------------------===//

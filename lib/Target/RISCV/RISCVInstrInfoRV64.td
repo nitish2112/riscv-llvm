@@ -81,7 +81,9 @@ def : RV64Pat<(imm64sx12:$imm), (ADDI64 X0_64, imm64sx12:$imm)>;
 
 // 32-bit immediate
 def : RV64Pat<(i32 imm:$imm), (ADDIW (LUI (HI20 imm:$imm)), (LO12Sext imm:$imm))>;
-def : RV64Pat<(imm64sxu32:$imm), (ADDI64 (LUI64 (HI20I64 imm:$imm)), (LO12SextI64 imm:$imm))>;
+// Use LUI/ADDIW to generate unsigned 32-bit immedate for riscv64
+// Because LUI will do signed extension, we need ADDIW to get what we want.
+def : RV64Pat<(imm64sxu32:$imm), (SUBREG_TO_REG (i64 0), (ADDIW (EXTRACT_SUBREG (LUI64 (HI20I64 imm:$imm)), sub_32), (LO12Sext imm:$imm)), sub_32)>;
 // negative 32-bit immediate
 def : RV64Pat<(imm64sx32:$imm), (ADDI64 (LUI64 (HI20I64 imm:$imm)), (LO12SextI64 imm:$imm))>;
 

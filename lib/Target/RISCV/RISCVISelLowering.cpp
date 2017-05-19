@@ -1450,10 +1450,38 @@ RISCVTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
 
   // Copy the result values into the output registers.
   for (unsigned i = 0, e = RVLocs.size(); i < e; ++i) {
+    SDValue Val = OutVals[i];
     CCValAssign &VA = RVLocs[i];
     assert(VA.isRegLoc() && "Can only return in registers!");
 
-    Chain = DAG.getCopyToReg(Chain, DL, VA.getLocReg(), OutVals[i], Flag);
+    // Return i32 type by X10_64 for riscv64,
+    // we need to promote the value to i64 first.
+    switch (VA.getLocInfo()) {
+    default:
+      llvm_unreachable("Unknown loc info!");
+    case CCValAssign::Full:
+      break;
+    case CCValAssign::BCvt:
+      Val = DAG.getNode(ISD::BITCAST, DL, VA.getLocVT(), Val);
+      break;
+    case CCValAssign::AExtUpper:
+      LLVM_FALLTHROUGH;
+    case CCValAssign::AExt:
+      Val = DAG.getNode(ISD::ANY_EXTEND, DL, VA.getLocVT(), Val);
+      break;
+    case CCValAssign::ZExtUpper:
+      LLVM_FALLTHROUGH;
+    case CCValAssign::ZExt:
+      Val = DAG.getNode(ISD::ZERO_EXTEND, DL, VA.getLocVT(), Val);
+      break;
+    case CCValAssign::SExtUpper:
+      LLVM_FALLTHROUGH;
+    case CCValAssign::SExt:
+      Val = DAG.getNode(ISD::SIGN_EXTEND, DL, VA.getLocVT(), Val);
+      break;
+    }
+
+    Chain = DAG.getCopyToReg(Chain, DL, VA.getLocReg(), Val, Flag);
 
     // Guarantee that all emitted copies are stuck together
     Flag = Chain.getValue(1);

@@ -102,7 +102,7 @@ let Namespace = "RISCV" in {
   def X23_64  : RISCV64GPRReg< 23, "s7",   [X23_32]>, DwarfRegNum<[23]>;
   def X24_64  : RISCV64GPRReg< 24, "s8",   [X24_32]>, DwarfRegNum<[24]>;
   def X25_64  : RISCV64GPRReg< 25, "s9",   [X25_32]>, DwarfRegNum<[25]>;
-  def X26_64  : RISCV64GPRReg< 26, "x10",  [X26_32]>, DwarfRegNum<[26]>;
+  def X26_64  : RISCV64GPRReg< 26, "s10",  [X26_32]>, DwarfRegNum<[26]>;
   def X27_64  : RISCV64GPRReg< 27, "s11",  [X27_32]>, DwarfRegNum<[27]>;
   def X28_64  : RISCV64GPRReg< 28, "t3",   [X28_32]>, DwarfRegNum<[28]>;
   def X29_64  : RISCV64GPRReg< 29, "t4",   [X29_32]>, DwarfRegNum<[29]>;

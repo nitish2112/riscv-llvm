@@ -7,6 +7,8 @@ tablegen(LLVM RISCVGenAsmWriter.inc -gen-asm-writer)
 tablegen(LLVM RISCVGenCallingConv.inc -gen-callingconv)
 tablegen(LLVM RISCVGenDAGISel.inc -gen-dag-isel)
 tablegen(LLVM RISCVGenSubtargetInfo.inc -gen-subtarget)
+tablegen(LLVM RISCVGenAsmMatcher.inc -gen-asm-matcher)
+tablegen(LLVM RISCVGenMCCodeEmitter.inc -gen-emitter)
 tablegen(LLVM RISCVGenDisassemblerTables.inc -gen-disassembler)
 
 add_public_tablegen_target(RISCVCommonTableGen)

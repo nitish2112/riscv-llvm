@@ -17,6 +17,7 @@ def REM   : ALU_rr<0b0000001, 0b110, "rem",  srem>, Requires<[IsRV32, HasM]>;
 def REMU  : ALU_rr<0b0000001, 0b111, "remu", urem>, Requires<[IsRV32, HasM]>;
 
 //RV64
+let DecoderNamespace = "RISCV64_" in {
 def MUL64    : ALU64_rr<0b0000001, 0b000, "mul",   mul>,   Requires<[IsRV64, HasM]>;
 def MULH64   : ALU64_rr<0b0000001, 0b001, "mulh",  mulhs>, Requires<[IsRV64, HasM]>;
 def MULHU64  : ALU64_rr<0b0000001, 0b011, "mulhu", mulhu>, Requires<[IsRV64, HasM]>;
@@ -30,6 +31,7 @@ def DIVW  : ALUW_rr<0b0000001, 0b100, "divw",  sdiv>, Requires<[IsRV64, HasM]>;
 def DIVUW : ALUW_rr<0b0000001, 0b101, "divuw", udiv>, Requires<[IsRV64, HasM]>;
 def REMW  : ALUW_rr<0b0000001, 0b110, "remw",  srem>, Requires<[IsRV64, HasM]>;
 def REMUW : ALUW_rr<0b0000001, 0b111, "remuw", urem>, Requires<[IsRV64, HasM]>;
+} // End of DecoderNamespace
 
 //TODO: no corresponding llvm ir instruction
 //def MULHSU : ALU64_rr<0b0000001, 0b010, "mulh", mulhs>, Requires<[IsRV64, HasM]>;

@@ -58,8 +58,10 @@ class SLT_rr<bits<7> funct7, bits<3> funct3, string OpcodeStr, SDPatternOperator
       FR<funct7, funct3, 0b0110011, (outs GPR:$rd), (ins GPR64:$rs1, GPR64:$rs2),
          OpcodeStr#"\t$rd, $rs1, $rs2", [(set GPR:$rd, (OpNode GPR64:$rs1, GPR64:$rs2))]>;
 
+let DecoderNamespace = "NO_DECODE_MATCH" in {
 def SLT32  : SLT_rr<0b0000000, 0b010, "slt",  setlt>,  Requires<[IsRV64]>;
 def SLTU32 : SLT_rr<0b0000000, 0b011, "sltu", setult>, Requires<[IsRV64]>;
+} // End of DecoderNamespace
 
 class ALU64_ri<bits<3> funct3, string OpcodeStr, SDPatternOperator OpNode> :
       FI<funct3, 0b0010011, (outs GPR64:$rd), (ins GPR64:$rs1, imm64sx12:$imm12),
@@ -79,8 +81,10 @@ class SLT_ri<bits<3> funct3, string OpcodeStr, SDPatternOperator OpNode> :
       FI<funct3, 0b0010011, (outs GPR:$rd), (ins GPR64:$rs1, imm64sx12:$imm12),
          OpcodeStr#"\t$rd, $rs1, $imm12", [(set GPR:$rd, (OpNode GPR64:$rs1, imm64sx12:$imm12))]>;
 
+let DecoderNamespace = "NO_DECODE_MATCH" in {
 def SLTI32 : SLT_ri<0b010, "slti",  setlt>,  Requires<[IsRV64]>;
 def SLTIU32: SLT_ri<0b011, "sltiu", setult>, Requires<[IsRV64]>;
+} // End of DecoderNamespace
 
 let DecoderNamespace = "RISCV64_" in {
 def LUI64 : FU<0b0110111, (outs GPR64:$rd), (ins imm64sxu20:$imm20),

@@ -135,11 +135,6 @@ def : Pat<(sra GPR64:$rt, (i32 (trunc GPR64:$rs))),
 let mayLoad = 1 in {
   def LWU : InstLoad <"lwu" , 0b0000011, 0b110, zextloadi32,  GPR64>, Requires<[IsRV64]>;
   def LD  : InstLoad <"ld"  , 0b0000011, 0b011, load,  GPR64>, Requires<[IsRV64]>;
-  def LW64_32 : InstLoad <"lw" , 0b0000011, 0b010, load, GPR>, Requires<[IsRV64]>;
-  def LH64_32 : InstLoad <"lh" , 0b0000011, 0b001, sextloadi16, GPR>, Requires<[IsRV64]>;
-  def LHU64_32: InstLoad <"lhu", 0b0000011, 0b101, zextloadi16, GPR>, Requires<[IsRV64]>;
-  def LB64_32 : InstLoad <"lb" , 0b0000011, 0b000, sextloadi8, GPR>, Requires<[IsRV64]>;
-  def LBU64_32: InstLoad <"lbu", 0b0000011, 0b100, zextloadi8, GPR>, Requires<[IsRV64]>;
   def LW64 : InstLoad <"lw" , 0b0000011, 0b010, sextloadi32, GPR64>, Requires<[IsRV64]>;
   def LH64 : InstLoad <"lh" , 0b0000011, 0b001, sextloadi16, GPR64>, Requires<[IsRV64]>;
   def LHU64: InstLoad <"lhu", 0b0000011, 0b101, zextloadi16, GPR64>, Requires<[IsRV64]>;
@@ -148,28 +143,19 @@ let mayLoad = 1 in {
 }
 //extended loads
 def : Pat<(i64 (extloadi1  addr_reg_imm12s:$addr)), (LBU64 addr_reg_imm12s:$addr)>;
-def : Pat<(i32 (extloadi1  addr_reg_imm12s:$addr)), (LBU64_32 addr_reg_imm12s:$addr)>;
 def : Pat<(extloadi1  addr_reg_imm12s:$addr), (LBU64 addr_reg_imm12s:$addr)>;
 def : Pat<(i64 (extloadi8  addr_reg_imm12s:$addr)), (LBU64 addr_reg_imm12s:$addr)>;
-def : Pat<(i32 (extloadi8  addr_reg_imm12s:$addr)), (LBU64_32 addr_reg_imm12s:$addr)>;
 def : Pat<(extloadi8  addr_reg_imm12s:$addr), (LBU64 addr_reg_imm12s:$addr)>;
 def : Pat<(i64 (extloadi16 addr_reg_imm12s:$addr)), (LHU64 addr_reg_imm12s:$addr)>;
-def : Pat<(i32 (extloadi16 addr_reg_imm12s:$addr)), (LHU64_32 addr_reg_imm12s:$addr)>;
 def : Pat<(extloadi16 addr_reg_imm12s:$addr), (LHU64 addr_reg_imm12s:$addr)>;
 def : Pat<(i64 (extloadi32 addr_reg_imm12s:$addr)), (LW64   addr_reg_imm12s:$addr)>;
 def : Pat<(extloadi32 addr_reg_imm12s:$addr), (LW64   addr_reg_imm12s:$addr)>;
-//def : RV64Pat<(i32 (extloadi1  addr_reg_imm12s:$addr)), (LBU64_32 addr_reg_imm12s:$addr)>;
-def : RV64Pat<(i32 (extloadi8  addr_reg_imm12s:$addr)), (LBU64_32 addr_reg_imm12s:$addr)>;
-//def : RV64Pat<(i32 (extloadi16 addr_reg_imm12s:$addr)), (LHU64_32 addr_reg_imm12s:$addr)>;
 
 let mayStore = 1 in {
   def SD : InstStore <"sd"  , 0b0100011, 0b011, store, GPR64>, Requires<[IsRV64]>;
   def SW64 : InstStore<"sw" , 0b0100011, 0b010, truncstorei32, GPR64>, Requires<[IsRV64]>;
   def SH64 : InstStore<"sh" , 0b0100011, 0b001, truncstorei16, GPR64>, Requires<[IsRV64]>;
   def SB64 : InstStore<"sb" , 0b0100011, 0b000, truncstorei8 , GPR64>, Requires<[IsRV64]>;
-  def SW64_32 : InstStore<"sw" , 0b0100011, 0b010, store, GPR>, Requires<[IsRV64]>;
-  def SH64_32 : InstStore<"sh" , 0b0100011, 0b001, truncstorei16, GPR>, Requires<[IsRV64]>;
-  def SB64_32 : InstStore<"sb" , 0b0100011, 0b000, truncstorei8 , GPR>, Requires<[IsRV64]>;
 }
 
 //===----------------------------------------------------------------------===//

@@ -39,6 +39,8 @@ class RISCVAsmParser : public MCTargetAsmParser {
                                uint64_t &ErrorInfo,
                                bool MatchingInlineAsm) override;
 
+  int matchCPURegisterName(StringRef Symbol);
+
   bool ParseRegister(unsigned &RegNo, SMLoc &StartLoc, SMLoc &EndLoc) override;
 
   bool ParseInstruction(ParseInstructionInfo &Info, StringRef Name,
@@ -139,6 +141,10 @@ public:
     return static_cast<const MCConstantExpr *>(Val)->getValue();
   }
 
+  bool isGPRAsmReg() const {
+    return isReg();
+  }
+
   // Predicate methods for AsmOperands defined in RISCVInstrInfo.td
 
   bool isUImm4() const {
@@ -150,7 +156,7 @@ public:
   }
 
   bool isS12Imm() const {
-    isSImm12();
+    return isSImm12();
   }
 
   bool isSImm12() const {
@@ -371,6 +377,47 @@ bool RISCVAsmParser::MatchAndEmitInstruction(SMLoc IDLoc, unsigned &Opcode,
   llvm_unreachable("Unknown match type detected!");
 }
 
+int RISCVAsmParser::matchCPURegisterName(StringRef Name) {
+  int CC;
+
+  CC = StringSwitch<unsigned>(Name)
+           .Case("zero",  0)
+           .Case("ra",  1)
+           .Case("sp",  2)
+           .Case("gp",  3)
+           .Case("tp",  4)
+           .Case("t0",  5)
+           .Case("t1",  6)
+           .Case("t2",  7)
+           .Case("s0",  8)
+           .Case("s1",  9)
+           .Case("a0",10)
+           .Case("a1",11)
+           .Case("a2",12)
+           .Case("a3",13)
+           .Case("a4",14)
+           .Case("a5",15)
+           .Case("a6",16)
+           .Case("a7",17)
+           .Case("s2",18)
+           .Case("s3",19)
+           .Case("s4",20)
+           .Case("s5",21)
+           .Case("s6",22)
+           .Case("s7",23)
+           .Case("s8",24)
+           .Case("s9",25)
+           .Case("s10",26)
+           .Case("s11",27)
+           .Case("t3", 28)
+           .Case("t4", 29)
+           .Case("t5", 30)
+           .Case("t6", 31)
+           .Default(-1);
+
+  return CC;
+}
+
 bool RISCVAsmParser::ParseRegister(unsigned &RegNo, SMLoc &StartLoc,
                                    SMLoc &EndLoc) {
   const AsmToken &Tok = getParser().getTok();
@@ -379,7 +426,7 @@ bool RISCVAsmParser::ParseRegister(unsigned &RegNo, SMLoc &StartLoc,
   RegNo = 0;
   StringRef Name = getLexer().getTok().getIdentifier();
 
-  if (!MatchRegisterName(Name) || !MatchRegisterAltName(Name)) {
+  if (matchCPURegisterName(Name) < 0) {
     getParser().Lex(); // Eat identifier token.
     return false;
   }
@@ -396,10 +443,8 @@ OperandMatchResultTy RISCVAsmParser::parseRegister(OperandVector &Operands) {
     return MatchOperand_NoMatch;
   case AsmToken::Identifier:
     StringRef Name = getLexer().getTok().getIdentifier();
-    unsigned RegNo = MatchRegisterName(Name);
-    if (RegNo == 0) {
-      RegNo = MatchRegisterAltName(Name);
-      if (RegNo == 0)
+    int RegNo = matchCPURegisterName(Name);
+    if (RegNo < 0) {
         return MatchOperand_NoMatch;
     }
     getLexer().Lex();

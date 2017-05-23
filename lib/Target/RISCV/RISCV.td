@@ -56,7 +56,7 @@ def : ProcessorModel<"generic-rv32", NoSchedModel, []>;
 def : ProcessorModel<"generic-rv64", NoSchedModel, [FeatureRV64]>;
 
 def RISCVAsmParser : AsmParser {
-  let ShouldEmitMatchRegisterAltName = 1;
+  let ShouldEmitMatchRegisterName = 0;
 }
 
 def RISCV : Target {

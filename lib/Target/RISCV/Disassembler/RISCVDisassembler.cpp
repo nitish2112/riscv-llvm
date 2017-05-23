@@ -34,6 +34,8 @@ public:
   RISCVDisassembler(const MCSubtargetInfo &STI, MCContext &Ctx)
       : MCDisassembler(STI, Ctx) {}
 
+  bool isRV64() const { return STI.getFeatureBits()[RISCV::FeatureRV64]; }
+
   DecodeStatus getInstruction(MCInst &Instr, uint64_t &Size,
                               ArrayRef<uint8_t> Bytes, uint64_t Address,
                               raw_ostream &VStream,
@@ -53,6 +55,12 @@ extern "C" void LLVMInitializeRISCVDisassembler() {
                                          createRISCVDisassembler);
   TargetRegistry::RegisterMCDisassembler(getTheRISCV64Target(),
                                          createRISCVDisassembler);
+}
+
+static unsigned getReg(const void *D, unsigned RC, unsigned RegNo) {
+  const RISCVDisassembler *Dis = static_cast<const RISCVDisassembler*>(D);
+  const MCRegisterInfo *RegInfo = Dis->getContext().getRegisterInfo();
+  return *(RegInfo->getRegClass(RC).begin() + RegNo);
 }
 
 static const unsigned GPRDecoderTable[] = {
@@ -79,6 +87,18 @@ static DecodeStatus DecodeGPRRegisterClass(MCInst &Inst, uint64_t RegNo,
    unsigned Reg = GPRDecoderTable[RegNo];
    Inst.addOperand(MCOperand::createReg(Reg));
    return MCDisassembler::Success;
+}
+
+static DecodeStatus DecodeGPR64RegisterClass(MCInst &Inst,
+                                             unsigned RegNo,
+                                             uint64_t Address,
+                                             const void *Decoder) {
+  if (RegNo > 31)
+    return MCDisassembler::Fail;
+
+  unsigned Reg = getReg(Decoder, RISCV::GPR64RegClassID, RegNo);
+  Inst.addOperand(MCOperand::createReg(Reg));
+  return MCDisassembler::Success;
 }
 
 template <unsigned N>
@@ -131,5 +151,8 @@ DecodeStatus RISCVDisassembler::getInstruction(MCInst &MI, uint64_t &Size,
   // Get the four bytes of the instruction.
   uint32_t Inst = support::endian::read32le(Bytes.data());
 
-  return decodeInstruction(DecoderTable32, MI, Inst, Address, this, STI);
+  if (isRV64())
+    return decodeInstruction(DecoderTableRISCV64_32, MI, Inst, Address, this, STI);
+  else
+    return decodeInstruction(DecoderTable32, MI, Inst, Address, this, STI);
 }

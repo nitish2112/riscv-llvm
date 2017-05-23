@@ -7,6 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+let DecoderNamespace = "RISCV64_" in {
 class ALUW_rr<bits<7> funct7, bits<3> funct3, string OpcodeStr, SDPatternOperator OpNode> :
       FR<funct7, funct3, 0b0111011, (outs GPR:$rd), (ins GPR:$rs1, GPR:$rs2),
          OpcodeStr#"\t$rd, $rs1, $rs2", [(set GPR:$rd, (OpNode GPR:$rs1, GPR:$rs2))]>;
@@ -16,19 +17,22 @@ def SUBW  : ALUW_rr<0b0100000, 0b000, "subw", sub>, Requires<[IsRV64]>;
 def SLLW  : ALUW_rr<0b0000000, 0b001, "sllw", shl>, Requires<[IsRV64]>;
 def SRLW  : ALUW_rr<0b0000000, 0b101, "srlw", srl>, Requires<[IsRV64]>;
 def SRAW  : ALUW_rr<0b0100000, 0b101, "sraw", sra>, Requires<[IsRV64]>;
-
+} // End of DecoderNamespace
 
 class ALUW_ri<bits<3> funct3, string OpcodeStr, SDPatternOperator OpNode> :
       FI<funct3, 0b0011011, (outs GPR:$rd), (ins GPR:$rs1, simm12:$imm12),
          OpcodeStr#"\t$rd, $rs1, $imm12", [(set GPR:$rd, (OpNode GPR:$rs1, simm12:$imm12))]>;
 
 //Integer arithmetic register-immediate
+let DecoderNamespace = "RISCV64_" in {
 def ADDIW  : ALUW_ri<0b101, "addiw", add>, Requires<[IsRV64]>;
+} // End of DecoderNamespace
 
 class ALU64_rr<bits<7> funct7, bits<3> funct3, string OpcodeStr, SDPatternOperator OpNode> :
       FR<funct7, funct3, 0b0110011, (outs GPR64:$rd), (ins GPR64:$rs1, GPR64:$rs2),
          OpcodeStr#"\t$rd, $rs1, $rs2", [(set GPR64:$rd, (OpNode GPR64:$rs1, GPR64:$rs2))]>;
 
+let DecoderNamespace = "RISCV64_" in {
 //Standard instructions operating on 64bit values
 //Integer arithmetic register-register
 def ADD64  : ALU64_rr<0b0000000, 0b000, "add", add>, Requires<[IsRV64]>;
@@ -38,14 +42,17 @@ def OR64   : ALU64_rr<0b0000000, 0b110, "or" , or>,  Requires<[IsRV64]>;
 def AND64  : ALU64_rr<0b0000000, 0b111, "and", and>, Requires<[IsRV64]>;
 def SLT64  : ALU64_rr<0b0000000, 0b010, "slt",  setlt>,  Requires<[IsRV64]>;
 def SLTU64 : ALU64_rr<0b0000000, 0b011, "sltu", setult>, Requires<[IsRV64]>;
+} // End of DecoderNamespace
 
 class SHIFT64_rr<bits<7> funct7, bits<3> funct3, string OpcodeStr, SDPatternOperator OpNode> :
       FR<funct7, funct3, 0b0110011, (outs GPR64:$rd), (ins GPR64:$rs1, GPR:$rs2),
          OpcodeStr#"\t$rd, $rs1, $rs2", [(set GPR64:$rd, (OpNode GPR64:$rs1, GPR:$rs2))]>;
 
+let DecoderNamespace = "RISCV64_" in {
 def SLL64  : SHIFT64_rr<0b0000000, 0b001, "sll", shl>, Requires<[IsRV64]>;
 def SRL64  : SHIFT64_rr<0b0000000, 0b101, "srl", srl>, Requires<[IsRV64]>;
 def SRA64  : SHIFT64_rr<0b0100000, 0b101, "sra", sra>, Requires<[IsRV64]>;
+} // End of DecoderNamespace
 
 class SLT_rr<bits<7> funct7, bits<3> funct3, string OpcodeStr, SDPatternOperator OpNode> :
       FR<funct7, funct3, 0b0110011, (outs GPR:$rd), (ins GPR64:$rs1, GPR64:$rs2),
@@ -58,6 +65,7 @@ class ALU64_ri<bits<3> funct3, string OpcodeStr, SDPatternOperator OpNode> :
       FI<funct3, 0b0010011, (outs GPR64:$rd), (ins GPR64:$rs1, imm64sx12:$imm12),
          OpcodeStr#"\t$rd, $rs1, $imm12", [(set GPR64:$rd, (OpNode GPR64:$rs1, imm64sx12:$imm12))]>;
 
+let DecoderNamespace = "RISCV64_" in {
 //Integer arithmetic register-immediate
 def ADDI64: ALU64_ri<0b000, "addi", add>, Requires<[IsRV64]>;
 def XORI64: ALU64_ri<0b100, "xori", xor>, Requires<[IsRV64]>;
@@ -65,6 +73,7 @@ def ORI64 : ALU64_ri<0b110,  "ori",  or>, Requires<[IsRV64]>;
 def ANDI64: ALU64_ri<0b111, "andi", and>, Requires<[IsRV64]>;
 def SLTI64 : ALU64_ri<0b010, "slti",  setlt>,  Requires<[IsRV64]>;
 def SLTIU64: ALU64_ri<0b011, "sltiu", setult>, Requires<[IsRV64]>;
+} // End of DecoderNamespace
 
 class SLT_ri<bits<3> funct3, string OpcodeStr, SDPatternOperator OpNode> :
       FI<funct3, 0b0010011, (outs GPR:$rd), (ins GPR64:$rs1, imm64sx12:$imm12),
@@ -73,8 +82,10 @@ class SLT_ri<bits<3> funct3, string OpcodeStr, SDPatternOperator OpNode> :
 def SLTI32 : SLT_ri<0b010, "slti",  setlt>,  Requires<[IsRV64]>;
 def SLTIU32: SLT_ri<0b011, "sltiu", setult>, Requires<[IsRV64]>;
 
+let DecoderNamespace = "RISCV64_" in {
 def LUI64 : FU<0b0110111, (outs GPR64:$rd), (ins imm64sxu20:$imm20),
                "lui\t$rd, $imm20", []>;
+} // End of DecoderNamespace
 
 // signed 12-bit immediate
 def : RV64Pat<(imm64sx12:$imm), (ADDI64 X0_64, imm64sx12:$imm)>;
@@ -108,17 +119,21 @@ class SHIFT64_ri<bit arithshift, bits<3> funct3, string OpcodeStr, SDPatternOper
       FI32Shift<arithshift, funct3, 0b0010011, (outs GPR64:$rd), (ins GPR64:$rs1, uimm5:$shamt),
          OpcodeStr#"\t$rd, $rs1, $shamt", [(set GPR64:$rd, (OpNode GPR64:$rs1, uimm5:$shamt))]>;
 
+let DecoderNamespace = "RISCV64_" in {
 def SLLI64: SHIFT64_ri<0, 0b001 , "slli", shl>, Requires<[IsRV64]>;
 def SRLI64: SHIFT64_ri<0, 0b101 , "srli", srl>, Requires<[IsRV64]>;
 def SRAI64: SHIFT64_ri<1, 0b101 , "srai", sra>, Requires<[IsRV64]>;
+} // End of DecoderNamespace
 
 class SHIFTW_ri<bit arithshift, bits<3> funct3, string OpcodeStr, SDPatternOperator OpNode> :
       FI32Shift<arithshift, funct3, 0b0011011, (outs GPR:$rd), (ins GPR:$rs1, uimm5:$shamt),
          OpcodeStr#"\t$rd, $rs1, $shamt", [(set GPR:$rd, (OpNode GPR:$rs1, uimm5:$shamt))]>;
 
+let DecoderNamespace = "RISCV64_" in {
 def SLLIW: SHIFTW_ri<0, 0b001 , "slliw", shl>, Requires<[IsRV64]>;
 def SRLIW: SHIFTW_ri<0, 0b101 , "srliw", srl>, Requires<[IsRV64]>;
 def SRAIW: SHIFTW_ri<1, 0b101 , "sraiw", sra>, Requires<[IsRV64]>;
+} // End of DecoderNamespace
 
 // variable shift instructions patterns
 def : Pat<(shl GPR64:$rt, (i32 (trunc GPR64:$rs))),
@@ -132,7 +147,7 @@ def : Pat<(sra GPR64:$rt, (i32 (trunc GPR64:$rs))),
 // Load and Store Instructions
 //===----------------------------------------------------------------------===//
 
-let mayLoad = 1 in {
+let mayLoad = 1, DecoderNamespace = "RISCV64_" in {
   def LWU : InstLoad <"lwu" , 0b0000011, 0b110, zextloadi32,  GPR64>, Requires<[IsRV64]>;
   def LD  : InstLoad <"ld"  , 0b0000011, 0b011, load,  GPR64>, Requires<[IsRV64]>;
   def LW64 : InstLoad <"lw" , 0b0000011, 0b010, sextloadi32, GPR64>, Requires<[IsRV64]>;
@@ -151,7 +166,7 @@ def : Pat<(extloadi16 addr_reg_imm12s:$addr), (LHU64 addr_reg_imm12s:$addr)>;
 def : Pat<(i64 (extloadi32 addr_reg_imm12s:$addr)), (LW64   addr_reg_imm12s:$addr)>;
 def : Pat<(extloadi32 addr_reg_imm12s:$addr), (LW64   addr_reg_imm12s:$addr)>;
 
-let mayStore = 1 in {
+let mayStore = 1, DecoderNamespace = "RISCV64_" in {
   def SD : InstStore <"sd"  , 0b0100011, 0b011, store, GPR64>, Requires<[IsRV64]>;
   def SW64 : InstStore<"sw" , 0b0100011, 0b010, truncstorei32, GPR64>, Requires<[IsRV64]>;
   def SH64 : InstStore<"sh" , 0b0100011, 0b001, truncstorei16, GPR64>, Requires<[IsRV64]>;
@@ -162,24 +177,25 @@ let mayStore = 1 in {
 // Branch and Call Instructions
 //===----------------------------------------------------------------------===//
 
-let isCall=1 in {
+let isCall=1, DecoderNamespace = "RISCV64_" in {
 def JAL64 : FUJ<0b1101111, (outs GPR64:$rd), (ins simm21_lsb0:$imm20),
                 "jal\t$rd, $imm20", []>;
 }
 
-let isBranch = 1, isTerminator=1, isBarrier=1 in {
+let isBranch = 1, isTerminator=1, isBarrier=1, DecoderNamespace = "RISCV64_" in {
 def PseudoBR64 : Pseudo<(outs), (ins simm21_lsb0:$imm20), [(br bb:$imm20)]>,
                  PseudoInstExpansion<(JAL64 X0_64, simm21_lsb0:$imm20)>,
                  Requires<[IsRV64]>;
 }
 
-let isCall=1 in {
+let isCall=1, DecoderNamespace = "RISCV64_" in {
 def JALR64 : FI<0b000, 0b1100111, (outs GPR64:$rd),
                 (ins GPR64:$rs1, simm12:$imm12),
                 "jalr\t$rd, $rs1, $imm12", []>;
 }
 
-let isBranch = 1, isBarrier = 1, isTerminator = 1, isIndirectBranch = 1 in {
+let isBranch = 1, isBarrier = 1, isTerminator = 1, isIndirectBranch = 1,
+    DecoderNamespace = "RISCV64_" in {
   def PseudoBRIND64 : Pseudo<(outs), (ins GPR64:$rs1), [(brind GPR64:$rs1)]>,
                       PseudoInstExpansion<(JALR64 X0_64, GPR64:$rs1, 0)>,
                       Requires<[IsRV64]>;
@@ -194,12 +210,14 @@ class Bcc64<bits<3> funct3, string OpcodeStr, PatFrag CondOp> :
   let isTerminator = 1;
 }
 
+let DecoderNamespace = "RISCV64_" in {
 def BEQ64   : Bcc64<0b000, "beq", seteq>;
 def BNE64   : Bcc64<0b001, "bne", setne>;
 def BLT64   : Bcc64<0b100, "blt", setlt>;
 def BGE64   : Bcc64<0b101, "bge", setge>;
 def BLTU64  : Bcc64<0b110, "bltu", setult>;
 def BGEU64  : Bcc64<0b111, "bgeu", setuge>;
+} // End of DecoderNamespace
 
 class Bcc_SwapPat64<PatFrag CondOp, RISCVInst InstBcc> : Pat<
   (brcond (i32 (CondOp GPR64:$rs1, GPR64:$rs2)), bb:$imm12),

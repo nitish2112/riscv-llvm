@@ -49,6 +49,9 @@ RISCVTargetLowering::RISCVTargetLowering(const TargetMachine &TM,
   if(Subtarget->isRV64())
     addRegisterClass(MVT::i64,  &RISCV::GPR64RegClass);
 
+  LUI = Subtarget->isRV64() ? RISCV::LUI64 : RISCV::LUI;
+  ADDI = Subtarget->isRV64() ? RISCV::ADDI64 : RISCV::ADDI;
+
   // Compute derived properties from the register classes
   computeRegisterProperties(STI.getRegisterInfo());
 
@@ -327,9 +330,9 @@ SDValue RISCVTargetLowering::lowerGlobalAddress(SDValue Op,
         DAG.getTargetGlobalAddress(GV, DL, Ty, Offset, RISCVII::MO_HI);
     SDValue GALo =
         DAG.getTargetGlobalAddress(GV, DL, Ty, Offset, RISCVII::MO_LO);
-    SDValue MNHi = SDValue(DAG.getMachineNode(RISCV::LUI, DL, Ty, GAHi), 0);
+    SDValue MNHi = SDValue(DAG.getMachineNode(LUI, DL, Ty, GAHi), 0);
     SDValue MNLo =
-        SDValue(DAG.getMachineNode(RISCV::ADDI, DL, Ty, MNHi, GALo), 0);
+        SDValue(DAG.getMachineNode(ADDI, DL, Ty, MNHi, GALo), 0);
     return MNLo;
 //  } else {
 //    llvm_unreachable("Unable to lowerGlobalAddress");
@@ -348,9 +351,9 @@ SDValue RISCVTargetLowering::lowerBlockAddress(SDValue Op,
         DAG.getTargetBlockAddress(BA, Ty, 0, RISCVII::MO_HI);
     SDValue BALo =
         DAG.getTargetBlockAddress(BA, Ty, 0, RISCVII::MO_LO);
-    SDValue MNHi = SDValue(DAG.getMachineNode(RISCV::LUI, DL, Ty, BAHi), 0);
+    SDValue MNHi = SDValue(DAG.getMachineNode(LUI, DL, Ty, BAHi), 0);
     SDValue MNLo =
-        SDValue(DAG.getMachineNode(RISCV::ADDI, DL, Ty, MNHi, BALo), 0);
+        SDValue(DAG.getMachineNode(ADDI, DL, Ty, MNHi, BALo), 0);
     return MNLo;
 //  } else {
 //    llvm_unreachable("Unable to lowerBlockAddress");
@@ -369,9 +372,9 @@ SDValue RISCVTargetLowering::lowerExternalSymbol(SDValue Op,
 //  if (!isPositionIndependent()) {
     SDValue GAHi = DAG.getTargetExternalSymbol(Sym, Ty, RISCVII::MO_HI);
     SDValue GALo = DAG.getTargetExternalSymbol(Sym, Ty, RISCVII::MO_LO);
-    SDValue MNHi = SDValue(DAG.getMachineNode(RISCV::LUI, DL, Ty, GAHi), 0);
+    SDValue MNHi = SDValue(DAG.getMachineNode(LUI, DL, Ty, GAHi), 0);
     SDValue MNLo =
-        SDValue(DAG.getMachineNode(RISCV::ADDI, DL, Ty, MNHi, GALo), 0);
+        SDValue(DAG.getMachineNode(ADDI, DL, Ty, MNHi, GALo), 0);
     return MNLo;
 //  } else {
 //    llvm_unreachable("Unable to lowerExternalSymbol");
@@ -389,9 +392,9 @@ SDValue RISCVTargetLowering::lowerJumpTable(SDValue Op,
         DAG.getTargetJumpTable(N->getIndex(), Ty, RISCVII::MO_HI);
     SDValue GALo =
         DAG.getTargetJumpTable(N->getIndex(), Ty, RISCVII::MO_LO);
-    SDValue MNHi = SDValue(DAG.getMachineNode(RISCV::LUI, DL, Ty, GAHi), 0);
+    SDValue MNHi = SDValue(DAG.getMachineNode(LUI, DL, Ty, GAHi), 0);
     SDValue MNLo =
-        SDValue(DAG.getMachineNode(RISCV::ADDI, DL, Ty, MNHi, GALo), 0);
+        SDValue(DAG.getMachineNode(ADDI, DL, Ty, MNHi, GALo), 0);
     return MNLo;
 //  } else {
 //    llvm_unreachable("Unable to lowerGlobalAddress");
@@ -516,9 +519,9 @@ SDValue RISCVTargetLowering::LowerConstantPool(SDValue Op,
     SDValue Lo = DAG.getTargetConstantPool(C, MVT::i32, N->getAlignment(),
                                            N->getOffset(), OpFlagLo);
 
-    SDValue MNHi = SDValue(DAG.getMachineNode(RISCV::LUI, DL, Ty, Hi), 0);
+    SDValue MNHi = SDValue(DAG.getMachineNode(LUI, DL, Ty, Hi), 0);
     SDValue MNLo =
-        SDValue(DAG.getMachineNode(RISCV::ADDI, DL, Ty, MNHi, Lo), 0);
+        SDValue(DAG.getMachineNode(ADDI, DL, Ty, MNHi, Lo), 0);
     return MNLo;
 //  } else {
 //    llvm_unreachable("Unable to LowerConstantPool");

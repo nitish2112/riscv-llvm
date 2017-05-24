@@ -34,6 +34,7 @@ enum NodeType : unsigned {
 
 class RISCVTargetLowering : public TargetLowering {
   const RISCVSubtarget *Subtarget;
+  unsigned LUI, ADDI;
 
 public:
   explicit RISCVTargetLowering(const TargetMachine &TM, const RISCVSubtarget &STI);

@@ -317,3 +317,27 @@ int RISCVFrameLowering::getFrameIndexReference(const MachineFunction &MF,
 bool RISCVFrameLowering::hasReservedCallFrame(const MachineFunction &MF) const {
   return !MF.getFrameInfo().hasVarSizedObjects();
 }
+
+// Eliminate ADJCALLSTACKDOWN, ADJCALLSTACKUP pseudo instructions
+MachineBasicBlock::iterator RISCVFrameLowering::
+eliminateCallFramePseudoInstr(MachineFunction &MF, MachineBasicBlock &MBB,
+                              MachineBasicBlock::iterator I) const {
+  const RISCVSubtarget &STI = MF.getSubtarget<RISCVSubtarget>();
+  unsigned SP = STI.isRV64() ? RISCV::X2_64 : RISCV::X2_32;
+
+  if (!hasReservedCallFrame(MF)) {
+    // If we have alloca, convert as follows:
+    // ADJCALLSTACKDOWN -> sub, sp, sp, amount
+    // ADJCALLSTACKUP   -> add, sp, sp, amount
+    //
+    // To avoid alloca area poison by outgoing arguments.
+    // See the test case gcc.dg/pr31507-1.c.
+    int64_t Amount = I->getOperand(0).getImm();
+    if (I->getOpcode() == RISCV::ADJCALLSTACKDOWN)
+      Amount = -Amount;
+
+    STI.getInstrInfo()->adjustStackPtr(SP, Amount, MBB, I);
+  }
+
+  return MBB.erase(I);
+}

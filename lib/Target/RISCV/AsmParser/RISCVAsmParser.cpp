@@ -647,8 +647,10 @@ bool RISCVAsmParser::ParseInstruction(ParseInstructionInfo &Info,
   Operands.push_back(make_unique<RISCVOperand>(Name, NameLoc, NameLoc));
 
   // If there are no more operands, then finish
-  if (getLexer().is(AsmToken::EndOfStatement))
+  if (getLexer().is(AsmToken::EndOfStatement) || getLexer().is(AsmToken::Exclaim)) {
+    getParser().eatToEndOfStatement();
     return false;
+  }
 
   // Parse first operand
   if (parseOperand(Operands))
@@ -662,6 +664,11 @@ bool RISCVAsmParser::ParseInstruction(ParseInstructionInfo &Info,
     // Parse next operand
     if (parseOperand(Operands))
       return true;
+  }
+
+  if (getLexer().is(AsmToken::Exclaim)) {
+    getParser().eatToEndOfStatement();
+    return false;
   }
 
   if (getLexer().isNot(AsmToken::EndOfStatement)) {

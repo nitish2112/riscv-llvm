@@ -713,7 +713,10 @@ RISCVTargetLowering::getRegForInlineAsmConstraint(
     switch (Constraint[0]) {
     default: break;
     case 'r':   // GENERAL_REGS
-      return std::make_pair(0U, &RISCV::GPRRegClass);
+      if (Subtarget->isRV64())
+        return std::make_pair(0U, &RISCV::GPR64RegClass);
+      else
+        return std::make_pair(0U, &RISCV::GPRRegClass);
     }
   }
 

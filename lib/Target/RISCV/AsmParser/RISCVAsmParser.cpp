@@ -18,6 +18,8 @@
 #include "llvm/MC/MCSubtargetInfo.h"
 #include "llvm/MC/MCExpr.h"
 #include "llvm/MC/MCInst.h"
+#include "llvm/ADT/Optional.h"
+#include "llvm/ADT/None.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/StringSwitch.h"
 #include "llvm/Support/Casting.h"
@@ -39,7 +41,7 @@ class RISCVAsmParser : public MCTargetAsmParser {
                                uint64_t &ErrorInfo,
                                bool MatchingInlineAsm) override;
 
-  int matchCPURegisterName(StringRef Symbol);
+  Optional<unsigned> matchCPURegisterName(StringRef Symbol) const;
 
   bool ParseRegister(unsigned &RegNo, SMLoc &StartLoc, SMLoc &EndLoc) override;
 
@@ -52,10 +54,12 @@ class RISCVAsmParser : public MCTargetAsmParser {
 #define GET_ASSEMBLER_HEADER
 #include "RISCVGenAsmMatcher.inc"
 
-  OperandMatchResultTy parseImmediate(OperandVector &Operands);
-  OperandMatchResultTy parseRegister(OperandVector &Operands);
-  OperandMatchResultTy parseMemOpBaseReg(OperandVector &Operands);
-  OperandMatchResultTy parseOperandWithModifier(OperandVector &Operands);
+  bool parseLeftParen(bool report_error);
+  bool parseRightParen(bool report_error);
+  Optional<StringRef> peekIdentifier();
+  Optional<StringRef> parseIdentifier(bool report_error);
+  Optional<unsigned> parseRegister(bool report_error);
+  Optional<const MCExpr*> parseImmediate(bool report_error);
 
   bool parseOperand(OperandVector &Operands);
 
@@ -381,77 +385,77 @@ bool RISCVAsmParser::MatchAndEmitInstruction(SMLoc IDLoc, unsigned &Opcode,
   llvm_unreachable("Unknown match type detected!");
 }
 
-int RISCVAsmParser::matchCPURegisterName(StringRef Name) {
+Optional<unsigned> RISCVAsmParser::matchCPURegisterName(StringRef Name) const {
   if (getSTI().getFeatureBits()[RISCV::FeatureRV32]) {
-      return StringSwitch<unsigned>(Name)
-               .Cases("zero", "x0" , RISCV::X0_32 )
-               .Cases("ra"  , "x1" , RISCV::X1_32 )
-               .Cases("sp"  , "x2" , RISCV::X2_32 )
-               .Cases("gp"  , "x3" , RISCV::X3_32 )
-               .Cases("tp"  , "x4" , RISCV::X4_32 )
-               .Cases("t0"  , "x5" , RISCV::X5_32 )
-               .Cases("t1"  , "x6" , RISCV::X6_32 )
-               .Cases("t2"  , "x7" , RISCV::X7_32 )
-               .Cases("s0"  , "x8" , RISCV::X8_32 )
-               .Cases("s1"  , "x9" , RISCV::X9_32 )
-               .Cases("a0"  , "x10", RISCV::X10_32)
-               .Cases("a1"  , "x11", RISCV::X11_32)
-               .Cases("a2"  , "x12", RISCV::X12_32)
-               .Cases("a3"  , "x13", RISCV::X13_32)
-               .Cases("a4"  , "x14", RISCV::X14_32)
-               .Cases("a5"  , "x15", RISCV::X15_32)
-               .Cases("a6"  , "x16", RISCV::X16_32)
-               .Cases("a7"  , "x17", RISCV::X17_32)
-               .Cases("s2"  , "x18", RISCV::X18_32)
-               .Cases("s3"  , "x19", RISCV::X19_32)
-               .Cases("s4"  , "x20", RISCV::X20_32)
-               .Cases("s5"  , "x21", RISCV::X21_32)
-               .Cases("s6"  , "x22", RISCV::X22_32)
-               .Cases("s7"  , "x23", RISCV::X23_32)
-               .Cases("s8"  , "x24", RISCV::X24_32)
-               .Cases("s9"  , "x25", RISCV::X25_32)
-               .Cases("s10" , "x26", RISCV::X26_32)
-               .Cases("s11" , "x27", RISCV::X27_32)
-               .Cases("t3"  , "x28", RISCV::X28_32)
-               .Cases("t4"  , "x29", RISCV::X29_32)
-               .Cases("t5"  , "x30", RISCV::X30_32)
-               .Cases("t6"  , "x31", RISCV::X31_32)
-               .Default(-1);
+      return StringSwitch<Optional<unsigned>>(Name)
+               .Cases("zero", "x0" , Optional<unsigned>(RISCV::X0_32 ))
+               .Cases("ra"  , "x1" , Optional<unsigned>(RISCV::X1_32 ))
+               .Cases("sp"  , "x2" , Optional<unsigned>(RISCV::X2_32 ))
+               .Cases("gp"  , "x3" , Optional<unsigned>(RISCV::X3_32 ))
+               .Cases("tp"  , "x4" , Optional<unsigned>(RISCV::X4_32 ))
+               .Cases("t0"  , "x5" , Optional<unsigned>(RISCV::X5_32 ))
+               .Cases("t1"  , "x6" , Optional<unsigned>(RISCV::X6_32 ))
+               .Cases("t2"  , "x7" , Optional<unsigned>(RISCV::X7_32 ))
+               .Cases("s0"  , "x8" , Optional<unsigned>(RISCV::X8_32 ))
+               .Cases("s1"  , "x9" , Optional<unsigned>(RISCV::X9_32 ))
+               .Cases("a0"  , "x10", Optional<unsigned>(RISCV::X10_32))
+               .Cases("a1"  , "x11", Optional<unsigned>(RISCV::X11_32))
+               .Cases("a2"  , "x12", Optional<unsigned>(RISCV::X12_32))
+               .Cases("a3"  , "x13", Optional<unsigned>(RISCV::X13_32))
+               .Cases("a4"  , "x14", Optional<unsigned>(RISCV::X14_32))
+               .Cases("a5"  , "x15", Optional<unsigned>(RISCV::X15_32))
+               .Cases("a6"  , "x16", Optional<unsigned>(RISCV::X16_32))
+               .Cases("a7"  , "x17", Optional<unsigned>(RISCV::X17_32))
+               .Cases("s2"  , "x18", Optional<unsigned>(RISCV::X18_32))
+               .Cases("s3"  , "x19", Optional<unsigned>(RISCV::X19_32))
+               .Cases("s4"  , "x20", Optional<unsigned>(RISCV::X20_32))
+               .Cases("s5"  , "x21", Optional<unsigned>(RISCV::X21_32))
+               .Cases("s6"  , "x22", Optional<unsigned>(RISCV::X22_32))
+               .Cases("s7"  , "x23", Optional<unsigned>(RISCV::X23_32))
+               .Cases("s8"  , "x24", Optional<unsigned>(RISCV::X24_32))
+               .Cases("s9"  , "x25", Optional<unsigned>(RISCV::X25_32))
+               .Cases("s10" , "x26", Optional<unsigned>(RISCV::X26_32))
+               .Cases("s11" , "x27", Optional<unsigned>(RISCV::X27_32))
+               .Cases("t3"  , "x28", Optional<unsigned>(RISCV::X28_32))
+               .Cases("t4"  , "x29", Optional<unsigned>(RISCV::X29_32))
+               .Cases("t5"  , "x30", Optional<unsigned>(RISCV::X30_32))
+               .Cases("t6"  , "x31", Optional<unsigned>(RISCV::X31_32))
+               .Default(None);
   } else if (getSTI().getFeatureBits()[RISCV::FeatureRV64]) {
-      return StringSwitch<unsigned>(Name)
-               .Cases("zero", "x0" , RISCV::X0_64 )
-               .Cases("ra"  , "x1" , RISCV::X1_64 )
-               .Cases("sp"  , "x2" , RISCV::X2_64 )
-               .Cases("gp"  , "x3" , RISCV::X3_64 )
-               .Cases("tp"  , "x4" , RISCV::X4_64 )
-               .Cases("t0"  , "x5" , RISCV::X5_64 )
-               .Cases("t1"  , "x6" , RISCV::X6_64 )
-               .Cases("t2"  , "x7" , RISCV::X7_64 )
-               .Cases("s0"  , "x8" , RISCV::X8_64 )
-               .Cases("s1"  , "x9" , RISCV::X9_64 )
-               .Cases("a0"  , "x10", RISCV::X10_64)
-               .Cases("a1"  , "x11", RISCV::X11_64)
-               .Cases("a2"  , "x12", RISCV::X12_64)
-               .Cases("a3"  , "x13", RISCV::X13_64)
-               .Cases("a4"  , "x14", RISCV::X14_64)
-               .Cases("a5"  , "x15", RISCV::X15_64)
-               .Cases("a6"  , "x16", RISCV::X16_64)
-               .Cases("a7"  , "x17", RISCV::X17_64)
-               .Cases("s2"  , "x18", RISCV::X18_64)
-               .Cases("s3"  , "x19", RISCV::X19_64)
-               .Cases("s4"  , "x20", RISCV::X20_64)
-               .Cases("s5"  , "x21", RISCV::X21_64)
-               .Cases("s6"  , "x22", RISCV::X22_64)
-               .Cases("s7"  , "x23", RISCV::X23_64)
-               .Cases("s8"  , "x24", RISCV::X24_64)
-               .Cases("s9"  , "x25", RISCV::X25_64)
-               .Cases("s10" , "x26", RISCV::X26_64)
-               .Cases("s11" , "x27", RISCV::X27_64)
-               .Cases("t3"  , "x28", RISCV::X28_64)
-               .Cases("t4"  , "x29", RISCV::X29_64)
-               .Cases("t5"  , "x30", RISCV::X30_64)
-               .Cases("t6"  , "x31", RISCV::X31_64)
-               .Default(-1);
+      return StringSwitch<Optional<unsigned>>(Name)
+               .Cases("zero", "x0" , Optional<unsigned>(RISCV::X0_64 ))
+               .Cases("ra"  , "x1" , Optional<unsigned>(RISCV::X1_64 ))
+               .Cases("sp"  , "x2" , Optional<unsigned>(RISCV::X2_64 ))
+               .Cases("gp"  , "x3" , Optional<unsigned>(RISCV::X3_64 ))
+               .Cases("tp"  , "x4" , Optional<unsigned>(RISCV::X4_64 ))
+               .Cases("t0"  , "x5" , Optional<unsigned>(RISCV::X5_64 ))
+               .Cases("t1"  , "x6" , Optional<unsigned>(RISCV::X6_64 ))
+               .Cases("t2"  , "x7" , Optional<unsigned>(RISCV::X7_64 ))
+               .Cases("s0"  , "x8" , Optional<unsigned>(RISCV::X8_64 ))
+               .Cases("s1"  , "x9" , Optional<unsigned>(RISCV::X9_64 ))
+               .Cases("a0"  , "x10", Optional<unsigned>(RISCV::X10_64))
+               .Cases("a1"  , "x11", Optional<unsigned>(RISCV::X11_64))
+               .Cases("a2"  , "x12", Optional<unsigned>(RISCV::X12_64))
+               .Cases("a3"  , "x13", Optional<unsigned>(RISCV::X13_64))
+               .Cases("a4"  , "x14", Optional<unsigned>(RISCV::X14_64))
+               .Cases("a5"  , "x15", Optional<unsigned>(RISCV::X15_64))
+               .Cases("a6"  , "x16", Optional<unsigned>(RISCV::X16_64))
+               .Cases("a7"  , "x17", Optional<unsigned>(RISCV::X17_64))
+               .Cases("s2"  , "x18", Optional<unsigned>(RISCV::X18_64))
+               .Cases("s3"  , "x19", Optional<unsigned>(RISCV::X19_64))
+               .Cases("s4"  , "x20", Optional<unsigned>(RISCV::X20_64))
+               .Cases("s5"  , "x21", Optional<unsigned>(RISCV::X21_64))
+               .Cases("s6"  , "x22", Optional<unsigned>(RISCV::X22_64))
+               .Cases("s7"  , "x23", Optional<unsigned>(RISCV::X23_64))
+               .Cases("s8"  , "x24", Optional<unsigned>(RISCV::X24_64))
+               .Cases("s9"  , "x25", Optional<unsigned>(RISCV::X25_64))
+               .Cases("s10" , "x26", Optional<unsigned>(RISCV::X26_64))
+               .Cases("s11" , "x27", Optional<unsigned>(RISCV::X27_64))
+               .Cases("t3"  , "x28", Optional<unsigned>(RISCV::X28_64))
+               .Cases("t4"  , "x29", Optional<unsigned>(RISCV::X29_64))
+               .Cases("t5"  , "x30", Optional<unsigned>(RISCV::X30_64))
+               .Cases("t6"  , "x31", Optional<unsigned>(RISCV::X31_64))
+               .Default(None);
   } else {
       llvm_unreachable("Not RV32/64");
   }
@@ -459,156 +463,156 @@ int RISCVAsmParser::matchCPURegisterName(StringRef Name) {
 
 bool RISCVAsmParser::ParseRegister(unsigned &RegNo, SMLoc &StartLoc,
                                    SMLoc &EndLoc) {
-  const AsmToken &Tok = getParser().getTok();
-  StartLoc = Tok.getLoc();
-  EndLoc = Tok.getEndLoc();
-  RegNo = 0;
-  StringRef Name = getLexer().getTok().getIdentifier();
+  const auto StartLoc_ = getParser().getTok().getLoc();
+  const auto EndLoc_ = getParser().getTok().getEndLoc();
+  auto OptReg = parseRegister(true);
+  if (OptReg) {
+    RegNo = *OptReg;
+    StartLoc = StartLoc_;
+    EndLoc = EndLoc_;
+    return false;
+  } else {
+    return true;
+  }
+}
 
-  if (matchCPURegisterName(Name) < 0) {
-    getParser().Lex(); // Eat identifier token.
+bool RISCVAsmParser::parseLeftParen(bool report_error) {
+  if (getLexer().is(AsmToken::LParen)) {
+    getLexer().Lex();
+    return true;
+  } else {
+    if (report_error) Error(getLoc(), "expected '('");
     return false;
   }
-
-  return Error(StartLoc, "invalid register name");
 }
 
-OperandMatchResultTy RISCVAsmParser::parseRegister(OperandVector &Operands) {
-  SMLoc S = getLoc();
-  SMLoc E = SMLoc::getFromPointer(S.getPointer() - 1);
-
-  switch (getLexer().getKind()) {
-  default:
-    return MatchOperand_NoMatch;
-  case AsmToken::Identifier:
-    StringRef Name = getLexer().getTok().getIdentifier();
-    int RegNo = matchCPURegisterName(Name);
-    if (RegNo < 0) {
-        return MatchOperand_NoMatch;
-    }
+bool RISCVAsmParser::parseRightParen(bool report_error) {
+  if (getLexer().is(AsmToken::RParen)) {
     getLexer().Lex();
-    Operands.push_back(RISCVOperand::createReg(RegNo, S, E));
+    return true;
+  } else {
+    if (report_error) Error(getLoc(), "expected ')'");
+    return false;
   }
-  return MatchOperand_Success;
 }
 
-OperandMatchResultTy RISCVAsmParser::parseImmediate(OperandVector &Operands) {
-  SMLoc S = getLoc();
-  SMLoc E = SMLoc::getFromPointer(S.getPointer() - 1);
-  const MCExpr *Res;
+Optional<StringRef> RISCVAsmParser::peekIdentifier() {
+  if (getLexer().is(AsmToken::Identifier))
+    return Optional<StringRef>(getLexer().getTok().getIdentifier());
+  else
+    return None;
+}
 
+Optional<StringRef> RISCVAsmParser::parseIdentifier(bool report_error) {
+  const Optional<StringRef> Identifier = peekIdentifier();
+  if (!Identifier) {
+    if (report_error) Error(getLoc(), "expected identifier");
+  } else {
+    getLexer().Lex();
+  }
+
+  return Identifier;
+}
+
+Optional<unsigned> RISCVAsmParser::parseRegister(bool report_error) {
+  const Optional<StringRef> Identifier = peekIdentifier();
+  if (Identifier) {
+    const Optional<unsigned> Reg = matchCPURegisterName(*Identifier);
+    if (Reg) {
+        getLexer().Lex();
+        return Reg;
+    } else {
+        if (report_error) Error(getLoc(), "invalid register");
+        return None;
+    }
+  } else {
+    if (report_error) Error(getLoc(), "expected register");
+    return None;
+  }
+}
+
+Optional<const MCExpr*> RISCVAsmParser::parseImmediate(bool report_error) {
   switch (getLexer().getKind()) {
-  default:
-    return MatchOperand_NoMatch;
-  case AsmToken::LParen:
-  case AsmToken::Minus:
-  case AsmToken::Plus:
-  case AsmToken::Integer:
-  case AsmToken::String:
-    if (getParser().parseExpression(Res))
-      return MatchOperand_ParseFail;
-    break;
-  case AsmToken::Identifier: {
-    StringRef Identifier;
-    if (getParser().parseIdentifier(Identifier))
-      return MatchOperand_ParseFail;
-    MCSymbol *Sym = getContext().getOrCreateSymbol(Identifier);
-    Res = MCSymbolRefExpr::create(Sym, MCSymbolRefExpr::VK_None, getContext());
-    break;
+    case AsmToken::LParen:
+    case AsmToken::Minus:
+    case AsmToken::Plus:
+    case AsmToken::Integer:
+    case AsmToken::String: {
+      const MCExpr* Expr;
+      if (getParser().parseExpression(Expr))
+        return None;
+      else
+        return Optional<const MCExpr*>(Expr);
+    }
+    case AsmToken::Identifier: {
+      const Optional<StringRef> Identifier = parseIdentifier(true);
+      if (Identifier) {
+        MCSymbol* Sym = getContext().getOrCreateSymbol(*Identifier);
+        return Optional<const MCExpr*>(MCSymbolRefExpr::create(Sym, MCSymbolRefExpr::VK_None, getContext()));
+      } else {
+        return None;
+      }
+    }
+    case AsmToken::Percent: {
+      getLexer().Lex(); // Eat '%'
+      const Optional<StringRef> Identifier = peekIdentifier();
+      if (Identifier) {
+        const RISCVMCExpr::VariantKind VK = RISCVMCExpr::getVariantKindForName(*Identifier);
+        if (VK == RISCVMCExpr::VK_RISCV_None) {
+          if (report_error) Error(getLoc(), "unrecognized operand modifier");
+          return None;
+        }
+        getLexer().Lex(); // Eat identifier
+
+        if (!parseLeftParen(true)) return None;
+        const MCExpr* SubExpr;
+        if (getParser().parseExpression(SubExpr)) {
+          if (report_error) Error(getLoc(), "expected expression");
+          return None;
+        }
+        if (!parseRightParen(true)) return None;
+
+        return Optional<const MCExpr*>(RISCVMCExpr::create(SubExpr, VK, getContext()));
+      } else {
+        return None;
+      }
+    }
+    default:
+      if (report_error) Error(getLoc(), "expected immediate");
+      return None;
   }
-  case AsmToken::Percent:
-    return parseOperandWithModifier(Operands);
-    break;
-  }
-
-  Operands.push_back(RISCVOperand::createImm(Res, S, E, getContext()));
-  return MatchOperand_Success;
-}
-
-OperandMatchResultTy
-RISCVAsmParser::parseOperandWithModifier(OperandVector &Operands) {
-  SMLoc S = getLoc();
-  SMLoc E = SMLoc::getFromPointer(S.getPointer() - 1);
-
-  if (getLexer().getKind() != AsmToken::Percent) {
-    Error(getLoc(), "expected '%' for operand modifier");
-    return MatchOperand_ParseFail;
-  }
-
-  getParser().Lex(); // Eat '%'
-
-  if (getLexer().getKind() != AsmToken::Identifier) {
-    Error(getLoc(), "expected valid identifier for operand modifier");
-    return MatchOperand_ParseFail;
-  }
-  StringRef Identifier = getParser().getTok().getString();
-  RISCVMCExpr::VariantKind VK = RISCVMCExpr::getVariantKindForName(Identifier);
-  if (VK == RISCVMCExpr::VK_RISCV_None) {
-    Error(getLoc(), "unrecognized operand modifier");
-    return MatchOperand_ParseFail;
-  }
-
-  getParser().Lex(); // Eat the identifier
-  if (getLexer().getKind() != AsmToken::LParen) {
-    Error(getLoc(), "expected '('");
-    return MatchOperand_ParseFail;
-  }
-  getParser().Lex(); // Eat '('
-
-  const MCExpr *SubExpr;
-  if (getParser().parseParenExpression(SubExpr, E)) {
-    return MatchOperand_ParseFail;
-  }
-
-  const MCExpr *ModExpr = RISCVMCExpr::create(SubExpr, VK, getContext());
-  Operands.push_back(RISCVOperand::createImm(ModExpr, S, E, getContext()));
-  return MatchOperand_Success;
-}
-
-OperandMatchResultTy RISCVAsmParser::parseMemOpBaseReg(OperandVector &Operands) {
-  if (getLexer().getKind() != AsmToken::LParen) {
-    Error(getLoc(), "expected '('");
-    return MatchOperand_ParseFail;
-  }
-
-  getParser().Lex(); // Eat '('
-  Operands.push_back(RISCVOperand::createToken("(", getLoc()));
-
-  if (parseRegister(Operands) != MatchOperand_Success) {
-    Error(getLoc(), "expected register");
-    return MatchOperand_ParseFail;
-  }
-
-  if (getLexer().getKind() != AsmToken::RParen) {
-    Error(getLoc(), "expected ')'");
-    return MatchOperand_ParseFail;
-  }
-
-  getParser().Lex(); // Eat ')'
-  Operands.push_back(RISCVOperand::createToken(")", getLoc()));
-
-  return MatchOperand_Success;
 }
 
 /// Looks at a token type and creates the relevant operand
 /// from this information, adding to Operands.
 /// If operand was parsed, returns false, else true.
 bool RISCVAsmParser::parseOperand(OperandVector &Operands) {
-  // Attempt to parse token as register
-  if (parseRegister(Operands) == MatchOperand_Success)
-    return false;
+  const SMLoc S = getLoc();
 
-  // Attempt to parse token as an immediate
-  if (parseImmediate(Operands) == MatchOperand_Success) {
-    // Parse memory base register if present
-    if (getLexer().getKind() == AsmToken::LParen) {
-      return parseMemOpBaseReg(Operands) != MatchOperand_Success;
-    }
+  const auto Reg = parseRegister(false);
+  if (Reg) {
+    Operands.push_back(RISCVOperand::createReg(*Reg, S, getLoc()));
     return false;
   }
 
-  // Finally we have exhausted all options and must declare defeat.
-  Error(getLoc(), "unknown operand");
+  const auto Expr = parseImmediate(true);
+  if (Expr) {
+    if (dyn_cast<MCConstantExpr>(*Expr) && parseLeftParen(false)) { // offset(reg)
+      const int64_t Imm = dyn_cast<MCConstantExpr>(*Expr)->getValue();
+      const auto Reg = parseRegister(true);
+      if (Reg) {
+        if (!parseRightParen(true)) return true;
+        // TODO: createMem
+        return false;
+      } else {
+        return true;
+      }
+    } else {
+      Operands.push_back(RISCVOperand::createImm(*Expr, S, getLoc(), getContext()));
+      return false;
+    }
+  }
+
   return true;
 }
 

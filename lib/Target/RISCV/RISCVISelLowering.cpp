@@ -898,7 +898,7 @@ void RISCVTargetLowering::HandleByVal(CCState *State, unsigned &Size,
   if (!Reg)
     return;
 
-  unsigned AlignInRegs = Align / 4;
+  unsigned AlignInRegs = Align / RegSizeInBytes;
 
   // Calculate the register number we have to waste
   // to correct the ByVal arugment padding.
@@ -911,8 +911,7 @@ void RISCVTargetLowering::HandleByVal(CCState *State, unsigned &Size,
   if (!Reg)
     return;
 
-  unsigned MinArgReg = Subtarget->isRV64() ? RISCV::X10_64 : RISCV::X10_32;
-  unsigned Excess = 4 * (MinArgReg - Reg);
+  unsigned Excess = RegSizeInBytes * (MaxArgReg - Reg) / 2;
 
   // Special case when NSAA != SP and parameter size greater than size of
   // all remained GPR regs. In that case we can't split parameter, we must
@@ -929,6 +928,7 @@ void RISCVTargetLowering::HandleByVal(CCState *State, unsigned &Size,
 
   if (State->getCallingConv() != CallingConv::Fast) {
 
+    unsigned MinArgReg = Subtarget->isRV64() ? RISCV::X10_64 : RISCV::X10_32;
     // Register number in RISCVGenRegisterInfo.inc interleave with 64 bit
     // registers, so we have to divide the register number by 2.
     FirstRegIndex = ((Reg - MinArgReg) / 2);

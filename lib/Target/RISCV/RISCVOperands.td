@@ -150,6 +150,13 @@ def memreg : Operand<i32> {
   let PrintMethod = "printMemRegOperand";
 }
 
+def memreg64 : Operand<i64> {
+  let MIOperandInfo = (ops GPR64);
+  //let EncoderMethod = "getMemRegEncoding";
+  let OperandType = "OPERAND_MEMORY";
+  let PrintMethod = "printMemRegOperand";
+}
+
 def regaddr : ComplexPattern<iPTR, 1, "selectRegAddr">;
 
 // addr_reg_imm12s := [reg + imm12s]

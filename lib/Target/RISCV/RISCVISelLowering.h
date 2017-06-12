@@ -117,7 +117,6 @@ private:
                            const CCValAssign &VA,
                            ISD::ArgFlagsTy Flags) const;
 
-  void HandleByVal(CCState *, unsigned &, unsigned) const override;
 
   /// copyByValArg - Copy argument registers which were used to pass a byval
   /// argument to the stack. Create a stack frame object for the byval

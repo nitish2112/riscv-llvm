@@ -102,14 +102,15 @@ def CC_RISCV64_VAR : CallingConv<[
   // Pass by value if the byval attribute is given
   CCIfByVal<CCPassByVal<8, 8>>,
 
-  // (and the same is true for f64 if VFP is not enabled)
-  CCIfType<[i64], CCIfNotAlign<"16",
-                     CCAssignToReg<[X10_64, X11_64, X12_64, X13_64,
-                                    X14_64, X15_64, X16_64, X17_64]>>>,
+  // i128 is split to two i64s
+  CCIfType<[i64], CCIfSplit<CCAssignToRegWithShadow<[X10_64, X12_64, X14_64, X16_64],
+                                                    [X10_64, X11_64, X13_64, X15_64]>>>,
 
-  CCIfType<[i64], CCIfAlign<"16",
-           CCAssignToRegWithShadow<[X10_64, X12_64, X14_64, X16_64],
-                                   [X10_64, X11_64, X13_64, X15_64]>>>,
+  // i128 is split to two i64s, and its stack alignment is 16 bytes.
+  CCIfType<[i64], CCIfSplit<CCAssignToStackWithShadow<8, 16, [X17_64]>>>,
+
+  CCIfType<[i64], CCAssignToReg<[X10_64, X11_64, X12_64, X13_64,
+                                 X14_64, X15_64, X16_64, X17_64]>>,
 
   // If a part of argument assign to stack, shadow the argument registers.
   // To avoid a double argument assign to stack and register in the same time.

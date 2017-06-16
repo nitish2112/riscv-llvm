@@ -71,11 +71,6 @@ def CallSeqEnd       : SDNode<"ISD::CALLSEQ_END", SDT_RISCVCallSeqEnd,
                               [SDNPHasChain, SDNPOptInGlue, SDNPOutGlue]>;
 def SelectCC         : SDNode<"RISCVISD::SELECT_CC", SDT_RISCVSelectCC, [SDNPInGlue]>;
 
-def RISCVcopystructbyval : SDNode<"RISCVISD::COPY_STRUCT_BYVAL" ,
-                                   SDT_RISCVStructByVal,
-                                  [SDNPHasChain, SDNPInGlue, SDNPOutGlue,
-                                   SDNPMayStore, SDNPMayLoad]>;
-
 
 // As noted in RISCVRegisterInfo.td, the hope is that support for
 // variable-sized register classes will mean that instruction definitions do
@@ -295,12 +290,6 @@ class CSR_ri<bits<3> funct3, string OpcodeStr> :
 def CSRRWI : CSR_ri<0b101, "csrrwi">;
 def CSRRSI : CSR_ri<0b110, "csrrsi">;
 def CSRRCI : CSR_ri<0b111, "csrrci">;
-
-let usesCustomInserter = 1 in {
-    def COPY_STRUCT_BYVAL_I32 : Pseudo<
-      (outs), (ins GPR:$dst, GPR:$src, i32imm:$size, i32imm:$alignment),
-      [(RISCVcopystructbyval GPR:$dst, GPR:$src, imm:$size, imm:$alignment)]>;
-}
 
 // signed 12-bit immediate
 def : Pat<(simm12:$imm), (ADDI X0_32, simm12:$imm)>;

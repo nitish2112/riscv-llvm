@@ -26,8 +26,6 @@ enum NodeType : unsigned {
   FIRST_NUMBER = ISD::BUILTIN_OP_END,
   RET_FLAG,
   CALL,
-  // Add pseudo op to model memcpy for struct byval.
-  COPY_STRUCT_BYVAL,
   SELECT_CC
 };
 }
@@ -64,9 +62,6 @@ public:
   MachineBasicBlock *
   EmitInstrWithCustomInserter(MachineInstr &MI,
                               MachineBasicBlock *BB) const override;
-
-  MachineBasicBlock *EmitStructByval(MachineInstr &MI,
-                                     MachineBasicBlock *MBB) const;
 
   /// getSetCCResultType - get the ISD::SETCC result ValueType
   EVT getSetCCResultType(const DataLayout &DL, LLVMContext &Context,

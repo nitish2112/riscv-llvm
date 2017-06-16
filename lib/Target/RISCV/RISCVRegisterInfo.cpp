@@ -38,6 +38,8 @@ const MCPhysReg *
 RISCVRegisterInfo::getCalleeSavedRegs(const MachineFunction *MF) const {
   if(Subtarget.isRV64())
     return CSR_RV64_SaveList;
+  else if(Subtarget.hasE())
+    return CSR_RV32E_SaveList;
   else
     return CSR_RV32_SaveList;
 }
@@ -54,6 +56,26 @@ BitVector RISCVRegisterInfo::getReservedRegs(const MachineFunction &MF) const {
   Reserved.set(RISCV::X4_32); // tp
   Reserved.set(RISCV::X8_64); // fp
   Reserved.set(RISCV::X8_32); // fp
+
+  if (Subtarget.hasE()) {
+    Reserved.set(RISCV::X16_32);
+    Reserved.set(RISCV::X17_32);
+    Reserved.set(RISCV::X18_32);
+    Reserved.set(RISCV::X19_32);
+    Reserved.set(RISCV::X20_32);
+    Reserved.set(RISCV::X21_32);
+    Reserved.set(RISCV::X22_32);
+    Reserved.set(RISCV::X23_32);
+    Reserved.set(RISCV::X24_32);
+    Reserved.set(RISCV::X25_32);
+    Reserved.set(RISCV::X26_32);
+    Reserved.set(RISCV::X27_32);
+    Reserved.set(RISCV::X28_32);
+    Reserved.set(RISCV::X29_32);
+    Reserved.set(RISCV::X30_32);
+    Reserved.set(RISCV::X31_32);
+  }
+
   return Reserved;
 }
 
@@ -185,6 +207,8 @@ RISCVRegisterInfo::getCallPreservedMask(const MachineFunction & /*MF*/,
                                         CallingConv::ID /*CC*/) const {
   if(Subtarget.isRV64())
     return CSR_RV64_RegMask;
+  else if(Subtarget.hasE())
+    return CSR_RV32E_RegMask;
   else
     return CSR_RV32_RegMask;
 }

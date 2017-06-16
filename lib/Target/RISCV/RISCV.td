@@ -21,6 +21,8 @@ def FeatureF : SubtargetFeature<"f", "HasF", "true",
                                 "Supports Single-Precision Floating-Point.">;
 def FeatureD : SubtargetFeature<"d", "HasD", "true",
                                 "Supports Double-Precision Floating-Point.">;
+def FeatureE : SubtargetFeature<"e", "HasE", "true",
+                                "Supports RV32E.">;
 
 def FeatureRV32 : SubtargetFeature<"rv32", "RISCVArchVersion", "RV32", 
                                    "RV32 ISA Support">;

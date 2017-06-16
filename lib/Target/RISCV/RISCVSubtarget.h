@@ -43,6 +43,7 @@ private:
   bool HasA;
   bool HasF;
   bool HasD;
+  bool HasE;
 
   bool UseSoftFloat;
 
@@ -83,6 +84,7 @@ public:
   bool hasA() const { return HasA; };
   bool hasF() const { return HasF; };
   bool hasD() const { return HasD; };
+  bool hasE() const { return HasE; };
 
   bool useSoftFloat() const { return UseSoftFloat; }
 };

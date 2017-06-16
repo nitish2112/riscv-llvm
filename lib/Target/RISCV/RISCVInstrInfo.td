@@ -19,17 +19,19 @@ include "RISCVInstrFormats.td"
 //===----------------------------------------------------------------------===//
 
  def IsRV32 :    Predicate<"Subtarget.isRV32()">,
-                 AssemblerPredicate<"FeatureRV32">; 
+                 AssemblerPredicate<"FeatureRV32">;
  def IsRV64 :    Predicate<"Subtarget.isRV64()">,
-                 AssemblerPredicate<"FeatureRV64">; 
+                 AssemblerPredicate<"FeatureRV64">;
  def HasM   :    Predicate<"Subtarget.hasM()">,
-                 AssemblerPredicate<"FeatureM">; 
+                 AssemblerPredicate<"FeatureM">;
  def HasF   :    Predicate<"Subtarget.hasF()">,
-                 AssemblerPredicate<"FeatureF">; 
+                 AssemblerPredicate<"FeatureF">;
  def HasD   :    Predicate<"Subtarget.hasD()">,
-                 AssemblerPredicate<"FeatureD">; 
+                 AssemblerPredicate<"FeatureD">;
  def HasA   :    Predicate<"Subtarget.hasA()">,
-                 AssemblerPredicate<"FeatureA">; 
+                 AssemblerPredicate<"FeatureA">;
+ def HasE   :    Predicate<"Subtarget.hasE()">,
+                 AssemblerPredicate<"FeatureE">;
 
 // RV32Pat - Same as Pat<>, but requires has RISCV32 ISA support.
 class RV32Pat<dag pattern, dag result> : Pat<pattern, result> {

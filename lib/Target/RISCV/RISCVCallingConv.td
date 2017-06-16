@@ -27,6 +27,61 @@ def RetCC_RISCV32 : CallingConv<[
   CCIfType<[f32], CCBitConvertToType<i32>>
 ]>;
 
+// RISCV32E C Calling convention for variable argument.
+def CC_RISCV32E_VAR : CallingConv<[
+  CCIfType<[i1, i8, i16], CCPromoteToType<i32>>,
+
+  // Pass by value if the byval attribute is given
+  CCIfByVal<CCPassByVal<4, 4>>,
+
+  // i64/f64 is passed in even pairs of GPRs
+  // i64 is 8-aligned i32 here, so we may need to eat R1 as a pad register
+  // (and the same is true for f64 if VFP is not enabled)
+  CCIfType<[i32], CCIfNotAlign<"8",
+                     CCAssignToReg<[X10_32, X11_32, X12_32, X13_32,
+                                    X14_32, X15_32]>>>,
+
+  CCIfType<[i32], CCIfAlign<"8",
+           CCAssignToRegWithShadow<[X10_32, X12_32, X14_32],
+                                   [X10_32, X11_32, X13_32]>>>,
+
+  // If a part of argument assign to stack, shadow the argument registers.
+  // To avoid a double argument assign to stack and register in the same time.
+  CCIfType<[i32], CCIfAlign<"8", CCAssignToStackWithShadow<4, 8,
+                                         [X10_32, X11_32, X12_32, X13_32,
+                                          X14_32, X15_32]>>>,
+
+  CCIfType<[f32], CCBitConvertToType<i32>>,
+  CCIfType<[i64, f64], CCAssignToRegWithShadow<[X10_32, X12_32, X14_32],
+                                               [X11_32, X13_32, X15_32]>>,
+
+  CCIfType<[i32, f32], CCAssignToStack<4, 4>>,
+  CCIfType<[i64, f64], CCAssignToStack<8, 8>>
+]>;
+
+def CC_RISCV32E : CallingConv<[
+  CCIfType<[i1, i8, i16], CCPromoteToType<i32>>,
+
+  // Pass by value if the byval attribute is given
+  CCIfByVal<CCPassByVal<4, 4>>,
+
+  CCIfType<[i32], CCAssignToReg<[X10_32, X11_32, X12_32, X13_32,
+                                 X14_32, X15_32]>>,
+
+  // If a part of argument assign to stack, shadow the argument registers.
+  // To avoid a double argument assign to stack and register in the same time.
+  CCIfType<[i32], CCIfAlign<"8", CCAssignToStackWithShadow<4, 8,
+                                         [X10_32, X11_32, X12_32, X13_32,
+                                          X14_32, X15_32]>>>,
+
+  CCIfType<[f32], CCBitConvertToType<i32>>,
+  CCIfType<[i64, f64], CCAssignToRegWithShadow<[X10_32, X12_32, X14_32],
+                                               [X11_32, X13_32, X15_32]>>,
+
+  CCIfType<[i32, f32], CCAssignToStack<4, 4>>,
+  CCIfType<[i64, f64], CCAssignToStack<8, 8>>
+]>;
+
 // RISCV 32-bit C Calling convention for variable argument.
 def CC_RISCV32_VAR : CallingConv<[
   CCIfType<[i1, i8, i16], CCPromoteToType<i32>>,
@@ -146,6 +201,8 @@ def CC_RISCV64 : CallingConv<[
   CCIfType<[i64, f64], CCAssignToStack<8, 8>>
 ]>;
 
+
+def CSR_RV32E : CalleeSavedRegs<(add X1_32, X3_32, X4_32, X8_32, X9_32)>;
 
 def CSR_RV32 : CalleeSavedRegs<(add X1_32, X3_32, X4_32, X8_32, X9_32,
                                (sequence "X%u_32", 18, 27))>;

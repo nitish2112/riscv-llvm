@@ -732,6 +732,11 @@ addLiveIn(MachineFunction &MF, unsigned PReg, const TargetRegisterClass *RC)
   return VReg;
 }
 
+static const MCPhysReg RISCV32EArgRegs[6] = {
+    RISCV::X10_32, RISCV::X11_32, RISCV::X12_32, RISCV::X13_32,
+    RISCV::X14_32, RISCV::X15_32
+};
+
 static const MCPhysReg RISCV32ArgRegs[8] = {
     RISCV::X10_32, RISCV::X11_32, RISCV::X12_32, RISCV::X13_32,
     RISCV::X14_32, RISCV::X15_32, RISCV::X16_32, RISCV::X17_32
@@ -749,6 +754,8 @@ void RISCVTargetLowering::RestoreVarArgRegs(std::vector<SDValue> &OutChains,
                                             CCState &State) const {
   ArrayRef<MCPhysReg> ArgRegs = Subtarget->isRV64() ?
                                 makeArrayRef(RISCV64ArgRegs) :
+                                Subtarget->hasE() ?
+                                makeArrayRef(RISCV32EArgRegs) :
                                 makeArrayRef(RISCV32ArgRegs);
   unsigned Idx = State.getFirstUnallocated(ArgRegs);
   unsigned RegSizeInBytes = Subtarget->isRV64() ? 8 : 4;
@@ -812,6 +819,8 @@ void RISCVTargetLowering::copyByValRegs(
     const CCValAssign &VA, CCState &CCInfo) const {
   ArrayRef<MCPhysReg> ArgRegs = Subtarget->isRV64() ?
                                 makeArrayRef(RISCV64ArgRegs) :
+                                Subtarget->hasE() ?
+                                makeArrayRef(RISCV32EArgRegs) :
                                 makeArrayRef(RISCV32ArgRegs);
   MachineFunction &MF = DAG.getMachineFunction();
   MachineFrameInfo &MFI = MF.getFrameInfo();
@@ -838,6 +847,8 @@ void RISCVTargetLowering::copyByValRegs(
   int FrameObjOffset;
   ArrayRef<MCPhysReg> ByValArgRegs = Subtarget->isRV64() ?
                                      makeArrayRef(RISCV64ArgRegs) :
+                                     Subtarget->hasE() ?
+                                     makeArrayRef(RISCV32EArgRegs) :
                                      makeArrayRef(RISCV32ArgRegs);
 
   if (RegAreaSize)
@@ -951,6 +962,8 @@ SDValue RISCVTargetLowering::LowerFormalArguments(
 
   CCAssignFn *CC = Subtarget->isRV64() ?
                    (IsVarArg ? CC_RISCV64_VAR : CC_RISCV64) :
+                   Subtarget->hasE() ?
+                   (IsVarArg ? CC_RISCV32E_VAR : CC_RISCV32E) :
                    (IsVarArg ? CC_RISCV32_VAR : CC_RISCV32);
   CCInfo.AnalyzeFormalArguments(Ins, CC);
   FI->setFormalArgInfo(CCInfo.getNextStackOffset(),
@@ -1070,7 +1083,10 @@ void RISCVTargetLowering::passByValArg(
   if (NumRegs) {
     ArrayRef<MCPhysReg> ArgRegs = Subtarget->isRV64() ?
                                   makeArrayRef(RISCV64ArgRegs) :
+                                  Subtarget->hasE() ?
+                                  makeArrayRef(RISCV32EArgRegs) :
                                   makeArrayRef(RISCV32ArgRegs);
+
     bool LeftoverBytes = (NumRegs * RegSizeInBytes > ByValSizeInBytes);
     unsigned I = 0;
 
@@ -1175,6 +1191,8 @@ RISCVTargetLowering::LowerCall(CallLoweringInfo &CLI,
   CCState ArgCCInfo(CallConv, IsVarArg, MF, ArgLocs, *DAG.getContext());
   CCAssignFn *CC = Subtarget->isRV64() ?
                    (IsVarArg ? CC_RISCV64_VAR : CC_RISCV64) :
+                   Subtarget->hasE() ?
+                   (IsVarArg ? CC_RISCV32E_VAR : CC_RISCV32E) :
                    (IsVarArg ? CC_RISCV32_VAR : CC_RISCV32);
   ArgCCInfo.AnalyzeCallOperands(Outs, CC);
 

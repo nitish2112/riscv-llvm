@@ -27,6 +27,7 @@ def SC_W : InstSC<"sc.w", 0b010, GPR, memreg>, Requires<[HasA]>;
 //TODO: add LR/SC and acq/rel
 
 //TODO add gr32 operations
+let DecoderNamespace = "RISCV64_" in {
 def AMOSWAP_D   : InstA<"amoswap.d" , 0b0101111, 0b00000, 0b011, atomic_swap     , GPR64, memreg64>, Requires<[IsRV64, HasA]>;
 def AMOADD_D    : InstA<"amoadd.D"  , 0b0101111, 0b00001, 0b011, atomic_load_add , GPR64, memreg64>, Requires<[IsRV64, HasA]>;
 def AMOXOR_D    : InstA<"amoxor.d"  , 0b0101111, 0b00100, 0b011, atomic_load_xor , GPR64, memreg64>, Requires<[IsRV64, HasA]>;
@@ -50,3 +51,4 @@ def LR_W64 : InstLR<"lr.w", 0b010, GPR, memreg64>, Requires<[IsRV64, HasA]>;
 def SC_W64 : InstSC<"sc.w", 0b010, GPR, memreg64>, Requires<[IsRV64, HasA]>;
 def LR_D   : InstLR<"lr.d", 0b011, GPR64, memreg64>, Requires<[IsRV64, HasA]>;
 def SC_D   : InstSC<"sc.d", 0b011, GPR64, memreg64>, Requires<[IsRV64, HasA]>;
+} // End of DecoderNamespace

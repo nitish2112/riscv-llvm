@@ -365,6 +365,16 @@ static Triple::ArchType parseARMArch(StringRef ArchName) {
   return arch;
 }
 
+static Triple::ArchType parseRISCVArch(StringRef ArchName) {
+  if (ArchName.startswith("riscv32")) {
+    return Triple::riscv32;
+  } else if (ArchName.startswith("riscv64")) {
+    return Triple::riscv64;
+  } else {
+    return Triple::UnknownArch;
+  }
+}
+
 static Triple::ArchType parseArch(StringRef ArchName) {
   auto AT = StringSwitch<Triple::ArchType>(ArchName)
     .Cases("i386", "i486", "i586", "i686", Triple::x86)
@@ -429,6 +439,8 @@ static Triple::ArchType parseArch(StringRef ArchName) {
       return parseARMArch(ArchName);
     if (ArchName.startswith("bpf"))
       return parseBPFArch(ArchName);
+    if (ArchName.startswith("riscv"))
+      return parseRISCVArch(ArchName);
   }
 
   return AT;

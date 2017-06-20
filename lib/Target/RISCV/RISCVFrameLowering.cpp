@@ -25,7 +25,7 @@ using namespace llvm;
 
 RISCVFrameLowering::RISCVFrameLowering(const RISCVSubtarget &sti)
       : TargetFrameLowering(StackGrowsDown,
-                            /*StackAlignment=*/16,
+                            /*StackAlignment=*/sti.hasE() ? 4: 16,
                             /*LocalAreaOffset=*/0), STI(sti) {}
 
 

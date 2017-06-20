@@ -29,11 +29,15 @@ extern "C" void LLVMInitializeRISCVTarget() {
 }
 
 static std::string computeDataLayout(const Triple &TT) {
+  StringRef Arch = TT.getArchName();
   if (TT.isArch64Bit()) {
     return "e-m:e-i64:64-n32:64-S128";
   } else {
     assert(TT.isArch32Bit() && "only RV32 and RV64 are currently supported");
-    return "e-m:e-p:32:32-i64:64-n32-S128";
+    if(Arch.startswith("riscv32e"))
+      return "e-m:e-p:32:32-i64:32-f64:32-n32-S32";
+    else
+      return "e-m:e-p:32:32-i64:64-n32-S128";
   }
 }
 

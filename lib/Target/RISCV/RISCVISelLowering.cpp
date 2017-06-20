@@ -963,7 +963,7 @@ SDValue RISCVTargetLowering::LowerFormalArguments(
   CCAssignFn *CC = Subtarget->isRV64() ?
                    (IsVarArg ? CC_RISCV64_VAR : CC_RISCV64) :
                    Subtarget->hasE() ?
-                   (IsVarArg ? CC_RISCV32E_VAR : CC_RISCV32E) :
+                   (CC_RISCV32E) :
                    (IsVarArg ? CC_RISCV32_VAR : CC_RISCV32);
   CCInfo.AnalyzeFormalArguments(Ins, CC);
   FI->setFormalArgInfo(CCInfo.getNextStackOffset(),
@@ -1192,7 +1192,7 @@ RISCVTargetLowering::LowerCall(CallLoweringInfo &CLI,
   CCAssignFn *CC = Subtarget->isRV64() ?
                    (IsVarArg ? CC_RISCV64_VAR : CC_RISCV64) :
                    Subtarget->hasE() ?
-                   (IsVarArg ? CC_RISCV32E_VAR : CC_RISCV32E) :
+                   (CC_RISCV32E) :
                    (IsVarArg ? CC_RISCV32_VAR : CC_RISCV32);
   ArgCCInfo.AnalyzeCallOperands(Outs, CC);
 

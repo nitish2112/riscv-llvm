@@ -21,10 +21,7 @@ class RISCVSubtarget;
 
 class RISCVFrameLowering : public TargetFrameLowering {
 public:
-  explicit RISCVFrameLowering(const RISCVSubtarget &STI)
-      : TargetFrameLowering(StackGrowsDown,
-                            /*StackAlignment=*/16,
-                            /*LocalAreaOffset=*/0) {}
+  explicit RISCVFrameLowering(const RISCVSubtarget &sti);
 
   void emitPrologue(MachineFunction &MF, MachineBasicBlock &MBB) const override;
   void emitEpilogue(MachineFunction &MF, MachineBasicBlock &MBB) const override;
@@ -53,6 +50,8 @@ public:
   bool hasReservedCallFrame(const MachineFunction &MF) const override;
 
 protected:
+  const RISCVSubtarget &STI;
+
   uint64_t estimateStackSize(const MachineFunction &MF) const;
 };
 }

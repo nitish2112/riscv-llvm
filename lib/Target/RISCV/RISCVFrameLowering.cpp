@@ -23,9 +23,15 @@
 
 using namespace llvm;
 
+RISCVFrameLowering::RISCVFrameLowering(const RISCVSubtarget &sti)
+      : TargetFrameLowering(StackGrowsDown,
+                            /*StackAlignment=*/16,
+                            /*LocalAreaOffset=*/0), STI(sti) {}
+
+
 bool RISCVFrameLowering::hasFP(const MachineFunction &MF) const {
   const MachineFrameInfo &MFI = MF.getFrameInfo();
-  const TargetRegisterInfo *TRI = MF.getSubtarget().getRegisterInfo();
+  const TargetRegisterInfo *TRI = STI.getRegisterInfo();
 
   return (MF.getTarget().Options.DisableFramePointerElim(MF) ||
           MF.getFrameInfo().hasVarSizedObjects() ||
@@ -35,8 +41,6 @@ bool RISCVFrameLowering::hasFP(const MachineFunction &MF) const {
 
 void RISCVFrameLowering::emitPrologue(MachineFunction &MF,
                                       MachineBasicBlock &MBB) const {
-  const RISCVSubtarget &STI = MF.getSubtarget<RISCVSubtarget>();
-
   unsigned SP = STI.isRV64() ? RISCV::X2_64 : RISCV::X2_32;
   unsigned FP = STI.isRV64() ? RISCV::X8_64 : RISCV::X8_32;
   unsigned ZERO = STI.isRV64() ? RISCV::X0_64 :RISCV::X0_32;
@@ -47,9 +51,9 @@ void RISCVFrameLowering::emitPrologue(MachineFunction &MF,
   MachineFrameInfo &MFI = MF.getFrameInfo();
 
   const RISCVInstrInfo &TII =
-      *static_cast<const RISCVInstrInfo *>(MF.getSubtarget().getInstrInfo());
+      *static_cast<const RISCVInstrInfo *>(STI.getInstrInfo());
   const RISCVRegisterInfo &TRI =
-      *static_cast<const RISCVRegisterInfo *>(MF.getSubtarget().getRegisterInfo());
+      *static_cast<const RISCVRegisterInfo *>(STI.getRegisterInfo());
   const TargetRegisterClass *RC = STI.isRV64() ?
     &RISCV::GPR64RegClass : &RISCV::GPRRegClass;
 
@@ -132,8 +136,6 @@ void RISCVFrameLowering::emitPrologue(MachineFunction &MF,
 
 void RISCVFrameLowering::emitEpilogue(MachineFunction &MF,
                                       MachineBasicBlock &MBB) const {
-  const RISCVSubtarget &STI = MF.getSubtarget<RISCVSubtarget>();
-
   unsigned SP = STI.isRV64() ? RISCV::X2_64 : RISCV::X2_32;
   unsigned FP = STI.isRV64() ? RISCV::X8_64 : RISCV::X8_32;
   unsigned ZERO = STI.isRV64() ? RISCV::X0_64 :RISCV::X0_32;
@@ -141,7 +143,7 @@ void RISCVFrameLowering::emitEpilogue(MachineFunction &MF,
 
   MachineFrameInfo &MFI = MF.getFrameInfo();
   const RISCVInstrInfo &TII =
-      *static_cast<const RISCVInstrInfo *>(MF.getSubtarget().getInstrInfo());
+      *static_cast<const RISCVInstrInfo *>(STI.getInstrInfo());
 
   MachineBasicBlock::iterator MBBI = MBB.getLastNonDebugInstr();
   DebugLoc DL = MBBI->getDebugLoc();
@@ -184,7 +186,7 @@ spillCalleeSavedRegisters(MachineBasicBlock &MBB,
 
   MachineFunction &MF = *MBB.getParent();
   MachineBasicBlock *EntryBlock = &(&MF)->front();
-  const TargetInstrInfo &TII = *MF.getSubtarget().getInstrInfo();
+  const TargetInstrInfo &TII = *STI.getInstrInfo();
 
   for (unsigned i = 0, e = CSI.size(); i != e; ++i) {
     // Add the callee-saved register as live-in. Do not add if the register is
@@ -219,8 +221,7 @@ restoreCalleeSavedRegisters(MachineBasicBlock &MBB,
   DebugLoc DL;
   if (MI != MBB.end()) DL = MI->getDebugLoc();
 
-  MachineFunction &MF = *MBB.getParent();
-  const TargetInstrInfo &TII = *MF.getSubtarget().getInstrInfo();
+  const TargetInstrInfo &TII = *STI.getInstrInfo();
 
   for (unsigned i = 0, e = CSI.size(); i != e; ++i) {
     unsigned Reg = CSI[i].getReg();
@@ -241,7 +242,6 @@ static void setAliasRegs(MachineFunction &MF, BitVector &SavedRegs,
 
 uint64_t RISCVFrameLowering::estimateStackSize(const MachineFunction &MF) const {
   const MachineFrameInfo &MFI = MF.getFrameInfo();
-  const RISCVSubtarget &STI = MF.getSubtarget<RISCVSubtarget>();
   const TargetRegisterInfo &TRI = *STI.getRegisterInfo();
 
   int64_t Offset = 0;
@@ -278,7 +278,6 @@ void RISCVFrameLowering::determineCalleeSaves(MachineFunction &MF,
                                               BitVector &SavedRegs,
                                               RegScavenger *RS) const {
   TargetFrameLowering::determineCalleeSaves(MF, SavedRegs, RS);
-  const RISCVSubtarget &STI = MF.getSubtarget<RISCVSubtarget>();
 
   unsigned FP = STI.isRV64() ? RISCV::X8_64 : RISCV::X8_32;
   // Mark $fp as used if function has dedicated frame pointer.
@@ -303,7 +302,6 @@ int RISCVFrameLowering::getFrameIndexReference(const MachineFunction &MF,
                                                int FI,
                                                unsigned &FrameReg) const {
   const MachineFrameInfo &MFI = MF.getFrameInfo();
-  const RISCVSubtarget &STI = MF.getSubtarget<RISCVSubtarget>();
 
   unsigned SP = STI.isRV64() ? RISCV::X2_64 : RISCV::X2_32;
   unsigned FP = STI.isRV64() ? RISCV::X8_64 : RISCV::X8_32;
@@ -322,7 +320,6 @@ bool RISCVFrameLowering::hasReservedCallFrame(const MachineFunction &MF) const {
 MachineBasicBlock::iterator RISCVFrameLowering::
 eliminateCallFramePseudoInstr(MachineFunction &MF, MachineBasicBlock &MBB,
                               MachineBasicBlock::iterator I) const {
-  const RISCVSubtarget &STI = MF.getSubtarget<RISCVSubtarget>();
   unsigned SP = STI.isRV64() ? RISCV::X2_64 : RISCV::X2_32;
 
   if (!hasReservedCallFrame(MF)) {

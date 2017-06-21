@@ -75,6 +75,13 @@ BitVector RISCVRegisterInfo::getReservedRegs(const MachineFunction &MF) const {
     Reserved.set(RISCV::X30_32);
     Reserved.set(RISCV::X31_32);
   }
+  // Reserve the base register if we need to both realign the stack and
+  // allocate variable-sized objects at runtime. This should test the
+  if (needsStackRealignment(MF) &&
+      MF.getFrameInfo().hasVarSizedObjects()) {
+    Reserved.set(RISCV::X5_64);
+    Reserved.set(RISCV::X5_32);
+  }
 
   return Reserved;
 }
@@ -124,6 +131,8 @@ void RISCVRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
 
   unsigned SP = Subtarget.isRV64() ? RISCV::X2_64 : RISCV::X2_32;
   unsigned FP = Subtarget.isRV64() ? RISCV::X8_64 : RISCV::X8_32;
+  unsigned BP = Subtarget.isRV64() ? RISCV::X5_64 : RISCV::X5_32;
+
   MachineFrameInfo &MFI = MF.getFrameInfo();
   const RISCVInstrInfo &TII =
        *static_cast<const RISCVInstrInfo *>(MF.getSubtarget().getInstrInfo());
@@ -141,15 +150,6 @@ void RISCVRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
     MinCSFI = CSI[0].getFrameIdx();
     MaxCSFI = CSI[CSI.size() - 1].getFrameIdx();
   }
-  // If the FrameIndex push a callee saved register, use SP as Base
-  // To avoid FP not setting yet when -fno-omit-frame-pointer
-  // E.g.
-  //   addi    $sp, $sp, -56
-  //   swi     $fp, [$sp + (44)] <= use SP as base
-  //   addi    $fp, $sp, 0
-  if (FrameIndex >= MinCSFI && FrameIndex <= MaxCSFI)
-    BasePtr = SP;
-
   // Use SP as Base if sp_offset (offset + stackSize)
   // could fit in isInt<12>.
   // Then we could avoid expand new instruction for setting offset.
@@ -164,14 +164,25 @@ void RISCVRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
   if (RegInfo.needsStackRealignment(MF)) {
     assert(TFI->hasFP(MF) && "dynamic stack realignment without a FP!");
     bool isFixed = MFI.isFixedObjectIndex(FrameIndex);
-    if (isFixed) {
+    if (MFI.hasVarSizedObjects() && !MFI.isFixedObjectIndex(FrameIndex)) {
+      BasePtr = BP;
+    } else if (isFixed) {
       BasePtr = FP;
     } else {
       BasePtr = SP;
     }
   }
 
-  if (BasePtr == SP)
+  // If the FrameIndex push a callee saved register, use SP as Base
+  // To avoid FP not setting yet when -fno-omit-frame-pointer
+  // E.g.
+  //   addi    $sp, $sp, -56
+  //   swi     $fp, [$sp + (44)] <= use SP as base
+  //   addi    $fp, $sp, 0
+  if (FrameIndex >= MinCSFI && FrameIndex <= MaxCSFI)
+    BasePtr = SP;
+
+  if (BasePtr == SP || BasePtr == BP)
     Offset += stackSize;
 
   // Fold imm into offset

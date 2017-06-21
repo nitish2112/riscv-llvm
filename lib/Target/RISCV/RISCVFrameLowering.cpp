@@ -39,6 +39,13 @@ bool RISCVFrameLowering::hasFP(const MachineFunction &MF) const {
           TRI->needsStackRealignment(MF));
 }
 
+bool RISCVFrameLowering::hasBP(const MachineFunction &MF) const {
+  const MachineFrameInfo &MFI = MF.getFrameInfo();
+  const TargetRegisterInfo *TRI = STI.getRegisterInfo();
+
+  return MFI.hasVarSizedObjects() && TRI->needsStackRealignment(MF);
+}
+
 void RISCVFrameLowering::emitPrologue(MachineFunction &MF,
                                       MachineBasicBlock &MBB) const {
   unsigned SP = STI.isRV64() ? RISCV::X2_64 : RISCV::X2_32;
@@ -130,6 +137,21 @@ void RISCVFrameLowering::emitPrologue(MachineFunction &MF,
 
       BuildMI(MBB, MBBI, DL, TII.get(ADDI), VR).addReg(ZERO) .addImm(MaxAlign);
       BuildMI(MBB, MBBI, DL, TII.get(AND), SP).addReg(SP).addReg(VR);
+
+      // We need another base register when there are many allocas,
+      // LLVM will generate SP alignment adjustment instructions
+      // which will modify SP and lost stack base tracking.
+      //
+      // See testcase gcc.dg/vla-24.c for RV32E.
+      // RV32E stack alignment is 4 byte. Therefore, it will generate
+      // multiple sp adjustment in this case.
+      if (hasBP(MF)) {
+        // move BP, SP
+        unsigned BP = STI.isRV64() ? RISCV::X5_64 : RISCV::X5_32;
+        BuildMI(MBB, MBBI, DL, TII.get(ADDI), BP)
+          .addReg(SP)
+          .addImm(0);
+      }
     }
   }
 }
@@ -280,9 +302,14 @@ void RISCVFrameLowering::determineCalleeSaves(MachineFunction &MF,
   TargetFrameLowering::determineCalleeSaves(MF, SavedRegs, RS);
 
   unsigned FP = STI.isRV64() ? RISCV::X8_64 : RISCV::X8_32;
-  // Mark $fp as used if function has dedicated frame pointer.
+  unsigned BP = STI.isRV64() ? RISCV::X5_64 : RISCV::X5_32;
+  // Mark X8 as used if function has dedicated frame pointer.
   if (hasFP(MF))
     setAliasRegs(MF, SavedRegs, FP);
+
+  // Mark X5 as used if function has dedicated base pointer.
+  if (hasBP(MF))
+    setAliasRegs(MF, SavedRegs, BP);
 
   // Set scavenging frame index if necessary.
   uint64_t MaxSPOffset = MF.getInfo<RISCVMachineFunctionInfo>()->getIncomingArgSize() +
@@ -305,8 +332,12 @@ int RISCVFrameLowering::getFrameIndexReference(const MachineFunction &MF,
 
   unsigned SP = STI.isRV64() ? RISCV::X2_64 : RISCV::X2_32;
   unsigned FP = STI.isRV64() ? RISCV::X8_64 : RISCV::X8_32;
+  unsigned BP = STI.isRV64() ? RISCV::X5_64 : RISCV::X5_32;
 
-  FrameReg = hasFP(MF) ? FP : SP;
+  if (MFI.isFixedObjectIndex(FI))
+    FrameReg = hasFP(MF) ? FP : SP;
+  else
+    FrameReg = hasBP(MF) ? BP : SP;
 
   return MFI.getObjectOffset(FI) + MFI.getStackSize() -
          getOffsetOfLocalArea() + MFI.getOffsetAdjustment();

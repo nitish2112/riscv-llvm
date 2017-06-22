@@ -71,6 +71,12 @@ public:
   unsigned getImmOpValue(const MCInst &MI, unsigned OpNo,
                          SmallVectorImpl<MCFixup> &Fixups,
                          const MCSubtargetInfo &STI) const;
+
+  bool isLoad (unsigned int Opc) const;
+
+  unsigned getAddrRegImmEncoding(const MCInst &MI, unsigned OpNo,
+                                 SmallVectorImpl<MCFixup> &Fixups,
+                                 const MCSubtargetInfo &STI) const;
 };
 } // end anonymous namespace
 
@@ -173,6 +179,36 @@ unsigned RISCVMCCodeEmitter::getImmOpValue(const MCInst &MI, unsigned OpNo,
   ++MCNumFixups;
 
   return 0;
+}
+
+bool RISCVMCCodeEmitter::isLoad(unsigned Opc) const {
+  if (Opc == RISCV::LB  || Opc == RISCV::LB64  || Opc == RISCV::LB64_32 ||
+      Opc == RISCV::LBU || Opc == RISCV::LBU64 || Opc == RISCV:: LBU64_32 ||
+      Opc == RISCV::LD  || Opc == RISCV::LH    || Opc == RISCV::LH64 ||
+      Opc == RISCV::LH64_32  || Opc == RISCV::LHU || Opc == RISCV::LHU64 ||
+      Opc == RISCV::LHU64_32 || Opc == RISCV::LW  || Opc == RISCV::LW64 ||
+      Opc == RISCV::LW64_32  || Opc == RISCV::LWU)
+    return true;
+  return false;
+}
+
+// Encoding Reg + Imm addressing mode
+unsigned
+RISCVMCCodeEmitter::getAddrRegImmEncoding(const MCInst &MI, unsigned OpNo,
+                                          SmallVectorImpl<MCFixup> &Fixups,
+                                          const MCSubtargetInfo &STI) const {
+  const MCOperand &MO = MI.getOperand(OpNo);
+  const MCOperand &MO1 = MI.getOperand(OpNo + 1);
+  unsigned Imm12 = getMachineOpValue(MI, MO1, Fixups, STI);
+
+  // It's a load instruction.
+  if (isLoad(MI.getOpcode())) {
+    return getMachineOpValue(MI, MO,  Fixups, STI) | Imm12 << 5;
+  // It's a store instruction.
+  } else {
+    return getMachineOpValue(MI, MO,  Fixups, STI) << 5 |
+           (Imm12 & 0x1f) | (Imm12 >> 5) << 10;
+  }
 }
 
 #include "RISCVGenMCCodeEmitter.inc"

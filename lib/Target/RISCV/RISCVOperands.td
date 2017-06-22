@@ -170,4 +170,5 @@ def addr_reg_imm12s : MemOperand,
   let PrintMethod = "printAddrRegImmOperand";
   // Parser function not completed yet. Finish it later.
   let ParserMatchClass = AddrRegImm12sAsmOperand;
+  let EncoderMethod = "getAddrRegImmEncoding";
 }

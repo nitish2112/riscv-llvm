@@ -168,6 +168,8 @@ class LD_ri<bits<3> funct3, string OpcodeStr, SDPatternOperator Op> :
       FI<funct3, 0b0000011, (outs GPR:$rd), (ins addr_reg_imm12s:$addr),
          OpcodeStr#"\t$rd, $addr",
 	 [(set GPR:$rd, (Op addr_reg_imm12s:$addr))]> {
+  bits<17> addr;
+  let Inst{31-15} = addr;
   let mayLoad = 1;
 }
 
@@ -190,6 +192,10 @@ class ST_ri<bits<3> funct3, string OpcodeStr, SDPatternOperator Op> :
          OpcodeStr#"\t$rt, $addr",
 	 [(Op GPR:$rt, addr_reg_imm12s:$addr)]> {
   let mayStore = 1;
+  bits<17> addr;
+  let Inst{31-25} = addr{16-10};
+  let Inst{19-15} = addr{9-5};
+  let Inst{11-7} = addr{4-0};
 }
 
 def SB  : ST_ri<0b000, "sb", truncstorei8>, Requires<[IsRV32]>;

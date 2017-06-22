@@ -30,6 +30,56 @@ using namespace llvm;
 namespace {
 struct RISCVOperand;
 
+struct ParseError {
+    SMLoc ErrorLoc;
+    Twine ErrorMsg;
+};
+
+template<typename T>
+struct ParseSuccess {
+    T Val;
+    SMLoc StartLoc;
+    SMLoc EndLoc;
+
+    ParseSuccess(const T& V, const SMLoc S, const SMLoc E)
+        : Val{V}, StartLoc{S}, EndLoc{E} {}
+
+    template<typename U>
+    ParseSuccess(const ParseSuccess<U>& R)
+        : Val{R.Val}, StartLoc{R.StartLoc}, EndLoc{R.EndLoc} {}
+};
+
+template<>
+struct ParseSuccess<void> {
+    SMLoc StartLoc;
+    SMLoc EndLoc;
+};
+
+template<typename T>
+class ParseResult {
+    enum class KindTy { Error, Success } Kind;
+
+    union {
+        ParseSuccess<T> Success;
+        ParseError Error;
+    };
+
+public:
+    ParseResult(const ParseSuccess<T>& S) : Kind{KindTy::Success}, Success{S} {};
+    ParseResult(const ParseError& E) : Kind{KindTy::Error}, Error{E} {};
+
+    operator bool() const { return Kind == KindTy::Success; }
+
+    ParseSuccess<T>& operator*() { return Kind == KindTy::Success ? Success : nullptr; }
+    const ParseSuccess<T>& operator*() const { return Kind == KindTy::Success ? Success : nullptr; }
+
+    ParseSuccess<T>* operator->() { return Kind == KindTy::Success ? &Success : nullptr; }
+    const ParseSuccess<T>* operator->() const { return Kind == KindTy::Success ? &Success : nullptr; }
+
+    ParseError* getError() { return Kind == KindTy::Error ? &Error : nullptr; }
+    const ParseError* getError() const { return Kind == KindTy::Error ? &Error : nullptr; }
+};
+
 class RISCVAsmParser : public MCTargetAsmParser {
   SMLoc getLoc() const { return getParser().getTok().getLoc(); }
 
@@ -54,12 +104,13 @@ class RISCVAsmParser : public MCTargetAsmParser {
 #define GET_ASSEMBLER_HEADER
 #include "RISCVGenAsmMatcher.inc"
 
-  bool parseLeftParen(bool report_error);
-  bool parseRightParen(bool report_error);
-  Optional<StringRef> peekIdentifier();
-  Optional<StringRef> parseIdentifier(bool report_error);
-  Optional<unsigned> parseRegister(bool report_error);
-  Optional<const MCExpr*> parseImmediate(bool report_error);
+  ParseResult<void> parseLeftParen();
+  ParseResult<void> parseRightParen();
+  ParseResult<StringRef> peekIdentifier();
+  ParseResult<StringRef> parseIdentifier();
+  ParseResult<unsigned> parseRegister();
+  ParseResult<const MCExpr*> parseExpression();
+  ParseResult<const MCExpr*> parseImmediate();
 
   bool parseOperand(OperandVector &Operands);
 
@@ -85,6 +136,10 @@ public:
 /// RISCVOperand - Instances of this class represent a parsed machine
 /// instruction
 struct RISCVOperand : public MCParsedAsmOperand {
+  struct MemTy {
+    int64_t Offset;
+    unsigned Reg;
+  };
 
   enum KindTy {
     Token,
@@ -93,40 +148,46 @@ struct RISCVOperand : public MCParsedAsmOperand {
     Immediate,
   } Kind;
 
-  struct RegOp {
-    unsigned RegNum;
-  };
-
-  struct ImmOp {
-    const MCExpr *Val;
-  };
-
   SMLoc StartLoc, EndLoc;
+
   union {
     StringRef Tok;
-    RegOp Reg;
-    ImmOp Imm;
+    unsigned Reg;
+    const MCExpr* Imm;
+    MemTy Mem;
   };
 
-  RISCVOperand(KindTy K) : MCParsedAsmOperand(), Kind(K) {}
+  // Constructors
+  explicit RISCVOperand(StringRef Tok_, SMLoc S, SMLoc E)
+    : Kind(Token), StartLoc(S), EndLoc(E), Tok(Tok_) {}
 
-public:
-  RISCVOperand(const RISCVOperand &o) : MCParsedAsmOperand() {
-    Kind = o.Kind;
-    StartLoc = o.StartLoc;
-    EndLoc = o.EndLoc;
+  explicit RISCVOperand(unsigned Reg_, SMLoc S, SMLoc E)
+    : Kind(Register), StartLoc(S), EndLoc(E), Reg(Reg_) {}
+
+  explicit RISCVOperand(const MCExpr* const Imm_, SMLoc S, SMLoc E)
+    : Kind(Immediate), StartLoc(S), EndLoc(E), Imm(Imm_) {}
+
+  explicit RISCVOperand(const int64_t Offset, const unsigned Reg, SMLoc S, SMLoc E)
+    : Kind(Memory), StartLoc(S), EndLoc(E), Mem{Offset, Reg} {}
+
+  // Copy constructor
+  RISCVOperand(const RISCVOperand &rhs)
+    : MCParsedAsmOperand(),
+      Kind(rhs.Kind),
+      StartLoc(rhs.StartLoc),
+      EndLoc(rhs.EndLoc) {
     switch (Kind) {
+    case Token:
+      Tok = rhs.Tok;
+      break;
     case Register:
-      Reg = o.Reg;
+      Reg = rhs.Reg;
       break;
     case Immediate:
-      Imm = o.Imm;
-      break;
-    case Token:
-      Tok = o.Tok;
+      Imm = rhs.Imm;
       break;
     case Memory:
-      //Todo
+      Mem = rhs.Mem;
       break;
     }
   }
@@ -138,11 +199,6 @@ public:
 
   bool isConstantImm() const {
     return isImm() && dyn_cast<MCConstantExpr>(getImm());
-  }
-
-  int64_t getConstantImm() const {
-    const MCExpr *Val = getImm();
-    return static_cast<const MCConstantExpr *>(Val)->getValue();
   }
 
   bool isGPRAsmReg() const {
@@ -210,8 +266,7 @@ public:
 
   // Reg + imm12s
   bool isAddrRegImm12s() const {
-    // ToDo
-    return false;
+    return isMem();
   }
 
   bool isSImm21Lsb0() const {
@@ -231,17 +286,22 @@ public:
   SMLoc getEndLoc() const override { return EndLoc; }
 
   unsigned getReg() const override {
-    assert(Kind == Register && "Invalid type access!");
-    return Reg.RegNum;
+    assert(isReg() && "Invalid type access as register!");
+    return Reg;
   }
 
-  const MCExpr *getImm() const {
-    assert(Kind == Immediate && "Invalid type access!");
-    return Imm.Val;
+  const MCExpr* getImm() const {
+    assert(isImm() && "Invalid type access as immediate!");
+    return Imm;
+  }
+
+  int64_t getConstantImm() const {
+    assert(isConstantImm() && "Invalid type access as constant immediate!");
+    return static_cast<const MCConstantExpr*>(Imm)->getValue();
   }
 
   StringRef getToken() const {
-    assert(Kind == Token && "Invalid type access!");
+    assert(isToken() && "Invalid type access as token!");
     return Tok;
   }
 
@@ -251,47 +311,15 @@ public:
       OS << *getImm();
       break;
     case Register:
-      OS << "<register x";
-      OS << getReg() << ">";
+      OS << "<register x" << getReg() << ">";
       break;
     case Token:
       OS << "'" << getToken() << "'";
       break;
     case Memory:
-      // Todo
+      OS << "<Mem " << Mem.Offset << '(' << Mem.Reg << ")>";
       break;
     }
-  }
-
-  static std::unique_ptr<RISCVOperand> createToken(StringRef Str, SMLoc S) {
-    auto Op = make_unique<RISCVOperand>(Token);
-    Op->Tok = Str;
-    Op->StartLoc = S;
-    Op->EndLoc = S;
-    return Op;
-  }
-
-  static std::unique_ptr<RISCVOperand> createReg(unsigned RegNo, SMLoc S,
-                                                 SMLoc E) {
-    auto Op = make_unique<RISCVOperand>(Register);
-    Op->Reg.RegNum = RegNo;
-    Op->StartLoc = S;
-    Op->EndLoc = E;
-    return Op;
-  }
-
-  static std::unique_ptr<RISCVOperand> createImm(const MCExpr *Val, SMLoc S,
-                                                 SMLoc E, MCContext &Ctx) {
-    auto Op = make_unique<RISCVOperand>(Immediate);
-    if (const RISCVMCExpr *RE = dyn_cast<RISCVMCExpr>(Val)) {
-      int64_t Res;
-      if (RE->evaluateAsConstant(Res))
-        Val = MCConstantExpr::create(Res, Ctx);
-    }
-    Op->Imm.Val = Val;
-    Op->StartLoc = S;
-    Op->EndLoc = E;
-    return Op;
   }
 
   void addExpr(MCInst &Inst, const MCExpr *Expr) const {
@@ -314,7 +342,9 @@ public:
   }
 
   void addAddrRegImm12sOperands(MCInst &Inst, unsigned N) const {
-    // Todo
+    assert(N == 2 && "Invalid number of operands!");
+    Inst.addOperand(MCOperand::createReg(Mem.Reg));
+    Inst.addOperand(MCOperand::createImm(Mem.Offset));
   }
 };
 } // end anonymous namespace.
@@ -463,123 +493,118 @@ Optional<unsigned> RISCVAsmParser::matchCPURegisterName(StringRef Name) const {
 
 bool RISCVAsmParser::ParseRegister(unsigned &RegNo, SMLoc &StartLoc,
                                    SMLoc &EndLoc) {
-  const auto StartLoc_ = getParser().getTok().getLoc();
-  const auto EndLoc_ = getParser().getTok().getEndLoc();
-  auto OptReg = parseRegister(true);
-  if (OptReg) {
-    RegNo = *OptReg;
-    StartLoc = StartLoc_;
-    EndLoc = EndLoc_;
+  const ParseResult<unsigned> Reg = parseRegister();
+  if (Reg) {
+    RegNo = Reg->Val;
+    StartLoc = Reg->StartLoc;
+    EndLoc = Reg->EndLoc;
     return false;
   } else {
     return true;
   }
 }
 
-bool RISCVAsmParser::parseLeftParen(bool report_error) {
+ParseResult<void> RISCVAsmParser::parseLeftParen() {
   if (getLexer().is(AsmToken::LParen)) {
-    getLexer().Lex();
-    return true;
+    const AsmToken& Tok = getLexer().Lex();
+    return ParseSuccess<void> { Tok.getLoc(), Tok.getEndLoc() };
   } else {
-    if (report_error) Error(getLoc(), "expected '('");
-    return false;
+    return ParseError { getLoc(), "expected '('" };
   }
 }
 
-bool RISCVAsmParser::parseRightParen(bool report_error) {
+ParseResult<void> RISCVAsmParser::parseRightParen() {
   if (getLexer().is(AsmToken::RParen)) {
-    getLexer().Lex();
-    return true;
+    const AsmToken& Tok = getLexer().Lex();
+    return ParseSuccess<void> { Tok.getLoc(), Tok.getEndLoc() };
   } else {
-    if (report_error) Error(getLoc(), "expected ')'");
-    return false;
+    return ParseError { getLoc(), "expected ')'" };
   }
 }
 
-Optional<StringRef> RISCVAsmParser::peekIdentifier() {
-  if (getLexer().is(AsmToken::Identifier))
-    return Optional<StringRef>(getLexer().getTok().getIdentifier());
-  else
-    return None;
+ParseResult<StringRef> RISCVAsmParser::peekIdentifier() {
+  if (getLexer().is(AsmToken::Identifier)) {
+    const AsmToken& Tok = getLexer().getTok();
+    return ParseSuccess<StringRef> { Tok.getIdentifier(), Tok.getLoc(), Tok.getEndLoc() };
+  } else {
+    return ParseError { getLoc(), "expected identifier" };
+  }
 }
 
-Optional<StringRef> RISCVAsmParser::parseIdentifier(bool report_error) {
-  const Optional<StringRef> Identifier = peekIdentifier();
-  if (!Identifier) {
-    if (report_error) Error(getLoc(), "expected identifier");
-  } else {
-    getLexer().Lex();
-  }
+ParseResult<StringRef> RISCVAsmParser::parseIdentifier() {
+  const ParseResult<StringRef> Identifier = peekIdentifier();
+
+  if (Identifier)
+    getLexer().Lex(); // Eat identifier
 
   return Identifier;
 }
 
-Optional<unsigned> RISCVAsmParser::parseRegister(bool report_error) {
-  const Optional<StringRef> Identifier = peekIdentifier();
+ParseResult<unsigned> RISCVAsmParser::parseRegister() {
+  const ParseResult<StringRef> Identifier = peekIdentifier();
   if (Identifier) {
-    const Optional<unsigned> Reg = matchCPURegisterName(*Identifier);
+    const Optional<unsigned> Reg = matchCPURegisterName(Identifier->Val);
     if (Reg) {
         getLexer().Lex();
-        return Reg;
+        return ParseSuccess<unsigned> { *Reg, Identifier->StartLoc, Identifier->EndLoc };
     } else {
-        if (report_error) Error(getLoc(), "invalid register");
-        return None;
+        return ParseError { getLoc(), "invalid register" };
     }
   } else {
-    if (report_error) Error(getLoc(), "expected register");
-    return None;
+    return ParseError { getLoc(), "expected register" };
   }
 }
 
-Optional<const MCExpr*> RISCVAsmParser::parseImmediate(bool report_error) {
+ParseResult<const MCExpr*> RISCVAsmParser::parseExpression() {
+  const SMLoc StartLoc = getLoc();
+  SMLoc EndLoc;
+  const MCExpr* Expr;
+  if (getParser().parseExpression(Expr, EndLoc))
+    return ParseError { getLoc(), "invalid expression" };
+  else
+    return ParseSuccess<const MCExpr*> { Expr, StartLoc, EndLoc };
+}
+
+ParseResult<const MCExpr*> RISCVAsmParser::parseImmediate() {
   switch (getLexer().getKind()) {
     case AsmToken::LParen:
     case AsmToken::Minus:
     case AsmToken::Plus:
     case AsmToken::Integer:
-    case AsmToken::String: {
-      const MCExpr* Expr;
-      if (getParser().parseExpression(Expr))
-        return None;
-      else
-        return Optional<const MCExpr*>(Expr);
-    }
+    case AsmToken::String:
+      return parseExpression();
     case AsmToken::Identifier: {
-      const Optional<StringRef> Identifier = parseIdentifier(true);
+      const ParseResult<StringRef> Identifier = parseIdentifier();
       if (Identifier) {
-        MCSymbol* Sym = getContext().getOrCreateSymbol(*Identifier);
-        return Optional<const MCExpr*>(MCSymbolRefExpr::create(Sym, MCSymbolRefExpr::VK_None, getContext()));
+        MCSymbol* Sym = getContext().getOrCreateSymbol(Identifier->Val);
+        return ParseSuccess<const MCExpr*> { MCSymbolRefExpr::create(Sym, MCSymbolRefExpr::VK_None, getContext()),
+                                             Identifier->StartLoc, Identifier->EndLoc };
       } else {
-        return None;
+        return ParseError { getLoc(), "expected identifier" };
       }
     }
     case AsmToken::Percent: {
       getLexer().Lex(); // Eat '%'
-      const Optional<StringRef> Identifier = peekIdentifier();
+      const ParseResult<StringRef> Identifier = parseIdentifier();
       if (Identifier) {
-        const RISCVMCExpr::VariantKind VK = RISCVMCExpr::getVariantKindForName(*Identifier);
-        if (VK == RISCVMCExpr::VK_RISCV_None) {
-          if (report_error) Error(getLoc(), "unrecognized operand modifier");
-          return None;
-        }
-        getLexer().Lex(); // Eat identifier
+        const RISCVMCExpr::VariantKind VK = RISCVMCExpr::getVariantKindForName(Identifier->Val);
+        if (VK == RISCVMCExpr::VK_RISCV_None)
+          return ParseError { getLoc(), "unrecognized operand modifier" };
 
-        if (!parseLeftParen(true)) return None;
-        const MCExpr* SubExpr;
-        if (getParser().parseExpression(SubExpr)) {
-          if (report_error) Error(getLoc(), "expected expression");
-          return None;
-        }
-        if (!parseRightParen(true)) return None;
+        const ParseResult<void> LParen = parseLeftParen();
+        if (const auto Err = LParen.getError()) return *Err;
+        const ParseResult<const MCExpr*> SubExpr = parseExpression();
+        if (const auto Err = SubExpr.getError()) return *Err;
+        const ParseResult<void> RParen = parseRightParen();
+        if (const auto Err = RParen.getError()) return *Err;
 
-        return Optional<const MCExpr*>(RISCVMCExpr::create(SubExpr, VK, getContext()));
+        return ParseSuccess<const MCExpr*> { RISCVMCExpr::create(SubExpr->Val, VK, getContext()), Identifier->StartLoc, RParen->EndLoc };
       } else {
-        return None;
+        return ParseError { getLoc(), "expected identifier" };
       }
     }
     default:
-      if (report_error) Error(getLoc(), "expected immediate");
-      return None;
+      return ParseError { getLoc(), "unknown operand" };
   }
 }
 
@@ -587,40 +612,39 @@ Optional<const MCExpr*> RISCVAsmParser::parseImmediate(bool report_error) {
 /// from this information, adding to Operands.
 /// If operand was parsed, returns false, else true.
 bool RISCVAsmParser::parseOperand(OperandVector &Operands) {
-  const SMLoc S = getLoc();
-
-  const auto Reg = parseRegister(false);
+  const ParseResult<unsigned> Reg = parseRegister();
   if (Reg) {
-    Operands.push_back(RISCVOperand::createReg(*Reg, S, getLoc()));
+    Operands.push_back(make_unique<RISCVOperand>(Reg->Val, Reg->StartLoc, Reg->EndLoc));
     return false;
   }
 
-  const auto Expr = parseImmediate(true);
-  if (Expr) {
-    if (dyn_cast<MCConstantExpr>(*Expr) && parseLeftParen(false)) { // offset(reg)
-      const int64_t Imm = dyn_cast<MCConstantExpr>(*Expr)->getValue();
-      const auto Reg = parseRegister(true);
-      if (Reg) {
-        if (!parseRightParen(true)) return true;
-        // TODO: createMem
-        return false;
-      } else {
-        return true;
-      }
-    } else {
-      Operands.push_back(RISCVOperand::createImm(*Expr, S, getLoc(), getContext()));
-      return false;
-    }
-  }
+  const ParseResult<const MCExpr*> Expr = parseImmediate();
+  if (const auto Err = Expr.getError())
+    return Error(Err->ErrorLoc, Err->ErrorMsg);
 
-  return true;
+  if (dyn_cast<MCConstantExpr>(Expr->Val) && parseLeftParen()) { // offset(reg)
+    const int64_t Imm = dyn_cast<MCConstantExpr>(Expr->Val)->getValue();
+    const ParseResult<unsigned> Reg = parseRegister();
+    if (!Reg)
+      return Error(getLoc(), "expected register");
+
+    const auto RParen = parseRightParen();
+    if (const auto Err = RParen.getError())
+      return Error(Err->ErrorLoc, Err->ErrorMsg);
+
+    Operands.push_back(make_unique<RISCVOperand>(Imm, Reg->Val, Expr->StartLoc, RParen->EndLoc));
+    return false;
+  } else {
+    Operands.push_back(make_unique<RISCVOperand>(Expr->Val, Expr->StartLoc, Expr->EndLoc));
+    return false;
+  }
 }
 
 bool RISCVAsmParser::ParseInstruction(ParseInstructionInfo &Info,
                                       StringRef Name, SMLoc NameLoc,
                                       OperandVector &Operands) {
   // First operand is token for instruction
-  Operands.push_back(RISCVOperand::createToken(Name, NameLoc));
+  Operands.push_back(make_unique<RISCVOperand>(Name, NameLoc, NameLoc));
 
   // If there are no more operands, then finish
   if (getLexer().is(AsmToken::EndOfStatement))

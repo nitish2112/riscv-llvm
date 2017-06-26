@@ -392,3 +392,31 @@ bool RISCVInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
 
   return false;
 }
+
+/// getOppositeBranchOpc - Return the inverse of the specified
+/// opcode, e.g. turning BEQ to BNE.
+unsigned RISCVInstrInfo::getOppositeBranchOpc(unsigned Opc) const {
+  switch (Opc) {
+  default:             llvm_unreachable("Illegal opcode!");
+  case RISCV::BEQ:     return RISCV::BNE;
+  case RISCV::BNE:     return RISCV::BEQ;
+  case RISCV::BLT:     return RISCV::BGE;
+  case RISCV::BGE:     return RISCV::BLT;
+  case RISCV::BLTU:    return RISCV::BGEU;
+  case RISCV::BGEU:    return RISCV::BLTU;
+  case RISCV::BEQ64:   return RISCV::BNE64;
+  case RISCV::BNE64:   return RISCV::BEQ64;
+  case RISCV::BLT64:   return RISCV::BGE64;
+  case RISCV::BGE64:   return RISCV::BLT64;
+  case RISCV::BLTU64:  return RISCV::BGEU64;
+  case RISCV::BGEU64:  return RISCV::BLTU64;
+  }
+}
+
+bool RISCVInstrInfo::reverseBranchCondition(
+    SmallVectorImpl<MachineOperand> &Cond) const {
+  assert( (Cond.size() && Cond.size() <= 3) &&
+          "Invalid RISCV branch condition!");
+  Cond[0].setImm(getOppositeBranchOpc(Cond[0].getImm()));
+  return false;
+}

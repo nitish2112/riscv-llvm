@@ -80,6 +80,12 @@ public:
                                         MachineBasicBlock &MBB,
                                         MachineBasicBlock::iterator II,
                                         const DebugLoc &DL) const;
+
+  unsigned getOppositeBranchOpc(unsigned Opc) const;
+
+  bool
+  reverseBranchCondition(SmallVectorImpl<MachineOperand> &Cond) const override;
+
 private:
   void BuildCondBr(MachineBasicBlock &MBB, MachineBasicBlock *TBB,
                    const DebugLoc &DL, ArrayRef<MachineOperand> Cond) const;

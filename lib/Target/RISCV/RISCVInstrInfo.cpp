@@ -266,6 +266,10 @@ unsigned RISCVInstrInfo::insertBranch(MachineBasicBlock &MBB,
   if (FBB) {
     BuildCondBr(MBB, TBB, DL, Cond);
     BuildMI(&MBB, DL, get(RISCV::PseudoBR)).addMBB(FBB);
+
+    if (BytesAdded)
+      *BytesAdded = 8;
+
     return 2;
   }
 
@@ -275,6 +279,10 @@ unsigned RISCVInstrInfo::insertBranch(MachineBasicBlock &MBB,
     BuildMI(&MBB, DL, get(RISCV::PseudoBR)).addMBB(TBB);
   else // Conditional branch.
     BuildCondBr(MBB, TBB, DL, Cond);
+
+  if (BytesAdded)
+    *BytesAdded = 4;
+
   return 1;
 }
 
@@ -283,8 +291,6 @@ unsigned RISCVInstrInfo::insertBranch(MachineBasicBlock &MBB,
 // could do the right thing.
 unsigned RISCVInstrInfo::removeBranch(MachineBasicBlock &MBB,
                                       int *BytesRemoved) const {
-  assert(!BytesRemoved && "code size not handled");
-
   MachineBasicBlock::iterator I = MBB.getLastNonDebugInstr();
   if (I == MBB.end())
     return 0;
@@ -298,13 +304,23 @@ unsigned RISCVInstrInfo::removeBranch(MachineBasicBlock &MBB,
 
   I = MBB.end();
 
-  if (I == MBB.begin()) return 1;
-  --I;
-  if (!isCondBranch(I->getOpcode()))
+  if (I == MBB.begin()) {
+    if (BytesRemoved)
+      *BytesRemoved = 4;
     return 1;
+  }
+  --I;
+  if (!isCondBranch(I->getOpcode())) {
+    if (BytesRemoved)
+      *BytesRemoved = 4;
+    return 1;
+  }
 
   // Remove the branch.
   I->eraseFromParent();
+  if (BytesRemoved)
+    *BytesRemoved = 8;
+
   return 2;
 }
 
@@ -419,4 +435,66 @@ bool RISCVInstrInfo::reverseBranchCondition(
           "Invalid RISCV branch condition!");
   Cond[0].setImm(getOppositeBranchOpc(Cond[0].getImm()));
   return false;
+}
+
+static unsigned getBranchDisplacementBits(unsigned Opc) {
+  switch (Opc) {
+    default:
+    llvm_unreachable("unexpected opcode!");
+  case RISCV::BEQ:
+  case RISCV::BNE:
+  case RISCV::BLT:
+  case RISCV::BGE:
+  case RISCV::BLTU:
+  case RISCV::BGEU:
+  case RISCV::BEQ64:
+  case RISCV::BNE64:
+  case RISCV::BLT64:
+  case RISCV::BGE64:
+  case RISCV::BLTU64:
+  case RISCV::BGEU64:
+    return 12;
+  case RISCV::JAL:
+  case RISCV::JAL64:
+  case RISCV::PseudoBR:
+  case RISCV::PseudoBR64:
+    return 21;
+  }
+}
+
+bool RISCVInstrInfo::isBranchOffsetInRange(unsigned BranchOp,
+                                           int64_t BrOffset) const {
+  unsigned Bits = getBranchDisplacementBits(BranchOp);
+  return isIntN(Bits, BrOffset);
+}
+
+MachineBasicBlock *RISCVInstrInfo::getBranchDestBlock(
+  const MachineInstr &MI) const {
+  switch (MI.getOpcode()) {
+  default:
+    llvm_unreachable("unexpected opcode!");
+  case RISCV::PseudoBR:
+  case RISCV::PseudoBR64:
+    return MI.getOperand(0).getMBB();
+  case RISCV::JAL:
+  case RISCV::JAL64:
+    return MI.getOperand(1).getMBB();
+  case RISCV::BEQ:
+  case RISCV::BNE:
+  case RISCV::BLT:
+  case RISCV::BGE:
+  case RISCV::BLTU:
+  case RISCV::BGEU:
+  case RISCV::BEQ64:
+  case RISCV::BNE64:
+  case RISCV::BLT64:
+  case RISCV::BGE64:
+  case RISCV::BLTU64:
+  case RISCV::BGEU64:
+    return MI.getOperand(2).getMBB();
+  }
+}
+
+unsigned RISCVInstrInfo::getInstSizeInBytes(const MachineInstr &MI) const {
+  return 4;
 }

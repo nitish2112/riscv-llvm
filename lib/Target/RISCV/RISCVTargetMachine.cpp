@@ -23,6 +23,10 @@
 #include "llvm/Target/TargetOptions.h"
 using namespace llvm;
 
+static cl::opt<bool>
+    BranchRelaxation("riscv-enable-branch-relax", cl::Hidden, cl::init(true),
+                     cl::desc("Relax out of range conditional branches"));
+
 extern "C" void LLVMInitializeRISCVTarget() {
   RegisterTargetMachine<RISCVTargetMachine> X(getTheRISCV32Target());
   RegisterTargetMachine<RISCVTargetMachine> Y(getTheRISCV64Target());
@@ -72,6 +76,7 @@ public:
   }
 
   bool addInstSelector() override;
+  void addPreEmitPass() override;
 };
 }
 
@@ -83,4 +88,11 @@ bool RISCVPassConfig::addInstSelector() {
   addPass(createRISCVISelDag(getRISCVTargetMachine()));
 
   return false;
+}
+
+void RISCVPassConfig::addPreEmitPass() {
+  // Relax conditional branch instructions if they're otherwise out of
+  // range of their destination.
+  if (BranchRelaxation)
+    addPass(&BranchRelaxationPassID);
 }

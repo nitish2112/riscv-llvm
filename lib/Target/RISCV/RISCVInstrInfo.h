@@ -86,6 +86,15 @@ public:
   bool
   reverseBranchCondition(SmallVectorImpl<MachineOperand> &Cond) const override;
 
+  /// \returns true if a branch from an instruction with opcode \p BranchOpc
+  ///  bytes is capable of jumping to a position \p BrOffset bytes away.
+  bool isBranchOffsetInRange(unsigned BranchOpc,
+                             int64_t BrOffset) const override;
+
+  MachineBasicBlock *getBranchDestBlock(const MachineInstr &MI) const override;
+
+  unsigned getInstSizeInBytes(const MachineInstr &MI) const override;
+
 private:
   void BuildCondBr(MachineBasicBlock &MBB, MachineBasicBlock *TBB,
                    const DebugLoc &DL, ArrayRef<MachineOperand> Cond) const;

@@ -69,9 +69,14 @@ void RISCVFrameLowering::emitPrologue(MachineFunction &MF,
 
   // First, compute final stack size.
   uint64_t StackSize = MFI.getStackSize();
+  uint64_t AlignMask = getStackAlignment() - 1;
 
   // No need to allocate space on the stack.
   if (StackSize == 0 && !MFI.adjustsStack()) return;
+
+  // Align the stack
+  StackSize = (StackSize + AlignMask) & ~AlignMask;
+  MFI.setStackSize(StackSize);
 
   MachineModuleInfo &MMI = MF.getMMI();
   const MCRegisterInfo *MRI = MMI.getContext().getRegisterInfo();
@@ -361,10 +366,18 @@ eliminateCallFramePseudoInstr(MachineFunction &MF, MachineBasicBlock &MBB,
     // To avoid alloca area poison by outgoing arguments.
     // See the test case gcc.dg/pr31507-1.c.
     int64_t Amount = I->getOperand(0).getImm();
-    if (I->getOpcode() == RISCV::ADJCALLSTACKDOWN)
-      Amount = -Amount;
 
-    STI.getInstrInfo()->adjustStackPtr(SP, Amount, MBB, I);
+    if (Amount != 0) {
+      // We need to keep the stack aligned properly.  To do this, we round the
+      // amount of space needed for the outgoing arguments up to the next
+      // alignment boundary.
+      Amount = alignSPAdjust(Amount);
+
+      if (I->getOpcode() == RISCV::ADJCALLSTACKDOWN)
+        Amount = -Amount;
+
+      STI.getInstrInfo()->adjustStackPtr(SP, Amount, MBB, I);
+    }
   }
 
   return MBB.erase(I);

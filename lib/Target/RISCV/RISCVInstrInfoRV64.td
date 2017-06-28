@@ -25,7 +25,7 @@ class ALUW_ri<bits<3> funct3, string OpcodeStr, SDPatternOperator OpNode> :
 
 //Integer arithmetic register-immediate
 let DecoderNamespace = "RISCV64_" in {
-def ADDIW  : ALUW_ri<0b101, "addiw", add>, Requires<[IsRV64]>;
+def ADDIW  : ALUW_ri<0b000, "addiw", add>, Requires<[IsRV64]>;
 } // End of DecoderNamespace
 
 class ALU64_rr<bits<7> funct7, bits<3> funct3, string OpcodeStr, SDPatternOperator OpNode> :

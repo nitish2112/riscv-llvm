@@ -7,67 +7,60 @@
 //
 //===----------------------------------------------------------------------===//
 
-let DecoderNamespace = "RISCV64_" in {
-class ALUW_rr<bits<7> funct7, bits<3> funct3, string OpcodeStr, SDPatternOperator OpNode> :
+class ALUW_rr<bits<7> funct7, bits<3> funct3, string OpcodeStr,
+              SDPatternOperator OpNode> :
       FR<funct7, funct3, 0b0111011, (outs GPR:$rd), (ins GPR:$rs1, GPR:$rs2),
-         OpcodeStr#"\t$rd, $rs1, $rs2", [(set GPR:$rd, (OpNode GPR:$rs1, GPR:$rs2))]>;
+         OpcodeStr#"\t$rd, $rs1, $rs2",
+         [(set GPR:$rd, (OpNode GPR:$rs1, GPR:$rs2))]>;
 
+class ALUW_ri<bits<3> funct3, string OpcodeStr, SDPatternOperator OpNode> :
+      FI<funct3, 0b0011011, (outs GPR:$rd), (ins GPR:$rs1, simm12:$imm12),
+         OpcodeStr#"\t$rd, $rs1, $imm12",
+         [(set GPR:$rd, (OpNode GPR:$rs1, simm12:$imm12))]>;
+
+class ALU64_rr<bits<7> funct7, bits<3> funct3, string OpcodeStr,
+               SDPatternOperator OpNode> :
+      FR<funct7, funct3, 0b0110011, (outs GPR64:$rd),
+         (ins GPR64:$rs1, GPR64:$rs2),
+         OpcodeStr#"\t$rd, $rs1, $rs2",
+         [(set GPR64:$rd, (OpNode GPR64:$rs1, GPR64:$rs2))]>;
+
+class SHIFT64_rr<bits<7> funct7, bits<3> funct3, string OpcodeStr,
+                 SDPatternOperator OpNode> :
+      FR<funct7, funct3, 0b0110011, (outs GPR64:$rd),
+         (ins GPR64:$rs1, GPR:$rs2),
+         OpcodeStr#"\t$rd, $rs1, $rs2",
+         [(set GPR64:$rd, (OpNode GPR64:$rs1, GPR:$rs2))]>;
+
+class ALU64_ri<bits<3> funct3, string OpcodeStr, SDPatternOperator OpNode> :
+      FI<funct3, 0b0010011, (outs GPR64:$rd), 
+         (ins GPR64:$rs1, imm64sx12:$imm12),
+         OpcodeStr#"\t$rd, $rs1, $imm12",
+         [(set GPR64:$rd, (OpNode GPR64:$rs1, imm64sx12:$imm12))]>;
+
+let DecoderNamespace = "RISCV64_" in {
 def ADDW  : ALUW_rr<0b0000000, 0b000, "addw", add>, Requires<[IsRV64]>;
 def SUBW  : ALUW_rr<0b0100000, 0b000, "subw", sub>, Requires<[IsRV64]>;
 def SLLW  : ALUW_rr<0b0000000, 0b001, "sllw", shl>, Requires<[IsRV64]>;
 def SRLW  : ALUW_rr<0b0000000, 0b101, "srlw", srl>, Requires<[IsRV64]>;
 def SRAW  : ALUW_rr<0b0100000, 0b101, "sraw", sra>, Requires<[IsRV64]>;
-} // End of DecoderNamespace
 
-class ALUW_ri<bits<3> funct3, string OpcodeStr, SDPatternOperator OpNode> :
-      FI<funct3, 0b0011011, (outs GPR:$rd), (ins GPR:$rs1, simm12:$imm12),
-         OpcodeStr#"\t$rd, $rs1, $imm12", [(set GPR:$rd, (OpNode GPR:$rs1, simm12:$imm12))]>;
-
-//Integer arithmetic register-immediate
-let DecoderNamespace = "RISCV64_" in {
 def ADDIW  : ALUW_ri<0b000, "addiw", add>, Requires<[IsRV64]>;
-} // End of DecoderNamespace
 
-class ALU64_rr<bits<7> funct7, bits<3> funct3, string OpcodeStr, SDPatternOperator OpNode> :
-      FR<funct7, funct3, 0b0110011, (outs GPR64:$rd), (ins GPR64:$rs1, GPR64:$rs2),
-         OpcodeStr#"\t$rd, $rs1, $rs2", [(set GPR64:$rd, (OpNode GPR64:$rs1, GPR64:$rs2))]>;
-
-let DecoderNamespace = "RISCV64_" in {
 //Standard instructions operating on 64bit values
 //Integer arithmetic register-register
-def ADD64  : ALU64_rr<0b0000000, 0b000, "add", add>, Requires<[IsRV64]>;
-def SUB64  : ALU64_rr<0b0100000, 0b000, "sub", sub>, Requires<[IsRV64]>;
-def XOR64  : ALU64_rr<0b0000000, 0b100, "xor", xor>, Requires<[IsRV64]>;
-def OR64   : ALU64_rr<0b0000000, 0b110, "or" , or>,  Requires<[IsRV64]>;
-def AND64  : ALU64_rr<0b0000000, 0b111, "and", and>, Requires<[IsRV64]>;
+def ADD64  : ALU64_rr<0b0000000, 0b000, "add",  add>, Requires<[IsRV64]>;
+def SUB64  : ALU64_rr<0b0100000, 0b000, "sub",  sub>, Requires<[IsRV64]>;
+def XOR64  : ALU64_rr<0b0000000, 0b100, "xor",  xor>, Requires<[IsRV64]>;
+def OR64   : ALU64_rr<0b0000000, 0b110, "or" ,  or>,  Requires<[IsRV64]>;
+def AND64  : ALU64_rr<0b0000000, 0b111, "and",  and>, Requires<[IsRV64]>;
 def SLT64  : ALU64_rr<0b0000000, 0b010, "slt",  setlt>,  Requires<[IsRV64]>;
 def SLTU64 : ALU64_rr<0b0000000, 0b011, "sltu", setult>, Requires<[IsRV64]>;
-} // End of DecoderNamespace
 
-class SHIFT64_rr<bits<7> funct7, bits<3> funct3, string OpcodeStr, SDPatternOperator OpNode> :
-      FR<funct7, funct3, 0b0110011, (outs GPR64:$rd), (ins GPR64:$rs1, GPR:$rs2),
-         OpcodeStr#"\t$rd, $rs1, $rs2", [(set GPR64:$rd, (OpNode GPR64:$rs1, GPR:$rs2))]>;
-
-let DecoderNamespace = "RISCV64_" in {
 def SLL64  : SHIFT64_rr<0b0000000, 0b001, "sll", shl>, Requires<[IsRV64]>;
 def SRL64  : SHIFT64_rr<0b0000000, 0b101, "srl", srl>, Requires<[IsRV64]>;
 def SRA64  : SHIFT64_rr<0b0100000, 0b101, "sra", sra>, Requires<[IsRV64]>;
-} // End of DecoderNamespace
 
-class SLT_rr<bits<7> funct7, bits<3> funct3, string OpcodeStr, SDPatternOperator OpNode> :
-      FR<funct7, funct3, 0b0110011, (outs GPR:$rd), (ins GPR64:$rs1, GPR64:$rs2),
-         OpcodeStr#"\t$rd, $rs1, $rs2", [(set GPR:$rd, (OpNode GPR64:$rs1, GPR64:$rs2))]>;
-
-let DecoderNamespace = "NO_DECODE_MATCH" in {
-def SLT32  : SLT_rr<0b0000000, 0b010, "slt",  setlt>,  Requires<[IsRV64]>;
-def SLTU32 : SLT_rr<0b0000000, 0b011, "sltu", setult>, Requires<[IsRV64]>;
-} // End of DecoderNamespace
-
-class ALU64_ri<bits<3> funct3, string OpcodeStr, SDPatternOperator OpNode> :
-      FI<funct3, 0b0010011, (outs GPR64:$rd), (ins GPR64:$rs1, imm64sx12:$imm12),
-         OpcodeStr#"\t$rd, $rs1, $imm12", [(set GPR64:$rd, (OpNode GPR64:$rs1, imm64sx12:$imm12))]>;
-
-let DecoderNamespace = "RISCV64_" in {
 //Integer arithmetic register-immediate
 def ADDI64: ALU64_ri<0b000, "addi", add>, Requires<[IsRV64]>;
 def XORI64: ALU64_ri<0b100, "xori", xor>, Requires<[IsRV64]>;
@@ -75,67 +68,104 @@ def ORI64 : ALU64_ri<0b110,  "ori",  or>, Requires<[IsRV64]>;
 def ANDI64: ALU64_ri<0b111, "andi", and>, Requires<[IsRV64]>;
 def SLTI64 : ALU64_ri<0b010, "slti",  setlt>,  Requires<[IsRV64]>;
 def SLTIU64: ALU64_ri<0b011, "sltiu", setult>, Requires<[IsRV64]>;
+
+def LUI64 : FU<0b0110111, (outs GPR64:$rd), (ins imm64sxu20:$imm20),
+               "lui\t$rd, $imm20", []>;
 } // End of DecoderNamespace
 
+class SLT_rr<bits<7> funct7, bits<3> funct3, string OpcodeStr,
+             SDPatternOperator OpNode> :
+      FR<funct7, funct3, 0b0110011, (outs GPR:$rd),
+         (ins GPR64:$rs1, GPR64:$rs2),
+         OpcodeStr#"\t$rd, $rs1, $rs2",
+         [(set GPR:$rd, (OpNode GPR64:$rs1, GPR64:$rs2))]>;
+
 class SLT_ri<bits<3> funct3, string OpcodeStr, SDPatternOperator OpNode> :
-      FI<funct3, 0b0010011, (outs GPR:$rd), (ins GPR64:$rs1, imm64sx12:$imm12),
-         OpcodeStr#"\t$rd, $rs1, $imm12", [(set GPR:$rd, (OpNode GPR64:$rs1, imm64sx12:$imm12))]>;
+      FI<funct3, 0b0010011, (outs GPR:$rd),
+         (ins GPR64:$rs1, imm64sx12:$imm12),
+         OpcodeStr#"\t$rd, $rs1, $imm12",
+         [(set GPR:$rd, (OpNode GPR64:$rs1, imm64sx12:$imm12))]>;
 
 let DecoderNamespace = "NO_DECODE_MATCH" in {
+def SLT32  : SLT_rr<0b0000000, 0b010, "slt",  setlt>,  Requires<[IsRV64]>;
+def SLTU32 : SLT_rr<0b0000000, 0b011, "sltu", setult>, Requires<[IsRV64]>;
 def SLTI32 : SLT_ri<0b010, "slti",  setlt>,  Requires<[IsRV64]>;
 def SLTIU32: SLT_ri<0b011, "sltiu", setult>, Requires<[IsRV64]>;
 } // End of DecoderNamespace
 
-let DecoderNamespace = "RISCV64_" in {
-def LUI64 : FU<0b0110111, (outs GPR64:$rd), (ins imm64sxu20:$imm20),
-               "lui\t$rd, $imm20", []>;
-} // End of DecoderNamespace
 
 // signed 12-bit immediate
 def : RV64Pat<(imm64sx12:$imm), (ADDI64 X0_64, imm64sx12:$imm)>;
 
 // 32-bit immediate
-def : RV64Pat<(i32 imm:$imm), (ADDIW (LUI (HI20 imm:$imm)), (LO12Sext imm:$imm))>;
+def : RV64Pat<(i32 imm:$imm),
+              (ADDIW (LUI (HI20 imm:$imm)), (LO12Sext imm:$imm))>;
+
 // Use LUI/ADDIW to generate unsigned 32-bit immedate for riscv64
 // Because LUI will do signed extension, we need ADDIW to get what we want.
-def : RV64Pat<(imm64sxu32:$imm), (SUBREG_TO_REG (i64 0), (ADDIW (EXTRACT_SUBREG (LUI64 (HI20I64 imm:$imm)), sub_32), (LO12Sext imm:$imm)), sub_32)>;
+def : RV64Pat<(imm64sxu32:$imm), 
+              (SUBREG_TO_REG (i64 0), (ADDIW (EXTRACT_SUBREG 
+                                             (LUI64 (HI20I64 imm:$imm)), sub_32),
+                                             (LO12Sext imm:$imm)), sub_32)>;
+
 // negative 32-bit immediate
-def : RV64Pat<(imm64sx32:$imm), (ADDI64 (LUI64 (HI20I64 imm:$imm)), (LO12SextI64 imm:$imm))>;
+def : RV64Pat<(imm64sx32:$imm), 
+              (ADDI64 (LUI64 (HI20I64 imm:$imm)), (LO12SextI64 imm:$imm))>;
 
-def : RV64Pat<(seteq GPR64:$rs1, GPR64:$rs2), (SLTIU64 (XOR64 GPR64:$rs1, GPR64:$rs2), 1)>;
-def : RV64Pat<(seteq GPR64:$rs1, GPR64:$rs2), (SLTIU32 (XOR64 GPR64:$rs1, GPR64:$rs2), 1)>;
-def : RV64Pat<(setne GPR64:$rs1, GPR64:$rs2), (SLTU64 X0_64, (XOR64 GPR64:$rs1, GPR64:$rs2))>;
-def : RV64Pat<(setne GPR64:$rs1, GPR64:$rs2), (SLTU32 X0_64, (XOR64 GPR64:$rs1, GPR64:$rs2))>;
-def : RV64Pat<(setugt GPR64:$rs1, GPR64:$rs2), (SLTU64 GPR64:$rs2, GPR64:$rs1)>;
-def : RV64Pat<(setugt GPR64:$rs1, GPR64:$rs2), (SLTU32 GPR64:$rs2, GPR64:$rs1)>;
-def : RV64Pat<(setuge GPR64:$rs1, GPR64:$rs2), (XORI64 (SLTU64 GPR64:$rs1, GPR64:$rs2), 1)>;
-def : RV64Pat<(setuge GPR64:$rs1, GPR64:$rs2), (XORI (SLTU32 GPR64:$rs1, GPR64:$rs2), 1)>;
-def : RV64Pat<(setule GPR64:$rs1, GPR64:$rs2), (XORI64 (SLTU64 GPR64:$rs2, GPR64:$rs1), 1)>;
-def : RV64Pat<(setule GPR64:$rs1, GPR64:$rs2), (XORI (SLTU32 GPR64:$rs2, GPR64:$rs1), 1)>;
-def : RV64Pat<(setgt GPR64:$rs1, GPR64:$rs2), (SLT64 GPR64:$rs2, GPR64:$rs1)>;
-def : RV64Pat<(setgt GPR64:$rs1, GPR64:$rs2), (SLT32 GPR64:$rs2, GPR64:$rs1)>;
-def : RV64Pat<(setge GPR64:$rs1, GPR64:$rs2), (XORI64 (SLT64 GPR64:$rs1, GPR64:$rs2), 1)>;
-def : RV64Pat<(setge GPR64:$rs1, GPR64:$rs2), (XORI (SLT32 GPR64:$rs1, GPR64:$rs2), 1)>;
-def : RV64Pat<(setle GPR64:$rs1, GPR64:$rs2), (XORI64 (SLT64 GPR64:$rs2, GPR64:$rs1), 1)>;
-def : RV64Pat<(setle GPR64:$rs1, GPR64:$rs2), (XORI (SLT32 GPR64:$rs2, GPR64:$rs1), 1)>;
+def : RV64Pat<(seteq GPR64:$rs1, GPR64:$rs2),
+              (SLTIU64 (XOR64 GPR64:$rs1, GPR64:$rs2), 1)>;
+def : RV64Pat<(seteq GPR64:$rs1, GPR64:$rs2),
+              (SLTIU32 (XOR64 GPR64:$rs1, GPR64:$rs2), 1)>;
+def : RV64Pat<(setne GPR64:$rs1, GPR64:$rs2),
+              (SLTU64 X0_64, (XOR64 GPR64:$rs1, GPR64:$rs2))>;
+def : RV64Pat<(setne GPR64:$rs1, GPR64:$rs2),
+              (SLTU32 X0_64, (XOR64 GPR64:$rs1, GPR64:$rs2))>;
+def : RV64Pat<(setugt GPR64:$rs1, GPR64:$rs2),
+              (SLTU64 GPR64:$rs2, GPR64:$rs1)>;
+def : RV64Pat<(setugt GPR64:$rs1, GPR64:$rs2),
+              (SLTU32 GPR64:$rs2, GPR64:$rs1)>;
+def : RV64Pat<(setuge GPR64:$rs1, GPR64:$rs2),
+              (XORI64 (SLTU64 GPR64:$rs1, GPR64:$rs2), 1)>;
+def : RV64Pat<(setuge GPR64:$rs1, GPR64:$rs2),
+              (XORI (SLTU32 GPR64:$rs1, GPR64:$rs2), 1)>;
+def : RV64Pat<(setule GPR64:$rs1, GPR64:$rs2),
+              (XORI64 (SLTU64 GPR64:$rs2, GPR64:$rs1), 1)>;
+def : RV64Pat<(setule GPR64:$rs1, GPR64:$rs2),
+              (XORI (SLTU32 GPR64:$rs2, GPR64:$rs1), 1)>;
+def : RV64Pat<(setgt GPR64:$rs1, GPR64:$rs2),
+              (SLT64 GPR64:$rs2, GPR64:$rs1)>;
+def : RV64Pat<(setgt GPR64:$rs1, GPR64:$rs2),
+              (SLT32 GPR64:$rs2, GPR64:$rs1)>;
+def : RV64Pat<(setge GPR64:$rs1, GPR64:$rs2),
+              (XORI64 (SLT64 GPR64:$rs1, GPR64:$rs2), 1)>;
+def : RV64Pat<(setge GPR64:$rs1, GPR64:$rs2),
+              (XORI (SLT32 GPR64:$rs1, GPR64:$rs2), 1)>;
+def : RV64Pat<(setle GPR64:$rs1, GPR64:$rs2),
+              (XORI64 (SLT64 GPR64:$rs2, GPR64:$rs1), 1)>;
+def : RV64Pat<(setle GPR64:$rs1, GPR64:$rs2),
+              (XORI (SLT32 GPR64:$rs2, GPR64:$rs1), 1)>;
 
-class SHIFT64_ri<bit arithshift, bits<3> funct3, string OpcodeStr, SDPatternOperator OpNode> :
-      ShiftRI<arithshift, funct3, 0b0010011, (outs GPR64:$rd), (ins GPR64:$rs1, uimm6:$shamt),
-         OpcodeStr#"\t$rd, $rs1, $shamt", [(set GPR64:$rd, (OpNode GPR64:$rs1, uimm6:$shamt))]> {
+class SHIFT64_ri<bit arithshift, bits<3> funct3, string OpcodeStr,
+                 SDPatternOperator OpNode> :
+      ShiftRI<arithshift, funct3, 0b0010011, (outs GPR64:$rd),
+              (ins GPR64:$rs1, uimm6:$shamt),
+              OpcodeStr#"\t$rd, $rs1, $shamt",
+              [(set GPR64:$rd, (OpNode GPR64:$rs1, uimm6:$shamt))]> {
   let Inst{25} = shamt{5};
 }
+
+class SHIFTW_ri<bit arithshift, bits<3> funct3, string OpcodeStr,
+                SDPatternOperator OpNode> :
+      ShiftRI<arithshift, funct3, 0b0011011, (outs GPR:$rd),
+              (ins GPR:$rs1, uimm5:$shamt),
+              OpcodeStr#"\t$rd, $rs1, $shamt",
+              [(set GPR:$rd, (OpNode GPR:$rs1, uimm5:$shamt))]>;
 
 let DecoderNamespace = "RISCV64_" in {
 def SLLI64: SHIFT64_ri<0, 0b001 , "slli", shl>, Requires<[IsRV64]>;
 def SRLI64: SHIFT64_ri<0, 0b101 , "srli", srl>, Requires<[IsRV64]>;
 def SRAI64: SHIFT64_ri<1, 0b101 , "srai", sra>, Requires<[IsRV64]>;
-} // End of DecoderNamespace
 
-class SHIFTW_ri<bit arithshift, bits<3> funct3, string OpcodeStr, SDPatternOperator OpNode> :
-      ShiftRI<arithshift, funct3, 0b0011011, (outs GPR:$rd), (ins GPR:$rs1, uimm5:$shamt),
-         OpcodeStr#"\t$rd, $rs1, $shamt", [(set GPR:$rd, (OpNode GPR:$rs1, uimm5:$shamt))]>;
-
-let DecoderNamespace = "RISCV64_" in {
 def SLLIW: SHIFTW_ri<0, 0b001 , "slliw", shl>, Requires<[IsRV64]>;
 def SRLIW: SHIFTW_ri<0, 0b101 , "srliw", srl>, Requires<[IsRV64]>;
 def SRAIW: SHIFTW_ri<1, 0b101 , "sraiw", sra>, Requires<[IsRV64]>;
@@ -218,10 +248,10 @@ class Bcc64<bits<3> funct3, string OpcodeStr, PatFrag CondOp> :
 }
 
 let DecoderNamespace = "RISCV64_" in {
-def BEQ64   : Bcc64<0b000, "beq", seteq>;
-def BNE64   : Bcc64<0b001, "bne", setne>;
-def BLT64   : Bcc64<0b100, "blt", setlt>;
-def BGE64   : Bcc64<0b101, "bge", setge>;
+def BEQ64   : Bcc64<0b000, "beq",  seteq>;
+def BNE64   : Bcc64<0b001, "bne",  setne>;
+def BLT64   : Bcc64<0b100, "blt",  setlt>;
+def BGE64   : Bcc64<0b101, "bge",  setge>;
 def BLTU64  : Bcc64<0b110, "bltu", setult>;
 def BGEU64  : Bcc64<0b111, "bgeu", setuge>;
 } // End of DecoderNamespace
@@ -253,29 +283,39 @@ let isReturn=1, isTerminator=1, isBarrier=1 in {
 }
 
 // Get i32 value from GPR64 register
-def :Pat<(i32 (trunc GPR64:$src)), (ADDIW (EXTRACT_SUBREG GPR64:$src, sub_32), 0)>;
+def :Pat<(i32 (trunc GPR64:$src)),
+         (ADDIW (EXTRACT_SUBREG GPR64:$src, sub_32), 0)>;
 
 // Extension patterns
-def : Pat<(i64 (zext GPR:$val)), (SRLI64 (SLLI64 (SUBREG_TO_REG (i64 0), GPR:$val, sub_32), 32), 32)>;
-def : Pat<(i64 (sext GPR:$val)), (SUBREG_TO_REG (i64 0), GPR:$val, sub_32)>;
-def : Pat<(i64 (anyext GPR:$val)), (SUBREG_TO_REG (i64 0), GPR:$val, sub_32)>;
+def : Pat<(i64 (zext GPR:$val)),
+          (SRLI64 (SLLI64 (SUBREG_TO_REG (i64 0), GPR:$val, sub_32), 32), 32)>;
+def : Pat<(i64 (sext GPR:$val)),
+          (SUBREG_TO_REG (i64 0), GPR:$val, sub_32)>;
+def : Pat<(i64 (anyext GPR:$val)),
+          (SUBREG_TO_REG (i64 0), GPR:$val, sub_32)>;
 
 let usesCustomInserter = 1 in {
   def Select32 : Pseudo<(outs GPR64:$dst),
-                        (ins GPR:$lhs, GPR:$rhs, i32imm:$imm, GPR64:$src, GPR64:$src2),
+                        (ins GPR:$lhs, GPR:$rhs, i32imm:$imm, GPR64:$src,
+                             GPR64:$src2),
                         [(set i64:$dst,
-                         (SelectCC GPR:$lhs, GPR:$rhs, (i32 imm:$imm), GPR64:$src, GPR64:$src2))]>,
+                         (SelectCC GPR:$lhs, GPR:$rhs, (i32 imm:$imm),
+                                   GPR64:$src, GPR64:$src2))]>,
                  Requires<[IsRV64]>;
 
   def Select64 : Pseudo<(outs GPR64:$dst),
-                        (ins GPR64:$lhs, GPR64:$rhs, i32imm:$imm, GPR64:$src, GPR64:$src2),
+                        (ins GPR64:$lhs, GPR64:$rhs, i32imm:$imm, GPR64:$src,
+                             GPR64:$src2),
                         [(set i64:$dst,
-                         (SelectCC GPR64:$lhs, GPR64:$rhs, (i32 imm:$imm), GPR64:$src, GPR64:$src2))]>,
+                         (SelectCC GPR64:$lhs, GPR64:$rhs, (i32 imm:$imm),
+                                   GPR64:$src, GPR64:$src2))]>,
                  Requires<[IsRV64]>;
 
-def Select64_32 : Pseudo<(outs GPR:$dst),
-                         (ins GPR64:$lhs, GPR64:$rhs, i32imm:$imm, GPR:$src, GPR:$src2),
-                         [(set i32:$dst,
-                          (SelectCC GPR64:$lhs, GPR64:$rhs, (i32 imm:$imm), GPR:$src, GPR:$src2))]>,
-                  Requires<[IsRV64]>;
+  def Select64_32 : Pseudo<(outs GPR:$dst),
+                           (ins GPR64:$lhs, GPR64:$rhs, i32imm:$imm, GPR:$src,
+                                GPR:$src2),
+                           [(set i32:$dst,
+                            (SelectCC GPR64:$lhs, GPR64:$rhs, (i32 imm:$imm),
+                                      GPR:$src, GPR:$src2))]>,
+                    Requires<[IsRV64]>;
 }

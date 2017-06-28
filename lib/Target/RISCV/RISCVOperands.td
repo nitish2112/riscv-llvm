@@ -31,6 +31,11 @@ def uimm5 : Operand<i32>, ImmLeaf<i32, [{return isUInt<5>(Imm);}]> {
   let DecoderMethod = "decodeUImmOperand<5>";
 }
 
+def uimm6 : Operand<i32>, ImmLeaf<i32, [{return isUInt<6>(Imm);}]> {
+  let ParserMatchClass = UImmAsmOperand<6>;
+  let DecoderMethod = "decodeUImmOperand<6>";
+}
+
 def simm12 : Operand<i32>, ImmLeaf<i32, [{return isInt<12>(Imm);}]> {
   let ParserMatchClass = SImmAsmOperand<12>;
   let EncoderMethod = "getImmOpValue";

@@ -109,17 +109,17 @@ class LoadRI<bits<3> funct3, string OpcodeStr, SDPatternOperator Op,
   let mayLoad = 1;
 }
 
-class FI32Shift<bit arithshift, bits<3> funct3, bits<7> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
+class ShiftRI<bit arithshift, bits<3> funct3, bits<7> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
     : RISCVInst<outs, ins, asmstr, pattern, FrmI>
 {
-  bits<5> shamt;
+  bits<6> shamt;
   bits<5> rs1;
   bits<5> rd;
 
   let Inst{31} = 0;
   let Inst{30} = arithshift;
   let Inst{29-25} = 0;
-  let Inst{24-20} = shamt;
+  let Inst{24-20} = shamt{4-0};
   let Inst{19-15} = rs1;
   let Inst{14-12} = funct3;
   let Inst{11-7} = rd;

@@ -197,7 +197,7 @@ def ORI   : ALU_ri<0b110, "ori", or>;
 def ANDI  : ALU_ri<0b111, "andi", and>;
 
 class SHIFT32_ri<bit arithshift, bits<3> funct3, string OpcodeStr, SDPatternOperator OpNode> :
-      FI32Shift<arithshift, funct3, 0b0010011, (outs GPR:$rd), (ins GPR:$rs1, uimm5:$shamt),
+      ShiftRI<arithshift, funct3, 0b0010011, (outs GPR:$rd), (ins GPR:$rs1, uimm5:$shamt),
          OpcodeStr#"\t$rd, $rs1, $shamt", [(set GPR:$rd, (OpNode GPR:$rs1, uimm5:$shamt))]>
 {
 }

@@ -120,8 +120,10 @@ def : RV64Pat<(setle GPR64:$rs1, GPR64:$rs2), (XORI64 (SLT64 GPR64:$rs2, GPR64:$
 def : RV64Pat<(setle GPR64:$rs1, GPR64:$rs2), (XORI (SLT32 GPR64:$rs2, GPR64:$rs1), 1)>;
 
 class SHIFT64_ri<bit arithshift, bits<3> funct3, string OpcodeStr, SDPatternOperator OpNode> :
-      FI32Shift<arithshift, funct3, 0b0010011, (outs GPR64:$rd), (ins GPR64:$rs1, uimm5:$shamt),
-         OpcodeStr#"\t$rd, $rs1, $shamt", [(set GPR64:$rd, (OpNode GPR64:$rs1, uimm5:$shamt))]>;
+      ShiftRI<arithshift, funct3, 0b0010011, (outs GPR64:$rd), (ins GPR64:$rs1, uimm6:$shamt),
+         OpcodeStr#"\t$rd, $rs1, $shamt", [(set GPR64:$rd, (OpNode GPR64:$rs1, uimm6:$shamt))]> {
+  let Inst{25} = shamt{5};
+}
 
 let DecoderNamespace = "RISCV64_" in {
 def SLLI64: SHIFT64_ri<0, 0b001 , "slli", shl>, Requires<[IsRV64]>;
@@ -130,7 +132,7 @@ def SRAI64: SHIFT64_ri<1, 0b101 , "srai", sra>, Requires<[IsRV64]>;
 } // End of DecoderNamespace
 
 class SHIFTW_ri<bit arithshift, bits<3> funct3, string OpcodeStr, SDPatternOperator OpNode> :
-      FI32Shift<arithshift, funct3, 0b0011011, (outs GPR:$rd), (ins GPR:$rs1, uimm5:$shamt),
+      ShiftRI<arithshift, funct3, 0b0011011, (outs GPR:$rd), (ins GPR:$rs1, uimm5:$shamt),
          OpcodeStr#"\t$rd, $rs1, $shamt", [(set GPR:$rd, (OpNode GPR:$rs1, uimm5:$shamt))]>;
 
 let DecoderNamespace = "RISCV64_" in {

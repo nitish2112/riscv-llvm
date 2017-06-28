@@ -155,6 +155,10 @@ public:
     return (isConstantImm() && isUInt<5>(getConstantImm()));
   }
 
+  bool isUImm6() const {
+    return (isConstantImm() && isUInt<6>(getConstantImm()));
+  }
+
   bool isS12Imm() const {
     return isSImm12();
   }

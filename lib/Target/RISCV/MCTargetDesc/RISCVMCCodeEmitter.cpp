@@ -182,12 +182,12 @@ unsigned RISCVMCCodeEmitter::getImmOpValue(const MCInst &MI, unsigned OpNo,
 }
 
 bool RISCVMCCodeEmitter::isLoad(unsigned Opc) const {
-  if (Opc == RISCV::LB  || Opc == RISCV::LB64  || Opc == RISCV::LB64_32 ||
-      Opc == RISCV::LBU || Opc == RISCV::LBU64 || Opc == RISCV:: LBU64_32 ||
-      Opc == RISCV::LD  || Opc == RISCV::LH    || Opc == RISCV::LH64 ||
-      Opc == RISCV::LH64_32  || Opc == RISCV::LHU || Opc == RISCV::LHU64 ||
-      Opc == RISCV::LHU64_32 || Opc == RISCV::LW  || Opc == RISCV::LW64 ||
-      Opc == RISCV::LW64_32  || Opc == RISCV::LWU)
+  if (Opc == RISCV::LB  || Opc == RISCV::LB64  ||
+      Opc == RISCV::LBU || Opc == RISCV::LBU64 ||
+      Opc == RISCV::LD  || Opc == RISCV::LH    ||
+      Opc == RISCV::LHU || Opc == RISCV::LHU64 ||
+      Opc == RISCV::LW  || Opc == RISCV::LW64 ||
+      Opc == RISCV::LWU || Opc == RISCV::LH64)
     return true;
   return false;
 }

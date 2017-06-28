@@ -164,43 +164,24 @@ let usesCustomInserter = 1 in {
                        (SelectCC GPR:$lhs, GPR:$rhs, (i32 imm:$imm), GPR:$src, GPR:$src2))]>;
 }
 
-class LD_ri<bits<3> funct3, string OpcodeStr, SDPatternOperator Op> :
-      FI<funct3, 0b0000011, (outs GPR:$rd), (ins addr_reg_imm12s:$addr),
-         OpcodeStr#"\t$rd, $addr",
-	 [(set GPR:$rd, (Op addr_reg_imm12s:$addr))]> {
-  bits<17> addr;
-  let Inst{31-15} = addr;
-  let mayLoad = 1;
-}
-
-def LB   : LD_ri<0b000, "lb", sextloadi8>, Requires<[IsRV32]>;
-def LH   : LD_ri<0b001, "lh", sextloadi16>, Requires<[IsRV32]>;
-def LW   : LD_ri<0b010, "lw", load>, Requires<[IsRV32]>;
-def LBU  : LD_ri<0b100, "lbu", zextloadi8>, Requires<[IsRV32]>;
-def LHU  : LD_ri<0b101, "lhu", zextloadi16>, Requires<[IsRV32]>;
+def LB   : LoadRI<0b000, "lb", sextloadi8, GPR>;
+def LH   : LoadRI<0b001, "lh", sextloadi16, GPR>;
+def LW   : LoadRI<0b010, "lw", load, GPR>;
+def LBU  : LoadRI<0b100, "lbu", zextloadi8, GPR>;
+def LHU  : LoadRI<0b101, "lhu", zextloadi16, GPR>;
 
 // load patterns
-def : Pat<(i32 (extloadi16 addr_reg_imm12s:$src)), (LHU addr_reg_imm12s:$src)>, Requires<[IsRV32]>;
-def : Pat<(i32 (extloadi8 addr_reg_imm12s:$src)), (LBU addr_reg_imm12s:$src)>, Requires<[IsRV32]>;
+def : Pat<(i32 (extloadi16 addr_reg_imm12s:$src)), (LHU addr_reg_imm12s:$src)>;
+def : Pat<(i32 (extloadi8 addr_reg_imm12s:$src)), (LBU addr_reg_imm12s:$src)>;
+def : Pat<(i32 (extloadi1  addr_reg_imm12s:$src)), (LBU addr_reg_imm12s:$src)>;
 
 // Operands for stores are in the order srcreg, base, offset rather than
 // reflecting the order these fields are specified in the instruction
 // encoding.
 
-class ST_ri<bits<3> funct3, string OpcodeStr, SDPatternOperator Op> :
-      FS<funct3, 0b0100011, (outs), (ins GPR:$rt, addr_reg_imm12s:$addr),
-         OpcodeStr#"\t$rt, $addr",
-	 [(Op GPR:$rt, addr_reg_imm12s:$addr)]> {
-  let mayStore = 1;
-  bits<17> addr;
-  let Inst{31-25} = addr{16-10};
-  let Inst{19-15} = addr{9-5};
-  let Inst{11-7} = addr{4-0};
-}
-
-def SB  : ST_ri<0b000, "sb", truncstorei8>, Requires<[IsRV32]>;
-def SH  : ST_ri<0b001, "sh", truncstorei16>, Requires<[IsRV32]>;
-def SW  : ST_ri<0b010, "sw", store>, Requires<[IsRV32]>;
+def SB  : StoreRI<0b000, "sb", truncstorei8, GPR>;
+def SH  : StoreRI<0b001, "sh", truncstorei16, GPR>;
+def SW  : StoreRI<0b010, "sw", store, GPR>;
 
 class ALU_ri<bits<3> funct3, string OpcodeStr, SDPatternOperator OpNode> :
       FI<funct3, 0b0010011, (outs GPR:$rd), (ins GPR:$rs1, simm12:$imm12),

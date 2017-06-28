@@ -99,6 +99,16 @@ class FI<bits<3> funct3, bits<7> opcode, dag outs, dag ins, string asmstr, list<
   let Opcode = opcode;
 }
 
+class LoadRI<bits<3> funct3, string OpcodeStr, SDPatternOperator Op,
+             RegisterClass cls> :
+      FI<funct3, 0b0000011, (outs cls:$rd), (ins addr_reg_imm12s:$addr),
+         OpcodeStr#"\t$rd, $addr",
+	 [(set cls:$rd, (Op addr_reg_imm12s:$addr))]> {
+  bits<17> addr;
+  let Inst{31-15} = addr;
+  let mayLoad = 1;
+}
+
 class FI32Shift<bit arithshift, bits<3> funct3, bits<7> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
     : RISCVInst<outs, ins, asmstr, pattern, FrmI>
 {
@@ -129,6 +139,18 @@ class FS<bits<3> funct3, bits<7> opcode, dag outs, dag ins, string asmstr, list<
   let Inst{14-12} = funct3;
   let Inst{11-7} = imm12{4-0};
   let Opcode = opcode;
+}
+
+class StoreRI<bits<3> funct3, string OpcodeStr, SDPatternOperator Op,
+              RegisterClass cls> :
+      FS<funct3, 0b0100011, (outs), (ins cls:$rt, addr_reg_imm12s:$addr),
+         OpcodeStr#"\t$rt, $addr",
+	 [(Op cls:$rt, addr_reg_imm12s:$addr)]> {
+  let mayStore = 1;
+  bits<17> addr;
+  let Inst{31-25} = addr{16-10};
+  let Inst{19-15} = addr{9-5};
+  let Inst{11-7} = addr{4-0};
 }
 
 class FSB<bits<3> funct3, bits<7> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
@@ -236,47 +258,4 @@ class InstSC<string mnemonic, bits<3> funct3,
   let Inst{14-12} = funct3;
   let Inst{11- 7} = RD;
   let Inst{6 - 0} = 0b0101111;
-}
-
-//Load-Type
-class InstLoad<string mnemonic, bits<7> op, bits<3> funct3,
-               SDPatternOperator opNode,
-               RegisterClass cls1>
-  : RISCVInst<(outs cls1:$dst), (ins addr_reg_imm12s:$addr),
-              mnemonic#"\t$dst, $addr",
-              [(set cls1:$dst, (opNode addr_reg_imm12s:$addr))],
-              FrmOther> {
-  field bits<32> Inst;
-
-  bits<5> RD;
-  bits<5> RS1;
-  bits<12> IMM;
-
-  let Inst{31-27} = RD;
-  let Inst{26-22} = RS1;
-  let Inst{21-17} = IMM{11-7};
-  let Inst{16-10} = IMM{6 -0};
-  let Inst{9 - 7} = funct3;
-  let Inst{6 - 0} = op;
-}
-
-class InstStore<string mnemonic, bits<7> op, bits<3> funct3,
-                SDPatternOperator opNode,
-                RegisterClass cls1>
-  : RISCVInst<(outs), (ins cls1:$src, addr_reg_imm12s:$addr),
-              mnemonic#"\t$src, $addr",
-              [(opNode cls1:$src, addr_reg_imm12s:$addr)],
-              FrmOther> {
-  field bits<32> Inst;
-
-  bits<5> RS2;
-  bits<5> RS1;
-  bits<12> IMM;
-
-  let Inst{31-27} = IMM{11-7};
-  let Inst{26-22} = RS1;
-  let Inst{21-17} = RS2;
-  let Inst{16-10} = IMM{6 -0};
-  let Inst{9 - 7} = funct3;
-  let Inst{6 - 0} = op;
 }

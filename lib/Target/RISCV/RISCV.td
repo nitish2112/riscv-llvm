@@ -53,7 +53,10 @@ include "RISCVInstrInfo.td"
 
 def RISCVInstrInfo : InstrInfo;
 
-def : ProcessorModel<"generic-rv32", NoSchedModel, []>;
+
+def : ProcessorModel<"generic", NoSchedModel, []>;
+
+def : ProcessorModel<"generic-rv32", NoSchedModel, [FeatureRV32]>;
 
 def : ProcessorModel<"generic-rv64", NoSchedModel, [FeatureRV64]>;
 

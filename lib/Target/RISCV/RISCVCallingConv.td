@@ -82,11 +82,22 @@ def CC_RISCV32_VAR : CallingConv<[
   CCIfType<[i64, f64], CCAssignToStack<8, 8>>
 ]>;
 
+def CC_RISCV32_FastCC : CallingConv<[
+  // Integer arguments are passed in integer registers.
+  CCIfType<[i32], CCAssignToReg<[X5_32,  X6_32,  X7_32,  X10_32, X11_32, X12_32,
+                                 X13_32, X14_32, X15_32, X16_32, X17_32, X28_32,
+                                 X29_32, X30_32, X31_32]>>,
+
+  CCIfType<[i32, f32], CCAssignToStack<4, 4>>
+]>;
+
 def CC_RISCV32 : CallingConv<[
   CCIfType<[i1, i8, i16], CCPromoteToType<i32>>,
 
   // Pass by value if the byval attribute is given
   CCIfByVal<CCPassByVal<4, 4>>,
+
+  CCIfCC<"CallingConv::Fast", CCDelegateTo<CC_RISCV32_FastCC>>,
 
   CCIfType<[i32], CCAssignToReg<[X10_32, X11_32, X12_32, X13_32,
                                  X14_32, X15_32, X16_32, X17_32]>>,
@@ -147,12 +158,25 @@ def CC_RISCV64_VAR : CallingConv<[
   CCIfType<[i64, f64], CCAssignToStack<8, 8>>
 ]>;
 
+def CC_RISCV64_FastCC : CallingConv<[
+  // Integer arguments are passed in integer registers.
+  CCIfType<[i64], CCAssignToReg<[X5_64,  X6_64,  X7_64,  X10_64, X11_64, X12_64,
+                                 X13_64, X14_64, X15_64, X16_64, X17_64, X28_64,
+                                 X29_64, X30_64, X31_64]>>,
+
+  // Stack parameter slots for i64 and f64 are 64-bit doublewords and
+  // 8-byte aligned.
+  CCIfType<[i64, f64], CCAssignToStack<8, 8>>
+]>;
+
 def CC_RISCV64 : CallingConv<[
   CCIfType<[f32], CCBitConvertToType<i32>>,
   CCIfType<[i1, i8, i16, i32], CCPromoteToType<i64>>,
 
   // Pass by value if the byval attribute is given
   CCIfByVal<CCPassByVal<8, 8>>,
+
+  CCIfCC<"CallingConv::Fast", CCDelegateTo<CC_RISCV64_FastCC>>,
 
   CCIfType<[i64], CCAssignToReg<[X10_64, X11_64, X12_64, X13_64,
                                  X14_64, X15_64, X16_64, X17_64]>>,

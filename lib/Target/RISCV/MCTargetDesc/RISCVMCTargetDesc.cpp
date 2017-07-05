@@ -13,6 +13,7 @@
 
 #include "RISCVMCTargetDesc.h"
 #include "RISCVMCAsmInfo.h"
+#include "RISCVTargetStreamer.h"
 #include "InstPrinter/RISCVInstPrinter.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/MC/MCAsmInfo.h"
@@ -51,6 +52,11 @@ static MCAsmInfo *createRISCVMCAsmInfo(const MCRegisterInfo &MRI,
   return new RISCVMCAsmInfo(TT);
 }
 
+static MCTargetStreamer *
+createRISCVObjectTargetStreamer(MCStreamer &S, const MCSubtargetInfo &STI) {
+  return new RISCVTargetELFStreamer(S, STI);
+}
+
 static MCInstPrinter *createRISCVMCInstPrinter(const Triple &T,
                                                unsigned SyntaxVariant,
                                                const MCAsmInfo &MAI,
@@ -68,5 +74,7 @@ extern "C" void LLVMInitializeRISCVTargetMC() {
     TargetRegistry::RegisterMCCodeEmitter(*T, createRISCVMCCodeEmitter);
     TargetRegistry::RegisterMCInstPrinter(*T, createRISCVMCInstPrinter);
     TargetRegistry::RegisterMCSubtargetInfo(*T, createRISCVMCSubtargetInfoImpl);
+    TargetRegistry::RegisterObjectTargetStreamer(
+        *T, createRISCVObjectTargetStreamer);
   }
 }

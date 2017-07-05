@@ -1028,7 +1028,7 @@ SDValue RISCVTargetLowering::LowerFormalArguments(
       SDValue FIN = DAG.getFrameIndex(FrameIdx,
                                       getPointerTy(DAG.getDataLayout()));
       SDValue ArgValue = DAG.getLoad(
-          LocVT, DL, Chain, FIN,
+          VA.getValVT(), DL, Chain, FIN,
           MachinePointerInfo::getFixedStack(DAG.getMachineFunction(),
                                             FrameIdx));
       OutChains.push_back(ArgValue.getValue(1));

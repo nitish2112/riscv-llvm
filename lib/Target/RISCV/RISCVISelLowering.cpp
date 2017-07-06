@@ -1491,3 +1491,9 @@ EVT RISCVTargetLowering::getSetCCResultType(const DataLayout &, LLVMContext &,
     return MVT::i32;
   return VT.changeVectorElementTypeToInteger();
 }
+
+bool
+RISCVTargetLowering::isOffsetFoldingLegal(const GlobalAddressSDNode *GA) const {
+  // The RISCV target isn't yet aware of offsets.
+  return false;
+}

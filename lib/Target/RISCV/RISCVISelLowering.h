@@ -146,7 +146,7 @@ private:
   getRegForInlineAsmConstraint(const TargetRegisterInfo *TRI,
                                StringRef Constraint, MVT VT) const override;
 
-
+  bool isOffsetFoldingLegal(const GlobalAddressSDNode *GA) const override;
 };
 }
 

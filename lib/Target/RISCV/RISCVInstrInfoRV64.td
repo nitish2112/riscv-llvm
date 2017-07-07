@@ -256,6 +256,25 @@ def BLTU64  : Bcc64<0b110, "bltu", setult>;
 def BGEU64  : Bcc64<0b111, "bgeu", setuge>;
 } // End of DecoderNamespace
 
+def : Pat<(brcond (i32 (setne GPR64:$lhs, 0)), bb:$dst),
+          (BNE64 GPR64:$lhs, X0_64, bb:$dst)>;
+def : Pat<(brcond (i32 (seteq GPR64:$lhs, 0)), bb:$dst),
+          (BEQ64 GPR64:$lhs, X0_64, bb:$dst)>;
+def : Pat<(brcond (i32 (setlt GPR64:$lhs, 0)), bb:$dst),
+          (BLT64 GPR64:$lhs, X0_64, bb:$dst)>;
+def : Pat<(brcond (i32 (setge GPR64:$lhs, 0)), bb:$dst),
+          (BGE64 GPR64:$lhs, X0_64, bb:$dst)>;
+def : Pat<(brcond (i32 (setult GPR64:$lhs, 0)), bb:$dst),
+          (BLTU64 GPR64:$lhs, X0_64, bb:$dst)>;
+def : Pat<(brcond (i32 (setuge GPR64:$lhs, 0)), bb:$dst),
+          (BGEU64 GPR64:$lhs, X0_64, bb:$dst)>;
+def : Pat<(brcond GPR64:$cond, bb:$dst),
+          (BNE64 GPR64:$cond, X0_64, bb:$dst)>;
+def : Pat<(brcond (i32 (setgt GPR64:$lhs, -1)), bb:$dst),
+          (BGE64 GPR64:$lhs, X0_64, bb:$dst)>;
+def : Pat<(brcond (i32 (setle GPR64:$lhs, -1)), bb:$dst),
+          (BLT64 GPR64:$lhs, X0_64, bb:$dst)>;
+
 class Bcc_SwapPat64<PatFrag CondOp, RISCVInst InstBcc> : Pat<
   (brcond (i32 (CondOp GPR64:$rs1, GPR64:$rs2)), bb:$imm12),
   (InstBcc GPR64:$rs2, GPR64:$rs1, bb:$imm12)>;

@@ -140,6 +140,25 @@ def BGE   : Bcc<0b101, "bge",  setge>;
 def BLTU  : Bcc<0b110, "bltu", setult>;
 def BGEU  : Bcc<0b111, "bgeu", setuge>;
 
+def : Pat<(brcond (i32 (setne GPR:$lhs, 0)), bb:$dst),
+          (BNE GPR:$lhs, X0_32, bb:$dst)>;
+def : Pat<(brcond (i32 (seteq GPR:$lhs, 0)), bb:$dst),
+          (BEQ GPR:$lhs, X0_32, bb:$dst)>;
+def : Pat<(brcond (i32 (setlt GPR:$lhs, 0)), bb:$dst),
+          (BLT GPR:$lhs, X0_32, bb:$dst)>;
+def : Pat<(brcond (i32 (setge GPR:$lhs, 0)), bb:$dst),
+          (BGE GPR:$lhs, X0_32, bb:$dst)>;
+def : Pat<(brcond (i32 (setult GPR:$lhs, 0)), bb:$dst),
+          (BLTU GPR:$lhs, X0_32, bb:$dst)>;
+def : Pat<(brcond (i32 (setuge GPR:$lhs, 0)), bb:$dst),
+          (BGEU GPR:$lhs, X0_32, bb:$dst)>;
+def : Pat<(brcond GPR:$cond, bb:$dst),
+          (BNE GPR:$cond, X0_32, bb:$dst)>;
+def : Pat<(brcond (i32 (setgt GPR:$lhs, -1)), bb:$dst),
+          (BGE GPR:$lhs, X0_32, bb:$dst)>;
+def : Pat<(brcond (i32 (setle GPR:$lhs, -1)), bb:$dst),
+          (BLT GPR:$lhs, X0_32, bb:$dst)>;
+
 class Bcc_SwapPat<PatFrag CondOp, RISCVInst InstBcc> : Pat<
   (brcond (i32 (CondOp GPR:$rs1, GPR:$rs2)), bb:$imm12),
   (InstBcc GPR:$rs2, GPR:$rs1, bb:$imm12)>;

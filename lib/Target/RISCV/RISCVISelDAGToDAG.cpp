@@ -144,55 +144,6 @@ void RISCVDAGToDAGISel::Select(SDNode *Node) {
                           CurDAG->getTargetConstant(0, DL, PtrVT)));
     return;
   }
-  case ISD::Constant: {
-    const ConstantSDNode *CN = dyn_cast<ConstantSDNode>(Node);
-    int64_t Imm = CN->getSExtValue();
-    unsigned Size = CN->getValueSizeInBits(0);
-
-    if (isInt<32>(Imm))
-      break;
-
-    RISCVAnalyzeImmediate AnalyzeImm;
-
-    const RISCVAnalyzeImmediate::InstSeq &Seq =
-      AnalyzeImm.Analyze(Imm, Size, false);
-
-    RISCVAnalyzeImmediate::InstSeq::const_iterator Inst = Seq.begin();
-    SDLoc DL(CN);
-    SDNode *RegOpnd;
-    SDValue ImmOpnd;
-
-    // The first instruction can be a LUI which is different from other
-    // instructions (ADDI, ORI and SLL) in that it does not have a register
-    // operand.
-    if (Inst->Opc == RISCV::LUI64) {
-      ImmOpnd = CurDAG->getTargetConstant(Inst->ImmOpnd, DL, MVT::i64);
-      RegOpnd = CurDAG->getMachineNode(Inst->Opc, DL, MVT::i64, ImmOpnd);
-    }
-    else {
-      ImmOpnd = CurDAG->getTargetConstant(SignExtend64<12>(Inst->ImmOpnd),
-                                          DL, MVT::i64);
-      RegOpnd =
-        CurDAG->getMachineNode(Inst->Opc, DL, MVT::i64,
-                               CurDAG->getRegister(RISCV::X0_64, MVT::i64),
-                               ImmOpnd);
-    }
-
-    // The remaining instructions in the sequence are handled here.
-    for (++Inst; Inst != Seq.end(); ++Inst) {
-      if (Inst->Opc == RISCV::ADDI64) {
-        ImmOpnd = CurDAG->getTargetConstant(SignExtend64<12>(Inst->ImmOpnd), DL,
-                                            MVT::i64);
-      } else {
-        ImmOpnd = CurDAG->getTargetConstant(Inst->ImmOpnd, DL, MVT::i64);
-      }
-      RegOpnd = CurDAG->getMachineNode(Inst->Opc, DL, MVT::i64,
-                                       SDValue(RegOpnd, 0), ImmOpnd);
-    }
-
-    ReplaceNode(Node, RegOpnd);
-    return;
-  }
   }
 
   // Select the default instruction.

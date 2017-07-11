@@ -132,13 +132,13 @@ void RISCVInstrInfo::loadImmediate(unsigned ScratchReg,
 
   int64_t LuiImm = ((Imm + 0x800) >> 12) & 0xfffff;
 
-  if ((LuiImm != 0) && (SignExtend64<12> (Imm) == 0)) {
+  if ((LuiImm != 0) && (SignExtend64<12>(Imm) == 0)) {
     BuildMI(MBB, II, DL, get(RISCV::LUI), ScratchReg)
       .addImm(LuiImm);
-  } else if ((LuiImm == 0) && (SignExtend64<12> (Imm) != 0)) {
+  } else if ((LuiImm == 0) && (SignExtend64<12>(Imm) != 0)) {
     BuildMI(MBB, II, DL, get(RISCV::ADDI), ScratchReg)
       .addReg(RISCV::X0_32)
-      .addImm(SignExtend64<12> (Imm));
+      .addImm(SignExtend64<12>(Imm));
   } else {
     // Create TempReg here because Virtual register expect as SSA form.
     // So ADDI ScratchReg, ScratchReg, Imm is not allow.
@@ -149,7 +149,7 @@ void RISCVInstrInfo::loadImmediate(unsigned ScratchReg,
 
     BuildMI(MBB, II, DL, get(RISCV::ADDI), ScratchReg)
       .addReg(TempReg, getKillRegState (true))
-      .addImm(SignExtend64<12> (Imm));
+      .addImm(SignExtend64<12>(Imm));
   }
 }
 
@@ -194,7 +194,7 @@ RISCVInstrInfo::basePlusImmediateStripOffset(unsigned BaseReg, int64_t &Imm,
     .addReg(ScratchReg1, getKillRegState (true))
     .addReg(BaseReg);
 
-  Imm = SignExtend64<12> (Imm);
+  Imm = SignExtend64<12>(Imm);
 
   return ScratchReg2;
 }

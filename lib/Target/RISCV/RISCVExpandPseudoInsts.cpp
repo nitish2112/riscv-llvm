@@ -15,6 +15,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "RISCV.h"
+#include "RISCVAnalyzeImmediate.h"
 #include "RISCVInstrInfo.h"
 #include "RISCVRegisterInfo.h"
 #include "RISCVMachineFunctionInfo.h"
@@ -61,21 +62,23 @@ namespace {
     }
 
   private:
-    void TransferImpOps(MachineInstr &OldMI,
+    void transferImpOps(MachineInstr &OldMI,
                         MachineInstrBuilder &UseMI, MachineInstrBuilder &DefMI);
-    bool ExpandMI(MachineBasicBlock &MBB,
+    bool expandMI(MachineBasicBlock &MBB,
                   MachineBasicBlock::iterator MBBI,
                   MachineBasicBlock::iterator &NextMBBI);
-    bool ExpandMBB(MachineBasicBlock &MBB);
-    void ExpandMOV32BitImm(MachineBasicBlock &MBB,
+    bool expandMBB(MachineBasicBlock &MBB);
+    void expandMOV32BitImm(MachineBasicBlock &MBB,
+                           MachineBasicBlock::iterator &MBBI);
+    void expandMOV64BitImm(MachineBasicBlock &MBB,
                            MachineBasicBlock::iterator &MBBI);
   };
   char RISCVExpandPseudo::ID = 0;
 }
 
-/// TransferImpOps - Transfer implicit operands on the pseudo instruction to
+/// transferImpOps - Transfer implicit operands on the pseudo instruction to
 /// the instructions created from the expansion.
-void RISCVExpandPseudo::TransferImpOps(MachineInstr &OldMI,
+void RISCVExpandPseudo::transferImpOps(MachineInstr &OldMI,
                                        MachineInstrBuilder &UseMI,
                                        MachineInstrBuilder &DefMI) {
   const MCInstrDesc &Desc = OldMI.getDesc();
@@ -90,7 +93,7 @@ void RISCVExpandPseudo::TransferImpOps(MachineInstr &OldMI,
   }
 }
 
-void RISCVExpandPseudo::ExpandMOV32BitImm(MachineBasicBlock &MBB,
+void RISCVExpandPseudo::expandMOV32BitImm(MachineBasicBlock &MBB,
                                           MachineBasicBlock::iterator &MBBI) {
   MachineInstr &MI = *MBBI;
   unsigned Opcode = MI.getOpcode();
@@ -110,24 +113,61 @@ void RISCVExpandPseudo::ExpandMOV32BitImm(MachineBasicBlock &MBB,
   switch (MO.getType()) {
   case MachineOperand::MO_Immediate: {
     int32_t Imm = MO.getImm();
-    int32_t Lo12 = SignExtend32<12> (Imm);
+    int32_t Lo12 = SignExtend32<12>(Imm);
     int32_t Hi20 = ((Imm + 0x800) >> 12) & 0xfffff;
     LO12 = LO12.addImm(Lo12);
     HI20 = HI20.addImm(Hi20);
     break;
   }
   default:
-    llvm_unreachable("ExpandMOV32BitImm operand not immediate value");
+    llvm_unreachable("expandMOV32BitImm operand not immediate value");
   }
 
-  LO12->setMemRefs(MI.memoperands_begin(), MI.memoperands_end());
-  HI20->setMemRefs(MI.memoperands_begin(), MI.memoperands_end());
-
-  TransferImpOps(MI, LO12, HI20);
+  transferImpOps(MI, LO12, HI20);
   MI.eraseFromParent();
 }
 
-bool RISCVExpandPseudo::ExpandMI(MachineBasicBlock &MBB,
+void RISCVExpandPseudo::expandMOV64BitImm(MachineBasicBlock &MBB,
+                                          MachineBasicBlock::iterator &MBBI) {
+  MachineInstr &MI = *MBBI;
+  unsigned Opcode = MI.getOpcode();
+  unsigned DstReg = MI.getOperand(0).getReg();
+  bool DstIsDead = MI.getOperand(0).isDead();
+  const MachineOperand &MO = MI.getOperand(1);
+  RISCVAnalyzeImmediate AnalyzeImm;
+  int64_t Imm = MO.getImm();
+  MachineInstrBuilder MIB1, MIB2;
+
+  const RISCVAnalyzeImmediate::InstSeq &Seq =
+    AnalyzeImm.Analyze(Imm, 64, false);
+
+  RISCVAnalyzeImmediate::InstSeq::const_iterator Inst = Seq.begin();
+
+  if (Inst->Opc == RISCV::LUI64) {
+    MIB1 = BuildMI(MBB, MBBI, MI.getDebugLoc(), TII->get(Inst->Opc))
+           .addReg(DstReg, RegState::Define | getDeadRegState(DstIsDead))
+           .addImm(Inst->ImmOpnd);
+  }
+  else {
+    MIB1 = BuildMI(MBB, MBBI, MI.getDebugLoc(), TII->get(Inst->Opc))
+           .addReg(DstReg, RegState::Define | getDeadRegState(DstIsDead))
+           .addReg(RISCV::X0_64)
+           .addImm(SignExtend64<12>(Inst->ImmOpnd));
+  }
+
+  // The remaining instructions in the sequence are handled here.
+  for (++Inst; Inst != Seq.end(); ++Inst) {
+    MIB2 = BuildMI(MBB, MBBI, MI.getDebugLoc(), TII->get(Inst->Opc))
+           .addReg(DstReg)
+           .addReg(DstReg)
+           .addImm(SignExtend64<12>(Inst->ImmOpnd));
+  }
+
+  transferImpOps(MI, MIB2, MIB1);
+  MI.eraseFromParent();
+}
+
+bool RISCVExpandPseudo::expandMI(MachineBasicBlock &MBB,
                                  MachineBasicBlock::iterator MBBI,
                                  MachineBasicBlock::iterator &NextMBBI) {
   MachineInstr &MI = *MBBI;
@@ -136,18 +176,21 @@ bool RISCVExpandPseudo::ExpandMI(MachineBasicBlock &MBB,
     default:
       return false;
     case RISCV::MOVi32imm:
-      ExpandMOV32BitImm(MBB, MBBI);
+      expandMOV32BitImm(MBB, MBBI);
+      return true;
+    case RISCV::MOVi64imm:
+      expandMOV64BitImm(MBB, MBBI);
       return true;
     }
 }
 
-bool RISCVExpandPseudo::ExpandMBB(MachineBasicBlock &MBB) {
+bool RISCVExpandPseudo::expandMBB(MachineBasicBlock &MBB) {
   bool Modified = false;
 
   MachineBasicBlock::iterator MBBI = MBB.begin(), E = MBB.end();
   while (MBBI != E) {
     MachineBasicBlock::iterator NMBBI = std::next(MBBI);
-    Modified |= ExpandMI(MBB, MBBI, NMBBI);
+    Modified |= expandMI(MBB, MBBI, NMBBI);
     MBBI = NMBBI;
   }
 
@@ -162,7 +205,7 @@ bool RISCVExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
   bool Modified = false;
   for (MachineFunction::iterator MFI = MF.begin(), E = MF.end(); MFI != E;
        ++MFI)
-    Modified |= ExpandMBB(*MFI);
+    Modified |= expandMBB(*MFI);
   if (VerifyRISCVPseudo)
     MF.verify(this, "After expanding RISCV pseudo instructions.");
   return Modified;

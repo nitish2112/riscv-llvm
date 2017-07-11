@@ -30,6 +30,8 @@ class MCOperand;
 class MachineInstr;
 class MachineOperand;
 
+FunctionPass *createRISCVExpandPseudoPass();
+
 void LowerRISCVMachineInstrToMCInst(const MachineInstr *MI, MCInst &OutMI,
                                     const AsmPrinter &AP);
 bool LowerRISCVMachineOperandToMCOperand(const MachineOperand &MO,

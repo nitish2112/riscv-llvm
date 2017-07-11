@@ -78,6 +78,10 @@ def SelectCC         : SDNode<"RISCVISD::SELECT_CC", SDT_RISCVSelectCC,
 def LUI : FU<0b0110111, (outs GPR:$rd), (ins uimm20:$imm20),
              "lui\t$rd, $imm20", []>;
 
+let isReMaterializable = 1, isMoveImm = 1 in
+def MOVi32imm : Pseudo<(outs GPR:$dst), (ins i32imm:$src),
+                       [(set GPR:$dst, (i32 imm:$src))]>;
+
 def AUIPC : FU<0b0010111, (outs GPR:$rd), (ins uimm20:$imm20),
              "auipc\t$rd, $imm20", []>;
 
@@ -295,10 +299,6 @@ def CSRRCI : CSR_ri<0b111, "csrrci">;
 
 // signed 12-bit immediate
 def : Pat<(simm12:$imm), (ADDI X0_32, simm12:$imm)>;
-
-// 32-bit immediate
-def : RV32Pat<(i32 imm:$imm),
-              (ADDI (LUI (HI20 imm:$imm)), (LO12Sext imm:$imm))>;
 
 //===----------------------------------------------------------------------===//
 // Subtarget features

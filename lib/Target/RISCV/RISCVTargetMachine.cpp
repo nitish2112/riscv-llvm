@@ -77,6 +77,7 @@ public:
 
   bool addInstSelector() override;
   void addPreEmitPass() override;
+  void addPreSched2() override;
 };
 }
 
@@ -95,4 +96,10 @@ void RISCVPassConfig::addPreEmitPass() {
   // range of their destination.
   if (BranchRelaxation)
     addPass(&BranchRelaxationPassID);
+}
+
+void RISCVPassConfig::addPreSched2() {
+  // Expand some pseudo instructions into multiple instructions to allow
+  // proper scheduling.
+  addPass(createRISCVExpandPseudoPass());
 }

@@ -204,6 +204,9 @@ def SB  : StoreRI<0b000, "sb", truncstorei8,  GPR>;
 def SH  : StoreRI<0b001, "sh", truncstorei16, GPR>;
 def SW  : StoreRI<0b010, "sw", store,         GPR>;
 
+def : Pat<(store (i32 0), addr_reg_imm12s:$addr),
+          (SW X0_32, addr_reg_imm12s:$addr)>;
+
 class ALU_ri<bits<3> funct3, string OpcodeStr, SDPatternOperator OpNode> :
       FI<funct3, 0b0010011, (outs GPR:$rd), (ins GPR:$rs1, simm12:$imm12),
          OpcodeStr#"\t$rd, $rs1, $imm12",

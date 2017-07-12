@@ -199,6 +199,9 @@ let DecoderNamespace = "RISCV64_" in {
   def SB64 : StoreRI<0b000, "sb", truncstorei8, GPR64>, Requires<[IsRV64]>;
 }
 
+def : Pat<(store (i64 0), addr_reg_imm12s:$addr),
+          (SD X0_64, addr_reg_imm12s:$addr)>;
+
 //===----------------------------------------------------------------------===//
 // Branch and Call Instructions
 //===----------------------------------------------------------------------===//

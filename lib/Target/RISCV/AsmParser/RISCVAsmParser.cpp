@@ -137,7 +137,7 @@ public:
 /// instruction
 struct RISCVOperand : public MCParsedAsmOperand {
   struct MemTy {
-    int64_t Offset;
+    const MCExpr *Offset;
     unsigned Reg;
   };
 
@@ -167,7 +167,7 @@ struct RISCVOperand : public MCParsedAsmOperand {
   explicit RISCVOperand(const MCExpr* const Imm_, SMLoc S, SMLoc E)
     : Kind(Immediate), StartLoc(S), EndLoc(E), Imm(Imm_) {}
 
-  explicit RISCVOperand(const int64_t Offset, const unsigned Reg, SMLoc S, SMLoc E)
+  explicit RISCVOperand(const MCExpr* Offset, const unsigned Reg, SMLoc S, SMLoc E)
     : Kind(Memory), StartLoc(S), EndLoc(E), Mem{Offset, Reg} {}
 
   // Copy constructor
@@ -317,7 +317,7 @@ struct RISCVOperand : public MCParsedAsmOperand {
       OS << "'" << getToken() << "'";
       break;
     case Memory:
-      OS << "<Mem " << Mem.Offset << '(' << Mem.Reg << ")>";
+      OS << "<Mem " << *Mem.Offset << '(' << Mem.Reg << ")>";
       break;
     }
   }
@@ -344,7 +344,7 @@ struct RISCVOperand : public MCParsedAsmOperand {
   void addAddrRegImm12sOperands(MCInst &Inst, unsigned N) const {
     assert(N == 2 && "Invalid number of operands!");
     Inst.addOperand(MCOperand::createReg(Mem.Reg));
-    Inst.addOperand(MCOperand::createImm(Mem.Offset));
+    addExpr (Inst, Mem.Offset);
   }
 };
 } // end anonymous namespace.
@@ -622,8 +622,7 @@ bool RISCVAsmParser::parseOperand(OperandVector &Operands) {
   if (const auto Err = Expr.getError())
     return Error(Err->ErrorLoc, Err->ErrorMsg);
 
-  if (dyn_cast<MCConstantExpr>(Expr->Val) && parseLeftParen()) { // offset(reg)
-    const int64_t Imm = dyn_cast<MCConstantExpr>(Expr->Val)->getValue();
+  if (parseLeftParen()) { // offset(reg)
     const ParseResult<unsigned> Reg = parseRegister();
     if (!Reg)
       return Error(getLoc(), "expected register");
@@ -632,7 +631,7 @@ bool RISCVAsmParser::parseOperand(OperandVector &Operands) {
     if (const auto Err = RParen.getError())
       return Error(Err->ErrorLoc, Err->ErrorMsg);
 
-    Operands.push_back(make_unique<RISCVOperand>(Imm, Reg->Val, Expr->StartLoc, RParen->EndLoc));
+    Operands.push_back(make_unique<RISCVOperand>(Expr->Val, Reg->Val, Expr->StartLoc, RParen->EndLoc));
     return false;
   } else {
     Operands.push_back(make_unique<RISCVOperand>(Expr->Val, Expr->StartLoc, Expr->EndLoc));

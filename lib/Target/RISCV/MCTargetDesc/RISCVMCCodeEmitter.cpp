@@ -72,6 +72,10 @@ public:
                          SmallVectorImpl<MCFixup> &Fixups,
                          const MCSubtargetInfo &STI) const;
 
+  unsigned getExprOpValue(const MCInst &MI, const MCExpr *Expr,
+                          SmallVectorImpl<MCFixup> &Fixups,
+                          const MCSubtargetInfo &STI) const;
+
   bool isLoad (unsigned int Opc) const;
 
   unsigned getAddrRegImmEncoding(const MCInst &MI, unsigned OpNo,
@@ -106,8 +110,9 @@ RISCVMCCodeEmitter::getMachineOpValue(const MCInst &MI, const MCOperand &MO,
   if (MO.isImm())
     return static_cast<unsigned>(MO.getImm());
 
-  llvm_unreachable("Unhandled expression!");
-  return 0;
+  // MO must be an Expr.
+  assert(MO.isExpr());
+  return getExprOpValue(MI, MO.getExpr(),Fixups, STI);
 }
 
 unsigned
@@ -131,16 +136,21 @@ unsigned RISCVMCCodeEmitter::getImmOpValue(const MCInst &MI, unsigned OpNo,
 
   const MCOperand &MO = MI.getOperand(OpNo);
 
-  MCInstrDesc const &Desc = MCII.get(MI.getOpcode());
-  unsigned MIFrm = Desc.TSFlags & RISCVII::FormMask;
-
   // If the destination is an immediate, there is nothing to do
   if (MO.isImm())
     return MO.getImm();
 
-  assert(MO.isExpr() &&
-         "getImmOpValue expects only expressions or immediates");
-  const MCExpr *Expr = MO.getExpr();
+  // MO must be an Expr.
+  assert(MO.isExpr());
+  return getExprOpValue(MI, MO.getExpr(),Fixups, STI);
+}
+
+unsigned RISCVMCCodeEmitter::
+getExprOpValue(const MCInst &MI, const MCExpr *Expr,
+               SmallVectorImpl<MCFixup> &Fixups,
+               const MCSubtargetInfo &STI) const {
+  MCInstrDesc const &Desc = MCII.get(MI.getOpcode());
+  unsigned MIFrm = Desc.TSFlags & RISCVII::FormMask;
   MCExpr::ExprKind Kind = Expr->getKind();
   RISCV::Fixups FixupKind;
   if (Kind == MCExpr::Target) {

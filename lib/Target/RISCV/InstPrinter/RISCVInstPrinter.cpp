@@ -65,15 +65,10 @@ void RISCVInstPrinter::printMemRegOperand(const MCInst *MI, int opNum,
 // Print Imm(Reg) addressing mode
 void RISCVInstPrinter::printAddrRegImmOperand(const MCInst *MI, unsigned OpNum,
                                               raw_ostream &O) {
-  const MCOperand &MO2 = MI->getOperand(OpNum + 1);
-
-  int64_t OffImm = (int64_t)MO2.getImm();
-
-  O << markup("<mem:");
-  O << markup("<imm:") << formatImm(OffImm) << markup(">");
+  printOperand(MI, OpNum+1, O);
   O << "(";
-  O << getRegisterName(MI->getOperand(OpNum).getReg());
-  O << ")" << markup(">");
+  printOperand(MI, OpNum, O);
+  O << ")";
 }
 
 void RISCVInstPrinter::printS12ImmOperand(const MCInst *MI, int OpNum,

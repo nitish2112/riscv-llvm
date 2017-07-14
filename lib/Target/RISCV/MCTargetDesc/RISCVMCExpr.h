@@ -34,8 +34,6 @@ private:
   const MCExpr *Expr;
   const VariantKind Kind;
 
-  int64_t evaluateAsInt64(int64_t Value) const;
-
   explicit RISCVMCExpr(const MCExpr *Expr, VariantKind Kind)
       : Expr(Expr), Kind(Kind) {}
 
@@ -57,8 +55,6 @@ public:
 
   // There are no TLS RISCVMCExprs at the moment.
   void fixELFSymbolsInTLSFixups(MCAssembler &Asm) const override {}
-
-  bool evaluateAsConstant(int64_t &Res) const;
 
   static bool classof(const MCExpr *E) {
     return E->getKind() == MCExpr::Target;

@@ -691,8 +691,10 @@ bool RISCVAsmParser::classifySymbolRef(const MCExpr *Expr,
     Expr = RE->getSubExpr();
   }
 
-  assert(!isa<MCConstantExpr>(Expr) &&
-         "simple constants should have been evaluated already");
+  const MCConstantExpr *CE = dyn_cast<MCConstantExpr>(Expr);
+  if (CE) {
+    return true;
+  }
 
   const MCSymbolRefExpr *SE = dyn_cast<MCSymbolRefExpr>(Expr);
   if (SE) {

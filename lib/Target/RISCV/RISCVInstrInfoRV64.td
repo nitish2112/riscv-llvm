@@ -71,6 +71,9 @@ def SLTIU64: ALU64_ri<0b011, "sltiu", setult>, Requires<[IsRV64]>;
 
 def LUI64 : FU<0b0110111, (outs GPR64:$rd), (ins imm64sxu20:$imm20),
                "lui\t$rd, $imm20", []>;
+
+def AUIPC64 : FU<0b0010111, (outs GPR64:$rd), (ins imm64sxu20:$imm20),
+                 "auipc\t$rd, $imm20", []>;
 } // End of DecoderNamespace
 
 class SLT_rr<bits<7> funct7, bits<3> funct3, string OpcodeStr,

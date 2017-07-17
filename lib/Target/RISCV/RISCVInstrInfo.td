@@ -83,7 +83,7 @@ def MOVi32imm : Pseudo<(outs GPR:$dst), (ins i32imm:$src),
                        [(set GPR:$dst, (i32 imm:$src))]>;
 
 def AUIPC : FU<0b0010111, (outs GPR:$rd), (ins uimm20:$imm20),
-             "auipc\t$rd, $imm20", []>;
+               "auipc\t$rd, $imm20", []>;
 
 let isCall=1 in {
 def JAL : FUJ<0b1101111, (outs GPR:$rd), (ins simm21_lsb0:$imm20),

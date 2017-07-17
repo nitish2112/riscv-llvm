@@ -42,7 +42,33 @@ void RISCVMCExpr::printImpl(raw_ostream &OS, const MCAsmInfo *MAI) const {
 bool RISCVMCExpr::evaluateAsRelocatableImpl(MCValue &Res,
                                             const MCAsmLayout *Layout,
                                             const MCFixup *Fixup) const {
-  return getSubExpr()->evaluateAsRelocatable(Res, Layout, Fixup);
+  if (!getSubExpr()->evaluateAsRelocatable(Res, Layout, Fixup))
+    return false;
+
+  if (Res.getRefKind() != MCSymbolRefExpr::VK_None)
+    return false;
+
+  if (Res.isAbsolute() && Fixup == nullptr) {
+    int64_t AbsVal = Res.getConstant();
+    switch (Kind) {
+    case VK_RISCV_None:
+    case VK_RISCV_Invalid:
+      llvm_unreachable("MEK_None and MEK_Special are invalid");
+    case VK_RISCV_HI:
+    case VK_RISCV_PCREL_HI:
+      AbsVal = ((AbsVal + 0x800) >> 12) & 0xfffff;
+      break;
+    case VK_RISCV_LO:
+      AbsVal = SignExtend64<12>(AbsVal & 0xfff);
+      break;
+    }
+    Res = MCValue::get(AbsVal);
+    return true;
+  }
+
+  Res = MCValue::get(Res.getSymA(), Res.getSymB(), Res.getConstant(),
+                     getKind());
+  return true;
 }
 
 void RISCVMCExpr::visitUsedExpr(MCStreamer &Streamer) const {

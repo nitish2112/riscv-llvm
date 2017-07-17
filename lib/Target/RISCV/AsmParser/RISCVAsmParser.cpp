@@ -131,6 +131,23 @@ public:
       : MCTargetAsmParser(Options, STI) {
     setAvailableFeatures(ComputeAvailableFeatures(STI.getFeatureBits()));
   }
+
+  const MCExpr *createTargetUnaryExpr(const MCExpr *E,
+                                      AsmToken::TokenKind OperatorToken,
+                                      MCContext &Ctx) override {
+    switch(OperatorToken) {
+    default:
+      llvm_unreachable("Unknown token");
+      return nullptr;
+    case AsmToken::PercentHi:
+      return RISCVMCExpr::create(E, RISCVMCExpr::VK_RISCV_HI, Ctx);
+    case AsmToken::PercentLo:
+      return RISCVMCExpr::create(E, RISCVMCExpr::VK_RISCV_LO, Ctx);
+    case AsmToken::PercentPcrel_Hi:
+      return RISCVMCExpr::create(E, RISCVMCExpr::VK_RISCV_PCREL_HI, Ctx);
+
+    }
+  }
 };
 
 /// RISCVOperand - Instances of this class represent a parsed machine
@@ -583,25 +600,15 @@ ParseResult<const MCExpr*> RISCVAsmParser::parseImmediate() {
         return ParseError { getLoc(), "expected identifier" };
       }
     }
-    case AsmToken::Percent: {
-      getLexer().Lex(); // Eat '%'
-      const ParseResult<StringRef> Identifier = parseIdentifier();
-      if (Identifier) {
-        const RISCVMCExpr::VariantKind VK = RISCVMCExpr::getVariantKindForName(Identifier->Val);
-        if (VK == RISCVMCExpr::VK_RISCV_None)
-          return ParseError { getLoc(), "unrecognized operand modifier" };
-
-        const ParseResult<void> LParen = parseLeftParen();
-        if (const auto Err = LParen.getError()) return *Err;
-        const ParseResult<const MCExpr*> SubExpr = parseExpression();
-        if (const auto Err = SubExpr.getError()) return *Err;
-        const ParseResult<void> RParen = parseRightParen();
-        if (const auto Err = RParen.getError()) return *Err;
-
-        return ParseSuccess<const MCExpr*> { RISCVMCExpr::create(SubExpr->Val, VK, getContext()), Identifier->StartLoc, RParen->EndLoc };
-      } else {
-        return ParseError { getLoc(), "expected identifier" };
-      }
+    case AsmToken::PercentPcrel_Hi:
+    case AsmToken::PercentLo:
+    case AsmToken::PercentHi: {
+    const MCExpr *Expr;
+    MCAsmParser &Parser = getParser();
+    SMLoc S = Parser.getTok().getLoc(); // Start location of the operand.
+    SMLoc E = SMLoc::getFromPointer(Parser.getTok().getLoc().getPointer() - 1);
+    getParser().parseExpression(Expr);
+    return ParseSuccess<const MCExpr*> {Expr, S, E};
     }
     default:
       return ParseError { getLoc(), "unknown operand" };

@@ -22,4 +22,5 @@ RISCVMCAsmInfo::RISCVMCAsmInfo(const Triple &TT) {
   CommentString = "#";
   AlignmentIsInBytes = false;
   SupportsDebugInformation = true;
+  HasMipsExpressions = true;
 }

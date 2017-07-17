@@ -57,12 +57,6 @@ extern "C" void LLVMInitializeRISCVDisassembler() {
                                          createRISCVDisassembler);
 }
 
-static unsigned getReg(const void *D, unsigned RC, unsigned RegNo) {
-  const RISCVDisassembler *Dis = static_cast<const RISCVDisassembler*>(D);
-  const MCRegisterInfo *RegInfo = Dis->getContext().getRegisterInfo();
-  return *(RegInfo->getRegClass(RC).begin() + RegNo);
-}
-
 static const unsigned GPRDecoderTable[] = {
   RISCV::X0_32,  RISCV::X1_32,  RISCV::X2_32,  RISCV::X3_32,
   RISCV::X4_32,  RISCV::X5_32,  RISCV::X6_32,  RISCV::X7_32,

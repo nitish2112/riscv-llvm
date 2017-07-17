@@ -128,12 +128,14 @@ def imm64sx12 : Immediate<i64, [{
   return isInt<12>(N->getSExtValue());
 }], NOOP_SDNodeXForm, "S12Imm"> {
   let EncoderMethod = "getImmOpValue";
+  let DecoderMethod = "decodeSImmOperand<12>";
 }
 
 def imm64sxu20 : Immediate<i64, [{
   return isUInt<20>(N->getSExtValue());
 }], NOOP_SDNodeXForm, "U20Imm"> {
   let EncoderMethod = "getImmOpValue";
+  let DecoderMethod = "decodeUImmOperand<20>";
 }
 
 //sign-extended 32bit immediate for LUI/ADDIW

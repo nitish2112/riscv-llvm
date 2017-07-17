@@ -74,6 +74,18 @@ static const unsigned GPRDecoderTable[] = {
   RISCV::X28_32, RISCV::X29_32, RISCV::X30_32, RISCV::X31_32
 };
 
+static const unsigned GPR64DecoderTable[] = {
+  RISCV::X0_64,  RISCV::X1_64,  RISCV::X2_64,  RISCV::X3_64,
+  RISCV::X4_64,  RISCV::X5_64,  RISCV::X6_64,  RISCV::X7_64,
+  RISCV::X8_64,  RISCV::X9_64,  RISCV::X10_64, RISCV::X11_64,
+  RISCV::X12_64, RISCV::X13_64, RISCV::X14_64, RISCV::X15_64,
+  RISCV::X16_64, RISCV::X17_64, RISCV::X18_64, RISCV::X19_64,
+  RISCV::X20_64, RISCV::X21_64, RISCV::X22_64, RISCV::X23_64,
+  RISCV::X24_64, RISCV::X25_64, RISCV::X26_64, RISCV::X27_64,
+  RISCV::X28_64, RISCV::X29_64, RISCV::X30_64, RISCV::X31_64
+};
+
+
 static DecodeStatus DecodeGPRRegisterClass(MCInst &Inst, uint64_t RegNo,
                                            uint64_t Address,
                                            const void *Decoder) {
@@ -96,7 +108,7 @@ static DecodeStatus DecodeGPR64RegisterClass(MCInst &Inst,
   if (RegNo > 31)
     return MCDisassembler::Fail;
 
-  unsigned Reg = getReg(Decoder, RISCV::GPR64RegClassID, RegNo);
+  unsigned Reg = GPR64DecoderTable[RegNo];
   Inst.addOperand(MCOperand::createReg(Reg));
   return MCDisassembler::Success;
 }

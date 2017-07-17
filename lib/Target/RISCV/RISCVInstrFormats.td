@@ -143,9 +143,9 @@ class FS<bits<3> funct3, bits<7> opcode, dag outs, dag ins, string asmstr, list<
 
 class StoreRI<bits<3> funct3, string OpcodeStr, SDPatternOperator Op,
               RegisterClass cls> :
-      FS<funct3, 0b0100011, (outs), (ins cls:$rt, addr_reg_imm12s:$addr),
-         OpcodeStr#"\t$rt, $addr",
-	 [(Op cls:$rt, addr_reg_imm12s:$addr)]> {
+      FS<funct3, 0b0100011, (outs), (ins cls:$rs2, addr_reg_imm12s:$addr),
+         OpcodeStr#"\t$rs2, $addr",
+	 [(Op cls:$rs2, addr_reg_imm12s:$addr)]> {
   let mayStore = 1;
   bits<17> addr;
   let Inst{31-25} = addr{16-10};

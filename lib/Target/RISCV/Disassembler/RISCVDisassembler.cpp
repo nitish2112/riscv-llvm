@@ -130,6 +130,20 @@ static DecodeStatus decodeSImmOperandAndLsl1(MCInst &Inst, uint64_t Imm,
   return MCDisassembler::Success;
 }
 
+static bool isLoad(unsigned Opc) {
+  if (Opc == RISCV::LB  || Opc == RISCV::LB64  ||
+      Opc == RISCV::LBU || Opc == RISCV::LBU64 ||
+      Opc == RISCV::LD  || Opc == RISCV::LH    ||
+      Opc == RISCV::LHU || Opc == RISCV::LHU64 ||
+      Opc == RISCV::LW  || Opc == RISCV::LW64 ||
+      Opc == RISCV::LWU || Opc == RISCV::LH64)
+    return true;
+  return false;
+}
+
+static DecodeStatus decodeAddrRegImm(MCInst &Inst, unsigned Insn,
+                                     uint64_t Address, const void *Decoder);
+
 #include "RISCVGenDisassemblerTables.inc"
 
 DecodeStatus RISCVDisassembler::getInstruction(MCInst &MI, uint64_t &Size,
@@ -155,4 +169,28 @@ DecodeStatus RISCVDisassembler::getInstruction(MCInst &MI, uint64_t &Size,
     return decodeInstruction(DecoderTableRISCV64_32, MI, Inst, Address, this, STI);
   else
     return decodeInstruction(DecoderTable32, MI, Inst, Address, this, STI);
+}
+
+static DecodeStatus decodeAddrRegImm(MCInst &Inst,
+                                     unsigned Insn,
+                                     uint64_t Address,
+                                     const void *Decoder) {
+  int32_t Imm, Reg;
+
+  if (isLoad(Inst.getOpcode())) {
+    Imm = fieldFromInstruction(Insn, 5, 12);
+    Reg = fieldFromInstruction(Insn, 0, 5);
+  } else {
+    Reg = fieldFromInstruction(Insn, 5, 5);
+    Imm = fieldFromInstruction(Insn, 0, 5) | fieldFromInstruction(Insn, 10, 7) << 5;
+  }
+
+  if (static_cast<const RISCVDisassembler *>(Decoder)->isRV64())
+    DecodeGPR64RegisterClass(Inst, Reg, Address, Decoder);
+  else
+    DecodeGPRRegisterClass(Inst, Reg, Address, Decoder);
+
+  Inst.addOperand(MCOperand::createImm(SignExtend64<12>(Imm)));
+
+  return MCDisassembler::Success;
 }

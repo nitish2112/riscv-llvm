@@ -5,7 +5,7 @@
 define i32 @eq(i32 %a, i32 %b) nounwind {
 ; CHECK-LABEL: eq:
 ; CHECK: xor a0, a0, a1
-; CHECK: slti a0, a0, 1
+; CHECK: sltiu a0, a0, 1
   %1 = icmp eq i32 %a, %b
   %2 = zext i1 %1 to i32
   ret i32 %2

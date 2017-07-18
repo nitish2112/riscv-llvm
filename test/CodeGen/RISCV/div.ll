@@ -2,19 +2,18 @@
 
 define i32 @udiv(i32 %a, i32 %b) {
 ; CHECK-LABEL: udiv:
-; CHECK: lui a2, %hi(__udivsi3)
-; CHECK: addi a2, a2, %lo(__udivsi3)
-; CHECK: jalr ra, a2, 0
+; CHECK: divu	a0, a0, a1
+; CHECK: jalr	zero, ra, 0
   %1 = udiv i32 %a, %b
   ret i32 %1
 }
 
 define i32 @udiv_constant(i32 %a) {
 ; CHECK-LABEL: udiv_constant:
-; CHECK: lui a1, %hi(__udivsi3)
-; CHECK: addi a2, a1, %lo(__udivsi3)
-; CHECK: addi a1, zero, 5
-; CHECK: jalr ra, a2, 0
+; CHECK: lui     a1, 838861
+; CHECK: addi    a1, a1, -819
+; CHECK: mulhu   a0, a0, a1
+; CHECK: srli    a0, a0, 2
   %1 = udiv i32 %a, 5
   ret i32 %1
 }
@@ -48,19 +47,21 @@ define i64 @udiv64_constant(i64 %a) {
 
 define i32 @sdiv(i32 %a, i32 %b) {
 ; CHECK-LABEL: sdiv:
-; CHECK: lui a2, %hi(__divsi3)
-; CHECK: addi a2, a2, %lo(__divsi3)
-; CHECK: jalr ra, a2, 0
+; CHECK: div     a0, a0, a1
+; CHECK: jalr    zero, ra, 0
   %1 = sdiv i32 %a, %b
   ret i32 %1
 }
 
 define i32 @sdiv_constant(i32 %a) {
 ; CHECK-LABEL: sdiv_constant:
-; CHECK: lui a1, %hi(__divsi3)
-; CHECK: addi a2, a1, %lo(__divsi3)
-; CHECK: addi a1, zero, 5
-; CHECK: jalr ra, a2, 0
+; CHECK: lui     a1, 419430
+; CHECK: addi    a1, a1, 1639
+; CHECK: mulh    a0, a0, a1
+; CHECK: srli    a1, a0, 31
+; CHECK: srai    a0, a0, 1
+; CHECK: add     a0, a0, a1
+; CHECK: jalr    zero, ra, 0
   %1 = sdiv i32 %a, 5
   ret i32 %1
 }

@@ -4,9 +4,10 @@
 
 define i64 @addc_adde(i64 %a, i64 %b) {
 ; CHECK-LABEL: addc_adde:
-; CHECK: addi a5, zero, 1
+; CHECK: addi    a4, a0, 0
+; CHECK: add     a0, a4, a2
 ; CHECK: bltu a0, a2, .LBB0_2
-; CHECK: sltu a5, a0, a4
+; CHECK: sltu a2, a0, a4
   %1 = add i64 %a, %b
   ret i64 %1
 }

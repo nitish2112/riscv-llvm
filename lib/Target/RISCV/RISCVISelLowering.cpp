@@ -844,13 +844,13 @@ void RISCVTargetLowering::copyByValRegs(
     CCInfo.getInRegsParamInfo(ByValIdx, FirstReg, LastReg);
   // The ByVal Argument pass by stack
   } else {
-    unsigned MaxArgReg = Subtarget->isRV64() ? RISCV::X17_64 : RISCV::X17_32;
+    unsigned MaxArgReg = Subtarget->hasE() ? 5 : 7;
     unsigned FirstRegIdx = CCInfo.getFirstUnallocated(ArgRegs);
-    FirstReg = FirstRegIdx == 8 ? MaxArgReg : ArgRegs[FirstRegIdx];
+    FirstReg = FirstRegIdx == MaxArgReg + 1 ? MaxArgReg : FirstRegIdx;
     LastReg = MaxArgReg;
   }
 
-  unsigned GPRSizeInBytes = 4;
+  unsigned GPRSizeInBytes = Subtarget->isRV64() ? 8 : 4;
   unsigned NumRegs = LastReg - FirstReg;
   unsigned RegAreaSize = NumRegs * GPRSizeInBytes;
   unsigned FrameObjSize = std::max(Flags.getByValSize(), RegAreaSize);

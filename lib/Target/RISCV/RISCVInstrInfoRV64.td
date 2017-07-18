@@ -333,3 +333,48 @@ let usesCustomInserter = 1 in {
                                       GPR:$src, GPR:$src2))]>,
                     Requires<[IsRV64]>;
 }
+
+let DecoderNamespace = "RISCV64_" in {
+def FENCE64 : FI<0b000, 0b0001111, (outs), (ins uimm4:$pred, uimm4:$succ),
+               "fence\t$pred, $succ", []> {
+  bits<4> pred;
+  bits<4> succ;
+
+  let rs1 = 0;
+  let rd = 0;
+  let imm12 = {0b0000,pred,succ};
+}
+
+def FENCEI64 : FI<0b001, 0b0001111, (outs), (ins), "fence.i", []> {
+  let rs1 = 0;
+  let rd = 0;
+  let imm12 = 0;
+}
+
+let rs1=0, rd=0 in {
+  def ECALL64  : FI<0b000, 0b1110011, (outs), (ins), "ecall", []> {
+    let imm12=0;
+  }
+  def EBREAK64 : FI<0b000, 0b1110011, (outs), (ins), "ebreak", []> {
+    let imm12=1;
+  }
+}
+}
+
+class CSR64_rr<bits<3> funct3, string OpcodeStr> :
+      FI<funct3, 0b1110011, (outs GPR64:$rd), (ins uimm12:$imm12, GPR64:$rs1),
+         OpcodeStr#"\t$rd, $imm12, $rs1", []>;
+
+class CSR64_ri<bits<3> funct3, string OpcodeStr> :
+      FI<funct3, 0b1110011, (outs GPR64:$rd), (ins uimm12:$imm12, uimm5:$rs1),
+         OpcodeStr#"\t$rd, $imm12, $rs1", []>;
+
+let DecoderNamespace = "RISCV64_" in {
+def CSRRW64 : CSR64_rr<0b001, "csrrw">;
+def CSRRS64 : CSR64_rr<0b010, "csrrs">;
+def CSRRC64 : CSR64_rr<0b011, "csrrc">;
+
+def CSRRWI64 : CSR64_ri<0b101, "csrrwi">;
+def CSRRSI64 : CSR64_ri<0b110, "csrrsi">;
+def CSRRCI64 : CSR64_ri<0b111, "csrrci">;
+}

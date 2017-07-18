@@ -28,9 +28,9 @@ class ALU64_rr<bits<7> funct7, bits<3> funct3, string OpcodeStr,
 class SHIFT64_rr<bits<7> funct7, bits<3> funct3, string OpcodeStr,
                  SDPatternOperator OpNode> :
       FR<funct7, funct3, 0b0110011, (outs GPR64:$rd),
-         (ins GPR64:$rs1, GPR:$rs2),
+         (ins GPR64:$rs1, GPR64:$rs2),
          OpcodeStr#"\t$rd, $rs1, $rs2",
-         [(set GPR64:$rd, (OpNode GPR64:$rs1, GPR:$rs2))]>;
+         [(set GPR64:$rd, (OpNode GPR64:$rs1, GPR64:$rs2))]>;
 
 class ALU64_ri<bits<3> funct3, string OpcodeStr, SDPatternOperator OpNode> :
       FI<funct3, 0b0010011, (outs GPR64:$rd), 
@@ -89,7 +89,17 @@ class SLT_ri<bits<3> funct3, string OpcodeStr, SDPatternOperator OpNode> :
          OpcodeStr#"\t$rd, $rs1, $imm12",
          [(set GPR:$rd, (OpNode GPR64:$rs1, imm64sx12:$imm12))]>;
 
+class SHIFT64_32_rr<bits<7> funct7, bits<3> funct3, string OpcodeStr,
+                    SDPatternOperator OpNode> :
+      FR<funct7, funct3, 0b0110011, (outs GPR64:$rd),
+         (ins GPR64:$rs1, GPR:$rs2),
+         OpcodeStr#"\t$rd, $rs1, $rs2",
+         [(set GPR64:$rd, (OpNode GPR64:$rs1, GPR:$rs2))]>;
+
 let DecoderNamespace = "NO_DECODE_MATCH" in {
+def SLL64_32  : SHIFT64_32_rr<0b0000000, 0b001, "sll", shl>, Requires<[IsRV64]>;
+def SRL64_32  : SHIFT64_32_rr<0b0000000, 0b101, "srl", srl>, Requires<[IsRV64]>;
+def SRA64_32  : SHIFT64_32_rr<0b0100000, 0b101, "sra", sra>, Requires<[IsRV64]>;
 def SLT32  : SLT_rr<0b0000000, 0b010, "slt",  setlt>,  Requires<[IsRV64]>;
 def SLTU32 : SLT_rr<0b0000000, 0b011, "sltu", setult>, Requires<[IsRV64]>;
 def SLTI32 : SLT_ri<0b010, "slti",  setlt>,  Requires<[IsRV64]>;
@@ -165,11 +175,11 @@ def SRAIW: SHIFTW_ri<1, 0b101 , "sraiw", sra>, Requires<[IsRV64]>;
 
 // variable shift instructions patterns
 def : Pat<(shl GPR64:$rt, (i32 (trunc GPR64:$rs))),
-          (SLL64 GPR64:$rt, (EXTRACT_SUBREG GPR64:$rs, sub_32))>;
+          (SLL64_32 GPR64:$rt, (EXTRACT_SUBREG GPR64:$rs, sub_32))>;
 def : Pat<(srl GPR64:$rt, (i32 (trunc GPR64:$rs))),
-          (SRL64 GPR64:$rt, (EXTRACT_SUBREG GPR64:$rs, sub_32))>;
+          (SRL64_32 GPR64:$rt, (EXTRACT_SUBREG GPR64:$rs, sub_32))>;
 def : Pat<(sra GPR64:$rt, (i32 (trunc GPR64:$rs))),
-          (SRA64 GPR64:$rt, (EXTRACT_SUBREG GPR64:$rs, sub_32))>;
+          (SRA64_32 GPR64:$rt, (EXTRACT_SUBREG GPR64:$rs, sub_32))>;
 
 //===----------------------------------------------------------------------===//
 // Load and Store Instructions

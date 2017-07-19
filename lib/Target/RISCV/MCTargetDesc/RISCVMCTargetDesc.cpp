@@ -35,6 +35,17 @@
 
 using namespace llvm;
 
+/// Select the RISCV CPU for the given triple and cpu name.
+StringRef RISCV_MC::selectRISCVCPU(const Triple &TT, StringRef CPU) {
+  if (CPU.empty()) {
+    if (TT.getArch() == Triple::riscv32)
+      CPU = "generic-rv32";
+    else
+      CPU = "generic-rv64";
+  }
+  return CPU;
+}
+
 static MCInstrInfo *createRISCVMCInstrInfo() {
   MCInstrInfo *X = new MCInstrInfo();
   InitRISCVMCInstrInfo(X);

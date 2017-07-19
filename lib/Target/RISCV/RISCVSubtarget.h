@@ -53,7 +53,8 @@ private:
   RISCVTargetLowering TLInfo;
   const SelectionDAGTargetInfo TSInfo;
 
-  RISCVSubtarget &initializeSubtargetDependencies(StringRef CPU, StringRef FS);
+  RISCVSubtarget &initializeSubtargetDependencies(StringRef CPU, StringRef FS,
+                                                  const TargetMachine &TM);
 
 public:
   // Initializes the data members to match that of the specified triple.

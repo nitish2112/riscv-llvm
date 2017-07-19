@@ -45,6 +45,10 @@ MCAsmBackend *createRISCVAsmBackend(const Target &T, const MCRegisterInfo &MRI,
 
 MCObjectWriter *createRISCVELFObjectWriter(raw_pwrite_stream &OS, uint8_t OSABI,
                                            bool Is64Bit);
+namespace RISCV_MC {
+StringRef selectRISCVCPU(const Triple &TT, StringRef CPU);
+}
+
 }
 
 // Defines symbolic names for RISC-V registers.

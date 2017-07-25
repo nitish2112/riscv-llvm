@@ -38,22 +38,17 @@ def FrmS      : Format<3>;
 def FrmSB     : Format<4>;
 def FrmU      : Format<5>;
 def FrmOther  : Format<6>;
+def FrmC      : Format<7>;
 
 class RISCVInst<dag outs, dag ins, string asmstr, list<dag> pattern, Format format>
     : Instruction {
-  field bits<32> Inst;
+  let Namespace = "RISCV";
+
   // SoftFail is a field the disassembler can use to provide a way for
   // instructions to not match without killing the whole decode process. It is
   // mainly used for ARM, but Tablegen expects this field to exist or it fails
   // to build the decode table.
   field bits<32> SoftFail = 0;
-  let Size = 4;
-
-  bits<7> Opcode = 0;
-
-  let Inst{6-0} = Opcode;
-
-  let Namespace = "RISCV";
 
   dag OutOperandList = outs;
   dag InOperandList = ins;
@@ -61,6 +56,22 @@ class RISCVInst<dag outs, dag ins, string asmstr, list<dag> pattern, Format form
   let Pattern = pattern;
 
   let TSFlags{3-0} = format.Value;
+}
+
+class RISCV32Inst<dag outs, dag ins, string asmstr, list<dag> pattern, Format format>
+    : RISCVInst<outs, ins, asmstr, pattern, format>
+{
+  field bits<32> Inst;
+  let Size = 4;
+  bits<7> Opcode = 0;
+  let Inst{6-0} = Opcode;
+}
+
+class RISCV16Inst<dag outs, dag ins, string asmstr, list<dag> pattern, Format format>
+    : RISCVInst<outs, ins, asmstr, pattern, format>
+{
+  field bits<16> Inst;
+  let Size = 2;
 }
 
 // Pseudo instructions
@@ -71,7 +82,7 @@ class Pseudo<dag outs, dag ins, list<dag> pattern>
 }
 
 class FR<bits<7> funct7, bits<3> funct3, bits<7> opcode, dag outs, dag ins,
-         string asmstr, list<dag> pattern> : RISCVInst<outs, ins, asmstr, pattern, FrmR>
+         string asmstr, list<dag> pattern> : RISCV32Inst<outs, ins, asmstr, pattern, FrmR>
 {
   bits<5> rs2;
   bits<5> rs1;
@@ -86,7 +97,7 @@ class FR<bits<7> funct7, bits<3> funct3, bits<7> opcode, dag outs, dag ins,
 }
 
 class FI<bits<3> funct3, bits<7> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
-    : RISCVInst<outs, ins, asmstr, pattern, FrmI>
+    : RISCV32Inst<outs, ins, asmstr, pattern, FrmI>
 {
   bits<12> imm12;
   bits<5> rs1;
@@ -110,7 +121,7 @@ class LoadRI<bits<3> funct3, string OpcodeStr, SDPatternOperator Op,
 }
 
 class ShiftRI<bit arithshift, bits<3> funct3, bits<7> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
-    : RISCVInst<outs, ins, asmstr, pattern, FrmI>
+    : RISCV32Inst<outs, ins, asmstr, pattern, FrmI>
 {
   bits<6> shamt;
   bits<5> rs1;
@@ -127,7 +138,7 @@ class ShiftRI<bit arithshift, bits<3> funct3, bits<7> opcode, dag outs, dag ins,
 }
 
 class FS<bits<3> funct3, bits<7> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
-    : RISCVInst<outs, ins, asmstr, pattern, FrmS>
+    : RISCV32Inst<outs, ins, asmstr, pattern, FrmS>
 {
   bits<12> imm12;
   bits<5> rs2;
@@ -154,7 +165,7 @@ class StoreRI<bits<3> funct3, string OpcodeStr, SDPatternOperator Op,
 }
 
 class FSB<bits<3> funct3, bits<7> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
-    : RISCVInst<outs, ins, asmstr, pattern, FrmSB>
+    : RISCV32Inst<outs, ins, asmstr, pattern, FrmSB>
 {
   bits<12> imm12;
   bits<5> rs2;
@@ -171,7 +182,7 @@ class FSB<bits<3> funct3, bits<7> opcode, dag outs, dag ins, string asmstr, list
 }
 
 class FU<bits<7> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
-    : RISCVInst<outs, ins, asmstr, pattern, FrmU>
+    : RISCV32Inst<outs, ins, asmstr, pattern, FrmU>
 {
   bits<20> imm20;
   bits<5> rd;
@@ -182,7 +193,7 @@ class FU<bits<7> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
 }
 
 class FUJ<bits<7> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
-    : RISCVInst<outs, ins, asmstr, pattern, FrmU>
+    : RISCV32Inst<outs, ins, asmstr, pattern, FrmU>
 {
   bits<20> imm20;
   bits<5> rd;
@@ -197,10 +208,10 @@ class FUJ<bits<7> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
 
 //A-Type
 class InstA<string mnemonic, bits<7> op, bits<5> funct5, bits<3> funct3,
-            SDPatternOperator operator, RegisterClass cls1, 
+            SDPatternOperator operator, RegisterClass cls1,
             Operand cls2>
-  : RISCVInst<(outs cls1:$dst), (ins cls1:$src1, cls2:$src2), 
-               mnemonic#"\t$dst, $src1, $src2", 
+  : RISCV32Inst<(outs cls1:$dst), (ins cls1:$src1, cls2:$src2),
+               mnemonic#"\t$dst, $src1, $src2",
                [(set cls1:$dst, (operator regaddr:$src2, cls1:$src1))], FrmOther> {
   field bits<32> Inst;
 
@@ -221,7 +232,7 @@ class InstA<string mnemonic, bits<7> op, bits<5> funct5, bits<3> funct3,
 //LR/SC
 class InstLR<string mnemonic, bits<3> funct3,
              RegisterClass cls1, Operand cls2>
-  : RISCVInst<(outs cls1:$dst), (ins cls2:$src2), 
+  : RISCV32Inst<(outs cls1:$dst), (ins cls2:$src2),
               mnemonic#"\t$dst, $src2", 
               [], FrmOther> {
   field bits<32> Inst;
@@ -241,7 +252,7 @@ class InstLR<string mnemonic, bits<3> funct3,
 
 class InstSC<string mnemonic, bits<3> funct3,
              RegisterClass reg, Operand memOp>
-  : RISCVInst<(outs reg:$dst), (ins reg:$src2, memOp:$src1), 
+  : RISCV32Inst<(outs reg:$dst), (ins reg:$src2, memOp:$src1),
               mnemonic#"\t$dst, $src2, $src1", 
               [], FrmOther> {
   field bits<32> Inst;
@@ -258,4 +269,114 @@ class InstSC<string mnemonic, bits<3> funct3,
   let Inst{14-12} = funct3;
   let Inst{11- 7} = RD;
   let Inst{6 - 0} = 0b0101111;
+}
+
+class CR<bits<4> funct4, bits<2> opcode, dag outs, dag ins,
+         string asmstr, list<dag> pattern>
+    : RISCV16Inst<outs, ins, asmstr, pattern, FrmC>
+{
+  bits<5> rs1;
+  bits<5> rd;
+  bits<5> rs2;
+
+  let Inst{15-12} = funct4;
+  let Inst{6-2} = rs2;
+  let Inst{1-0} = opcode;
+}
+
+class CI<bits<3> funct3, bits<2> opcode, dag outs, dag ins,
+         string asmstr, list<dag> pattern>
+    : RISCV16Inst<outs, ins, asmstr, pattern, FrmC>
+{
+  bits<6> imm;
+  bits<5> rs1;
+  bits<5> rd;
+
+  let Inst{15-13} = funct3;
+  let Inst{12} = imm{5};
+  let Inst{6-2} = imm{4-0};
+  let Inst{1-0} = opcode;
+}
+
+class CSS<bits<3> funct3, bits<2> opcode, dag outs, dag ins,
+         string asmstr, list<dag> pattern>
+    : RISCV16Inst<outs, ins, asmstr, pattern, FrmC>
+{
+  bits<6> imm;
+  bits<5> rs2;
+
+  let Inst{15-13} = funct3;
+  let Inst{12-7} = imm;
+  let Inst{6-2} = rs2;
+  let Inst{1-0} = opcode;
+}
+
+class CIW<bits<3> funct3, bits<2> opcode, dag outs, dag ins,
+         string asmstr, list<dag> pattern>
+    : RISCV16Inst<outs, ins, asmstr, pattern, FrmC>
+{
+  bits<8> imm;
+  bits<3> rd;
+
+  let Inst{15-13} = funct3;
+  let Inst{12-5} = imm;
+  let Inst{4-2} = rd;
+  let Inst{1-0} = opcode;
+}
+
+class CL<bits<3> funct3, bits<2> opcode, dag outs, dag ins,
+         string asmstr, list<dag> pattern>
+    : RISCV16Inst<outs, ins, asmstr, pattern, FrmC>
+{
+  bits<5> imm;
+  bits<3> rs1;
+  bits<3> rd;
+
+  let Inst{15-13} = funct3;
+  let Inst{12-10} = imm{4-2};
+  let Inst{9-7} = rs1;
+  let Inst{6-5} = imm{1-0};
+  let Inst{4-2} = rd;
+  let Inst{1-0} = opcode;
+}
+
+class CS<bits<3> funct3, bits<2> opcode, dag outs, dag ins,
+         string asmstr, list<dag> pattern>
+    : RISCV16Inst<outs, ins, asmstr, pattern, FrmC>
+{
+  bits<5> imm;
+  bits<3> rs1;
+  bits<3> rs2;
+
+  let Inst{15-13} = funct3;
+  let Inst{12-10} = imm{4-2};
+  let Inst{9-7} = rs1;
+  let Inst{6-5} = imm{1-0};
+  let Inst{4-2} = rs2;
+  let Inst{1-0} = opcode;
+}
+
+class CB<bits<3> funct3, bits<2> opcode, dag outs, dag ins,
+         string asmstr, list<dag> pattern>
+    : RISCV16Inst<outs, ins, asmstr, pattern, FrmC>
+{
+  bits<8> offset;
+  bits<3> rs1;
+
+  let Inst{15-13} = funct3;
+  let Inst{12-10} = offset{7-5};
+  let Inst{9-7} = rs1;
+  let Inst{6-2} = offset{4-0};
+  let Inst{1-0} = opcode;
+}
+
+class CJ<bits<3> funct3, bits<2> opcode, dag outs, dag ins,
+         string asmstr, list<dag> pattern>
+    : RISCV16Inst<outs, ins, asmstr, pattern, FrmC>
+{
+  bits<11> target;
+
+  let Inst{15-13} = funct3;
+  let Inst{12-2} = target;
+  let Inst{1-0} = opcode;
 }

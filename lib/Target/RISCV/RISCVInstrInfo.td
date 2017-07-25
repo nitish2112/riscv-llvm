@@ -310,3 +310,4 @@ def : Pat<(simm12:$imm), (ADDI X0_32, simm12:$imm)>;
 include "RISCVInstrInfoRV64.td"
 include "RISCVInstrInfoM.td"
 include "RISCVInstrInfoA.td"
+include "RISCVInstrInfoC.td"

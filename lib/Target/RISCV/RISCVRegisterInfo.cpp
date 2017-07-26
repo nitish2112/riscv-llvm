@@ -110,6 +110,28 @@ requiresVirtualBaseRegisters(const MachineFunction &MF) const {
   return true;
 }
 
+// Return true if the instruction fit
+// 16 bit load/store format.
+static bool FitFrameBase16BitLoadStore (MachineInstr &MI, unsigned BaseReg,
+                                        int64_t Offset) {
+  unsigned Opc = MI.getOpcode();
+
+  // BaseReg must be SP
+  if (BaseReg != RISCV::X2_32 && BaseReg != RISCV::X2_64)
+    return false;
+
+  // Offset limitation is (imm6u << 2)
+  if (!isUInt<6>(Offset))
+    return false;
+  if (Offset % 4 != 0)
+    return false;
+
+  if (Opc != RISCV::LW)
+    return false;
+
+  return true;
+}
+
 void RISCVRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
                                             int SPAdj, unsigned FIOperandNum,
                                             RegScavenger *RS) const {
@@ -188,8 +210,27 @@ void RISCVRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
   // Fold imm into offset
   Offset += MI.getOperand(FIOperandNum + 1).getImm();
 
+  // Transfer to 16 bit format
+  // if the instruction fit 16 bit load/store limitation
+  if (FitFrameBase16BitLoadStore (MI, BasePtr, Offset)) {
+    // should add subtarget.hasC() here.
+    unsigned NewOpc;
+
+    switch (MI.getOpcode()) {
+    case RISCV::LW:
+      NewOpc = RISCV::CLWSP;
+      break;
+    default:
+      break;
+      // should add llvm_unreach here later.
+    }
+
+    MI.setDesc(TII.get(NewOpc));
+    MI.getOperand(FIOperandNum).ChangeToRegister(BasePtr, false);
+    MI.getOperand(FIOperandNum + 1).ChangeToImmediate(Offset);
+    return;
   // If the offset fits in an immediate, then directly encode it
-  if (isInt<12>(Offset)) {
+  } else if (isInt<12>(Offset)) {
     MI.getOperand(FIOperandNum).ChangeToRegister(BasePtr, false);
     MI.getOperand(FIOperandNum + 1).ChangeToImmediate(Offset);
     return;

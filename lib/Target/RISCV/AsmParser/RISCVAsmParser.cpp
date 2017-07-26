@@ -286,6 +286,19 @@ struct RISCVOperand : public MCParsedAsmOperand {
     return isMem();
   }
 
+  // Sp + imm6u
+  bool isAddrSpImm6uWord() const {
+    if (!isMem()) return false;
+    if (Mem.Reg != RISCV::X2_32 &&
+        Mem.Reg != RISCV::X2_64)
+      return false;
+    if (!Mem.Offset) return true;
+    if (!dyn_cast<MCConstantExpr>(Mem.Offset))
+      return false;
+    int64_t Val = static_cast<const MCConstantExpr*>(Mem.Offset)->getValue();
+    return isUIntN(6 + 2, Val) && (Val % 4 == 0);
+  }
+
   bool isSImm21Lsb0() const {
     if (isConstantImm()) {
       return isShiftedInt<20, 1>(getConstantImm());
@@ -358,10 +371,17 @@ struct RISCVOperand : public MCParsedAsmOperand {
     addExpr(Inst, getImm());
   }
 
-  void addAddrRegImm12sOperands(MCInst &Inst, unsigned N) const {
+  void addAddrRegImmOperands(MCInst &Inst, unsigned N) const {
     assert(N == 2 && "Invalid number of operands!");
     Inst.addOperand(MCOperand::createReg(Mem.Reg));
     addExpr (Inst, Mem.Offset);
+  }
+
+  void addAddrRegImm12sOperands(MCInst &Inst, unsigned N) const {
+    addAddrRegImmOperands(Inst, N);
+  }
+  void addAddrSpImm6uWordOperands(MCInst &Inst, unsigned N) const {
+    addAddrRegImmOperands(Inst, N);
   }
 };
 } // end anonymous namespace.

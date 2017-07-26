@@ -183,3 +183,16 @@ def addr_reg_imm12s : MemOperand,
   let EncoderMethod = "getAddrRegImmEncoding";
   let DecoderMethod = "decodeAddrRegImm";
 }
+
+// addr_sp_imm6u_word := [sp + imm6u]
+def AddrSpImm6uWordAsmOperand : AsmOperandClass { let Name = "AddrSpImm6uWord"; }
+def addr_sp_imm6u_word : MemOperand {
+  // 6-bit unsigned immediate operand.
+  // Immediate access range would be (imm6u << 2).
+
+  let MIOperandInfo = (ops ptr_rc, iPTR:$offsimm);
+  let PrintMethod = "printAddrRegImmOperand";
+  let ParserMatchClass = AddrSpImm6uWordAsmOperand;
+  let EncoderMethod = "getAddrSpImm6uWordEncoding";
+  let DecoderMethod = "decodeAddrSpImm6uWord";
+}

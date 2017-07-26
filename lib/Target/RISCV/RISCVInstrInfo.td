@@ -32,6 +32,8 @@ include "RISCVInstrFormats.td"
                  AssemblerPredicate<"FeatureA">;
  def HasE   :    Predicate<"Subtarget.hasE()">,
                  AssemblerPredicate<"FeatureE">;
+ def HasC   :    Predicate<"Subtarget.hasC()">,
+                 AssemblerPredicate<"FeatureC">;
 
 // RV32Pat - Same as Pat<>, but requires has RISCV32 ISA support.
 class RV32Pat<dag pattern, dag result> : Pat<pattern, result> {

@@ -81,6 +81,10 @@ public:
   unsigned getAddrRegImmEncoding(const MCInst &MI, unsigned OpNo,
                                  SmallVectorImpl<MCFixup> &Fixups,
                                  const MCSubtargetInfo &STI) const;
+
+  unsigned getAddrSpImm6uWordEncoding(const MCInst &MI, unsigned OpNo,
+                                      SmallVectorImpl<MCFixup> &Fixups,
+                                      const MCSubtargetInfo &STI) const;
 };
 } // end anonymous namespace
 
@@ -219,6 +223,27 @@ RISCVMCCodeEmitter::getAddrRegImmEncoding(const MCInst &MI, unsigned OpNo,
     return getMachineOpValue(MI, MO,  Fixups, STI) << 5 |
            (Imm12 & 0x1f) | (Imm12 >> 5) << 10;
   }
+}
+
+// Encoding Sp + Imm6u addressing mode
+unsigned
+RISCVMCCodeEmitter::getAddrSpImm6uWordEncoding(const MCInst &MI, unsigned OpNo,
+                                               SmallVectorImpl<MCFixup> &Fixups,
+                                               const MCSubtargetInfo &STI) const {
+  const MCOperand &MO1 = MI.getOperand(OpNo + 1);
+  unsigned Imm = getMachineOpValue(MI, MO1, Fixups, STI);
+
+  return Imm >> 2;
+#if 0
+  // It's a load instruction.
+  if (isLoad(MI.getOpcode())) {
+    return getMachineOpValue(MI, MO,  Fixups, STI) | Imm12 << 5;
+  // It's a store instruction.
+  } else {
+    return getMachineOpValue(MI, MO,  Fixups, STI) << 5 |
+           (Imm12 & 0x1f) | (Imm12 >> 5) << 10;
+  }
+#endif
 }
 
 #include "RISCVGenMCCodeEmitter.inc"

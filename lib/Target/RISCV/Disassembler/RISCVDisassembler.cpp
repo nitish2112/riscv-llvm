@@ -150,6 +150,10 @@ static bool isLoad(unsigned Opc) {
 static DecodeStatus decodeAddrRegImm(MCInst &Inst, unsigned Insn,
                                      uint64_t Address, const void *Decoder);
 
+static DecodeStatus decodeAddrSpImm6uWord(MCInst &Inst, unsigned Insn,
+                                          uint64_t Address,
+                                          const void *Decoder);
+
 #include "RISCVGenDisassemblerTables.inc"
 
 DecodeStatus RISCVDisassembler::getInstruction(MCInst &MI, uint64_t &Size,
@@ -197,6 +201,24 @@ static DecodeStatus decodeAddrRegImm(MCInst &Inst,
     DecodeGPRRegisterClass(Inst, Reg, Address, Decoder);
 
   Inst.addOperand(MCOperand::createImm(SignExtend64<12>(Imm)));
+
+  return MCDisassembler::Success;
+}
+
+static DecodeStatus decodeAddrSpImm6uWord(MCInst &Inst,
+                                          unsigned Insn,
+                                          uint64_t Address,
+                                          const void *Decoder) {
+  int32_t Imm, Reg = 2;
+
+  Imm = fieldFromInstruction(Insn, 0, 0) << 2;
+
+  if (static_cast<const RISCVDisassembler *>(Decoder)->isRV64())
+    DecodeGPR64RegisterClass(Inst, Reg, Address, Decoder);
+  else
+    DecodeGPRRegisterClass(Inst, Reg, Address, Decoder);
+
+  Inst.addOperand(MCOperand::createImm(Imm));
 
   return MCDisassembler::Success;
 }

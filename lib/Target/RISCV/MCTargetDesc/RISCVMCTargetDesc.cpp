@@ -38,10 +38,18 @@ using namespace llvm;
 /// Select the RISCV CPU for the given triple and cpu name.
 StringRef RISCV_MC::selectRISCVCPU(const Triple &TT, StringRef CPU) {
   if (CPU.empty()) {
-    if (TT.getArch() == Triple::riscv32)
-      CPU = "generic-rv32";
-    else
+    StringRef MArch = TT.getArchName();
+    bool Is64Bit = TT.getArch() == llvm::Triple::riscv64;
+
+    if (MArch.startswith("riscv32ema"))
+      return "rv32ema";
+    if (MArch.startswith("riscv32imac"))
+      return "rv32imac";
+
+    if (Is64Bit)
       CPU = "generic-rv64";
+    else
+      CPU = "generic-rv32";
   }
   return CPU;
 }

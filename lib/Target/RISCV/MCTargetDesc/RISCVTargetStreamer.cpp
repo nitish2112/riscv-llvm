@@ -41,6 +41,8 @@ RISCVTargetELFStreamer::RISCVTargetELFStreamer(MCStreamer &S,
   // Architecture
   if (Features[RISCV::FeatureE])
     EFlags |= ELF::EF_RISCV_RVE;
+  else if (Features[RISCV::FeatureC])
+    EFlags |= ELF::EF_RISCV_RVC;
   else if (Features[RISCV::FeatureSoftFloat])
     EFlags |= ELF::EF_RISCV_FLOAT_ABI_SOFT;
 

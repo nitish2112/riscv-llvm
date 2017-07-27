@@ -262,17 +262,7 @@ RISCVMCCodeEmitter::getAddrSpImm6uWordEncoding(const MCInst &MI, unsigned OpNo,
   const MCOperand &MO1 = MI.getOperand(OpNo + 1);
   unsigned Imm = getMachineOpValue(MI, MO1, Fixups, STI);
 
-  return Imm >> 2;
-#if 0
-  // It's a load instruction.
-  if (isLoad(MI.getOpcode())) {
-    return getMachineOpValue(MI, MO,  Fixups, STI) | Imm12 << 5;
-  // It's a store instruction.
-  } else {
-    return getMachineOpValue(MI, MO,  Fixups, STI) << 5 |
-           (Imm12 & 0x1f) | (Imm12 >> 5) << 10;
-  }
-#endif
+  return Imm;
 }
 
 #include "RISCVGenMCCodeEmitter.inc"

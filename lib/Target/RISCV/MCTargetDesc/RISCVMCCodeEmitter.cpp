@@ -52,6 +52,11 @@ public:
                          SmallVectorImpl<MCFixup> &Fixups,
                          const MCSubtargetInfo &STI) const override;
 
+  void EmitByte(unsigned char C, raw_ostream &OS) const;
+
+  void EmitInstruction(uint64_t Val, unsigned Size, const MCSubtargetInfo &STI,
+                       raw_ostream &OS) const;
+
   /// TableGen'erated function for getting the binary encoding for an
   /// instruction.
   uint64_t getBinaryCodeForInstr(const MCInst &MI,
@@ -94,12 +99,36 @@ MCCodeEmitter *llvm::createRISCVMCCodeEmitter(const MCInstrInfo &MCII,
   return new RISCVMCCodeEmitter(Ctx, MCII);
 }
 
+void RISCVMCCodeEmitter::EmitByte(unsigned char C, raw_ostream &OS) const {
+  OS << (char)C;
+}
+
+void RISCVMCCodeEmitter::EmitInstruction(uint64_t Val, unsigned Size,
+                                         const MCSubtargetInfo &STI,
+                                         raw_ostream &OS) const {
+  // Output the instruction encoding in big endian byte order.
+  for (unsigned i = 0; i < Size; ++i) {
+    unsigned Shift = i * 8;
+    EmitByte((Val >> Shift) & 0xff, OS);
+  }
+}
+
 void RISCVMCCodeEmitter::encodeInstruction(const MCInst &MI, raw_ostream &OS,
                                            SmallVectorImpl<MCFixup> &Fixups,
                                            const MCSubtargetInfo &STI) const {
-  // For now, we only support RISC-V instructions with 32-bit length
-  uint32_t Bits = getBinaryCodeForInstr(MI, Fixups, STI);
-  support::endian::Writer<support::little>(OS).write(Bits);
+  MCInst TmpInst = MI;
+
+  uint32_t Binary = getBinaryCodeForInstr(TmpInst, Fixups, STI);
+
+  const MCInstrDesc &Desc = MCII.get(TmpInst.getOpcode());
+
+  // Get byte count of instruction
+  unsigned Size = Desc.getSize();
+  if (!Size)
+    llvm_unreachable("Desc.getSize() returns 0");
+
+  EmitInstruction(Binary, Size, STI, OS);
+
   ++MCNumEmitted; // Keep track of the # of mi's emitted.
 }
 

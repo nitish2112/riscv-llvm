@@ -258,7 +258,7 @@ static DecodeStatus decodeAddrSpImm6uWord(MCInst &Inst,
                                           const void *Decoder) {
   int32_t Imm, Reg = 2;
 
-  Imm = fieldFromInstruction(Insn, 0, 0) << 2;
+  Imm = fieldFromInstruction(Insn, 0, 6);
 
   if (static_cast<const RISCVDisassembler *>(Decoder)->isRV64())
     DecodeGPR64RegisterClass(Inst, Reg, Address, Decoder);

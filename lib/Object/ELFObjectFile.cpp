@@ -133,6 +133,36 @@ SubtargetFeatures ELFObjectFileBase::getMIPSFeatures() const {
   return Features;
 }
 
+SubtargetFeatures ELFObjectFileBase::getRISCVFeatures() const {
+  SubtargetFeatures Features;
+  unsigned PlatformFlags;
+  getPlatformFlags(PlatformFlags);
+
+  switch (getArch()) {
+    case Triple::riscv32:
+      Features.AddFeature("rv32");
+      break;
+    case Triple::riscv64:
+      Features.AddFeature("rv64");
+      break;
+    default:
+      llvm_unreachable("Unknown RISCV ARCH");
+  }
+
+  switch (PlatformFlags) {
+  case ELF::EF_RISCV_RVE:
+    Features.AddFeature("e");
+    break;
+  case ELF::EF_RISCV_RVC:
+    Features.AddFeature("c");
+    break;
+  default:
+    break;
+  }
+
+  return Features;
+}
+
 SubtargetFeatures ELFObjectFileBase::getARMFeatures() const {
   SubtargetFeatures Features;
   ARMAttributeParser Attributes;
@@ -243,6 +273,8 @@ SubtargetFeatures ELFObjectFileBase::getFeatures() const {
     return getMIPSFeatures();
   case ELF::EM_ARM:
     return getARMFeatures();
+  case ELF::EM_RISCV:
+    return getRISCVFeatures();
   default:
     return SubtargetFeatures();
   }

@@ -1,8 +1,8 @@
-# RUN: llvm-mc -triple riscv32 -mattr=+rv32 < %s -show-encoding \
+# RUN: llvm-mc -triple riscv32 < %s -show-encoding \
 # RUN:     | FileCheck -check-prefix=CHECK-FIXUP %s
-# RUN: llvm-mc -filetype=obj -triple riscv32 -mattr=+rv32 < %s \
-# RUN:     | llvm-objdump -mattr=+rv32 -d - | FileCheck -check-prefix=CHECK-INSTR %s
-# RUN: llvm-mc -filetype=obj -triple=riscv32 -mattr=+rv32 %s \
+# RUN: llvm-mc -filetype=obj -triple riscv32 < %s \
+# RUN:     | llvm-objdump -d - | FileCheck -check-prefix=CHECK-INSTR %s
+# RUN: llvm-mc -filetype=obj -triple=riscv32 %s \
 # RUN:     | llvm-readobj -r | FileCheck %s -check-prefix=CHECK-REL
 
 # Checks that fixups that can be resolved within the same object file are

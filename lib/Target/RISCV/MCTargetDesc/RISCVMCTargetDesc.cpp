@@ -54,6 +54,13 @@ StringRef RISCV_MC::selectRISCVCPU(const Triple &TT, StringRef CPU) {
   return CPU;
 }
 
+static MCSubtargetInfo *createRISCVMCSubtargetInfo(const Triple &TT,
+                                                   StringRef CPU,
+                                                   StringRef FS) {
+  std::string CPUName = RISCV_MC::selectRISCVCPU(TT, CPU);
+  return createRISCVMCSubtargetInfoImpl(TT, CPUName, FS);
+}
+
 static MCInstrInfo *createRISCVMCInstrInfo() {
   MCInstrInfo *X = new MCInstrInfo();
   InitRISCVMCInstrInfo(X);
@@ -92,7 +99,7 @@ extern "C" void LLVMInitializeRISCVTargetMC() {
     TargetRegistry::RegisterMCAsmBackend(*T, createRISCVAsmBackend);
     TargetRegistry::RegisterMCCodeEmitter(*T, createRISCVMCCodeEmitter);
     TargetRegistry::RegisterMCInstPrinter(*T, createRISCVMCInstPrinter);
-    TargetRegistry::RegisterMCSubtargetInfo(*T, createRISCVMCSubtargetInfoImpl);
+    TargetRegistry::RegisterMCSubtargetInfo(*T, createRISCVMCSubtargetInfo);
     TargetRegistry::RegisterObjectTargetStreamer(
         *T, createRISCVObjectTargetStreamer);
   }

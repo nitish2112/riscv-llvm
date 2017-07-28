@@ -6,3 +6,6 @@
 # CHECK-INST: c.lwsp  ra, 12(sp)
 # CHECK: encoding: [0xb2,0x40]
 c.lwsp  ra, 12(sp)
+# CHECK-INST: c.swsp  ra, 12(sp)
+# CHECK: encoding: [0x06,0xc6]
+c.swsp  ra, 12(sp)

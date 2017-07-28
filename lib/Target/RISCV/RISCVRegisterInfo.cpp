@@ -126,7 +126,7 @@ static bool FitFrameBase16BitLoadStore (MachineInstr &MI, unsigned BaseReg,
   if (Offset % 4 != 0)
     return false;
 
-  if (Opc != RISCV::LW)
+  if (Opc != RISCV::LW && Opc != RISCV::SW)
     return false;
 
   return true;
@@ -219,6 +219,9 @@ void RISCVRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
     switch (MI.getOpcode()) {
     case RISCV::LW:
       NewOpc = RISCV::CLWSP;
+      break;
+    case RISCV::SW:
+      NewOpc = RISCV::CSWSP;
       break;
     default:
       break;

@@ -81,6 +81,8 @@ private:
         return visitSparc64(Rel, R, Value);
       case Triple::amdgcn:
         return visitAmdgpu(Rel, R, Value);
+      case Triple::riscv64:
+        return visitRISCV64(Rel, R, Value);
       default:
         HasError = true;
         return 0;
@@ -104,6 +106,8 @@ private:
     case Triple::mipsel:
     case Triple::mips:
       return visitMips32(Rel, R, Value);
+    case Triple::riscv32:
+      return visitRISCV32(Rel, R, Value);
     case Triple::sparc:
       return visitSparc32(Rel, R, Value);
     case Triple::hexagon:
@@ -168,6 +172,17 @@ private:
     case ELF::R_MIPS_32:
       return (Value + getELFAddend(R)) & 0xFFFFFFFF;
     case ELF::R_MIPS_64:
+      return Value + getELFAddend(R);
+    }
+    HasError = true;
+    return 0;
+  }
+
+  uint64_t visitRISCV64(uint32_t Rel, RelocationRef R, uint64_t Value) {
+    switch (Rel) {
+    case ELF::R_RISCV_32:
+      return (Value + getELFAddend(R)) & 0xFFFFFFFF;
+    case ELF::R_RISCV_64:
       return Value + getELFAddend(R);
     }
     HasError = true;
@@ -261,6 +276,13 @@ private:
 
   uint64_t visitMips32(uint32_t Rel, RelocationRef R, uint64_t Value) {
     if (Rel == ELF::R_MIPS_32)
+      return Value & 0xFFFFFFFF;
+    HasError = true;
+    return 0;
+  }
+
+  uint64_t visitRISCV32(uint32_t Rel, RelocationRef R, uint64_t Value) {
+    if (Rel == ELF::R_RISCV_32)
       return Value & 0xFFFFFFFF;
     HasError = true;
     return 0;

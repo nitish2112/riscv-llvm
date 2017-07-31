@@ -27,3 +27,14 @@ class Stack_Store<bits<3> funct3, string OpcodeStr, SDPatternOperator Op,
 
 def CSWSP  : Stack_Store<0b110, "c.swsp", store, GPR, addr_sp_imm6u_word>,
              Requires<[HasC]>;
+
+class Reg_Load<bits<3> funct3, string OpcodeStr, SDPatternOperator Op,
+               RegisterClass cls, DAGOperand opnd> :
+      CL<funct3, 0b00, (outs cls:$rd), (ins opnd:$addr),
+         OpcodeStr#"\t$rd, $addr",
+         [(set cls:$rd, (Op opnd:$addr))]> {
+  let mayLoad = 1;
+}
+
+def CLW  : Reg_Load<0b010, "c.lw", load, GPRC, addr_reg_imm5u_word>,
+           Requires<[HasC]>;

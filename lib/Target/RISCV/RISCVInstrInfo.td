@@ -78,6 +78,18 @@ def CallSeqEnd       : SDNode<"ISD::CALLSEQ_END", SDT_RISCVCallSeqEnd,
 def SelectCC         : SDNode<"RISCVISD::SELECT_CC", SDT_RISCVSelectCC,
                               [SDNPInGlue]>;
 
+//===----------------------------------------------------------------------===//
+// C Subtarget feature
+//===----------------------------------------------------------------------===//
+
+include "RISCVInstrInfoC.td"
+
+//===----------------------------------------------------------------------===//
+// Instruction definition
+//===----------------------------------------------------------------------===//
+//===----------------------------------------------------------------------===//
+// RISCV32 I Instructions
+//===----------------------------------------------------------------------===//
 
 def LUI : FU<0b0110111, (outs GPR:$rd), (ins uimm20:$imm20),
              "lui\t$rd, $imm20", []>;
@@ -316,4 +328,3 @@ def : InstAlias<"nop", (SLLI X0_32, X0_32, 0)>, Requires<[IsRV32]>;
 include "RISCVInstrInfoRV64.td"
 include "RISCVInstrInfoM.td"
 include "RISCVInstrInfoA.td"
-include "RISCVInstrInfoC.td"

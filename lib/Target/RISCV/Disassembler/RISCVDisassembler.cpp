@@ -107,6 +107,17 @@ static DecodeStatus DecodeGPR64RegisterClass(MCInst &Inst,
   return MCDisassembler::Success;
 }
 
+static DecodeStatus DecodeGPRCRegisterClass(MCInst &Inst, uint64_t RegNo,
+                                            uint64_t Address,
+                                            const void *Decoder) {
+   if (RegNo > sizeof(GPRDecoderTable)) {
+     return MCDisassembler::Fail;
+   }
+   unsigned Reg = GPRDecoderTable[RegNo + 8];
+   Inst.addOperand(MCOperand::createReg(Reg));
+   return MCDisassembler::Success;
+}
+
 template <unsigned N>
 static DecodeStatus decodeUImmOperand(MCInst &Inst, uint64_t Imm,
                                       int64_t Address, const void *Decoder) {
@@ -153,6 +164,10 @@ static DecodeStatus decodeAddrRegImm(MCInst &Inst, unsigned Insn,
 static DecodeStatus decodeAddrSpImm6uWord(MCInst &Inst, unsigned Insn,
                                           uint64_t Address,
                                           const void *Decoder);
+
+static DecodeStatus decodeAddrRegImm5uWord(MCInst &Inst, unsigned Insn,
+                                           uint64_t Address,
+                                           const void *Decoder);
 
 #include "RISCVGenDisassemblerTables.inc"
 
@@ -260,10 +275,25 @@ static DecodeStatus decodeAddrSpImm6uWord(MCInst &Inst,
 
   Imm = fieldFromInstruction(Insn, 0, 6);
 
-  if (static_cast<const RISCVDisassembler *>(Decoder)->isRV64())
-    DecodeGPR64RegisterClass(Inst, Reg, Address, Decoder);
-  else
-    DecodeGPRRegisterClass(Inst, Reg, Address, Decoder);
+  DecodeGPRRegisterClass(Inst, Reg, Address, Decoder);
+
+  Inst.addOperand(MCOperand::createImm(Imm));
+
+  return MCDisassembler::Success;
+}
+
+static DecodeStatus decodeAddrRegImm5uWord(MCInst &Inst,
+                                           unsigned Insn,
+                                           uint64_t Address,
+                                           const void *Decoder) {
+  int32_t Imm, Reg;
+
+  Reg = fieldFromInstruction(Insn, 2, 3);
+  Imm = fieldFromInstruction(Insn, 0, 1) << 6 |
+        fieldFromInstruction(Insn, 1, 1) << 2 |
+        fieldFromInstruction(Insn, 5, 3) << 3;
+
+  DecodeGPRCRegisterClass(Inst, Reg, Address, Decoder);
 
   Inst.addOperand(MCOperand::createImm(Imm));
 

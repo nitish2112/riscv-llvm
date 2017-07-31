@@ -129,3 +129,8 @@ def GPR64 : RegisterClass<"RISCV", [i64], 64, (add
   (sequence "X%u_64", 18, 27),
   (sequence "X%u_64", 0, 4)
 )>;
+
+def GPRC : RegisterClass<"RISCV", [i32], 32, (add
+  (sequence "X%u_32", 10, 15),
+  (sequence "X%u_32", 8, 9)
+)>;

@@ -81,7 +81,9 @@ public:
                           SmallVectorImpl<MCFixup> &Fixups,
                           const MCSubtargetInfo &STI) const;
 
-  bool isLoad (unsigned int Opc) const;
+  bool isLoad(unsigned int Opc) const;
+
+  bool useGPRC(unsigned int Opc) const;
 
   unsigned getAddrRegImmEncoding(const MCInst &MI, unsigned OpNo,
                                  SmallVectorImpl<MCFixup> &Fixups,
@@ -90,6 +92,10 @@ public:
   unsigned getAddrSpImm6uWordEncoding(const MCInst &MI, unsigned OpNo,
                                       SmallVectorImpl<MCFixup> &Fixups,
                                       const MCSubtargetInfo &STI) const;
+
+  unsigned getAddrRegImm5uWordEncoding(const MCInst &MI, unsigned OpNo,
+                                       SmallVectorImpl<MCFixup> &Fixups,
+                                       const MCSubtargetInfo &STI) const;
 };
 } // end anonymous namespace
 
@@ -137,8 +143,12 @@ RISCVMCCodeEmitter::getMachineOpValue(const MCInst &MI, const MCOperand &MO,
                                       SmallVectorImpl<MCFixup> &Fixups,
                                       const MCSubtargetInfo &STI) const {
 
-  if (MO.isReg())
+  if (MO.isReg()) {
+    if (useGPRC(MI.getOpcode()))
+      return Ctx.getRegisterInfo()->getEncodingValue(MO.getReg()) - 8;
+
     return Ctx.getRegisterInfo()->getEncodingValue(MO.getReg());
+  }
 
   if (MO.isImm())
     return static_cast<unsigned>(MO.getImm());
@@ -235,6 +245,12 @@ bool RISCVMCCodeEmitter::isLoad(unsigned Opc) const {
   return false;
 }
 
+bool RISCVMCCodeEmitter::useGPRC(unsigned Opc) const {
+  if (Opc == RISCV::CLW)
+    return true;
+  return false;
+}
+
 // Encoding Reg + Imm addressing mode
 unsigned
 RISCVMCCodeEmitter::getAddrRegImmEncoding(const MCInst &MI, unsigned OpNo,
@@ -263,6 +279,23 @@ RISCVMCCodeEmitter::getAddrSpImm6uWordEncoding(const MCInst &MI, unsigned OpNo,
   unsigned Imm = getMachineOpValue(MI, MO1, Fixups, STI);
 
   return Imm;
+}
+
+// Encoding Reg + Imm5u addressing mode
+unsigned
+RISCVMCCodeEmitter::getAddrRegImm5uWordEncoding(const MCInst &MI, unsigned OpNo,
+                                                SmallVectorImpl<MCFixup> &Fixups,
+                                                const MCSubtargetInfo &STI) const {
+  const MCOperand &MO = MI.getOperand(OpNo);
+  const MCOperand &MO1 = MI.getOperand(OpNo + 1);
+  unsigned Imm = getMachineOpValue(MI, MO1, Fixups, STI);
+  unsigned Imm2Encode = 0;
+
+  if (Imm & (1 << 2)) Imm2Encode = Imm2Encode + 2;
+  if (Imm & (1 << 6)) Imm2Encode = Imm2Encode + 1;
+
+  return Imm2Encode | ((Imm >> 3) << 5) |
+         (getMachineOpValue(MI, MO, Fixups, STI)) << 2;
 }
 
 #include "RISCVGenMCCodeEmitter.inc"

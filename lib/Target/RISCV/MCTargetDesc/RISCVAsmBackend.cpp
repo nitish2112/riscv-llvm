@@ -34,8 +34,9 @@ public:
       : MCAsmBackend(), OSABI(OSABI), Is64Bit(Is64Bit) {}
   ~RISCVAsmBackend() override {}
 
-  void applyFixup(const MCFixup &Fixup, char *Data, unsigned DataSize,
-                  uint64_t Value, bool IsPCRel) const override;
+  void applyFixup(const MCAssembler &Asm, const MCFixup &Fixup,
+                  const MCValue &Target, MutableArrayRef<char> Data,
+                  uint64_t Value, bool IsResolved) const override;
 
   MCObjectWriter *createObjectWriter(raw_pwrite_stream &OS) const override;
 
@@ -144,11 +145,10 @@ static uint64_t adjustFixupValue(unsigned Kind, uint64_t Value) {
   }
 }
 
-void RISCVAsmBackend::applyFixup(const MCFixup &Fixup, char *Data,
-                                 unsigned DataSize, uint64_t Value,
-                                 bool IsPCRel) const {
-  MCFixupKind Kind = Fixup.getKind();
-  unsigned NumBytes = (getFixupKindInfo(Kind).TargetSize + 7) / 8;
+void RISCVAsmBackend::applyFixup(const MCAssembler &Asm, const MCFixup &Fixup,
+                                 const MCValue &Target,
+                                 MutableArrayRef<char> Data, uint64_t Value,
+                                 bool IsResolved) const {
   if (!Value)
     return; // Doesn't change encoding.
   MCFixupKindInfo Info = getFixupKindInfo(Fixup.getKind());
@@ -159,7 +159,6 @@ void RISCVAsmBackend::applyFixup(const MCFixup &Fixup, char *Data,
   Value <<= Info.TargetOffset;
 
   unsigned Offset = Fixup.getOffset();
-  assert(Offset + NumBytes <= DataSize && "Invalid fixup offset!");
 
   // For each byte of the fragment that the fixup touches, mask in the
   // bits from the fixup value.

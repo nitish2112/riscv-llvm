@@ -68,7 +68,7 @@ RISCVTargetMachine::RISCVTargetMachine(const Target &T, const Triple &TT,
 namespace {
 class RISCVPassConfig : public TargetPassConfig {
 public:
-  RISCVPassConfig(RISCVTargetMachine *TM, PassManagerBase &PM)
+  RISCVPassConfig(RISCVTargetMachine &TM, PassManagerBase &PM)
       : TargetPassConfig(TM, PM) {}
 
   RISCVTargetMachine &getRISCVTargetMachine() const {

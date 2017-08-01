@@ -279,7 +279,7 @@ uint64_t RISCVFrameLowering::estimateStackSize(const MachineFunction &MF) const 
 
   // Conservatively assume all callee-saved registers will be saved.
   for (const MCPhysReg *R = TRI.getCalleeSavedRegs(&MF); *R; ++R) {
-    unsigned Size = TRI.getMinimalPhysRegClass(*R)->getSize();
+    unsigned Size = TRI.getSpillSize(*TRI.getMinimalPhysRegClass(*R));
     Offset = alignTo(Offset + Size, Size);
   }
 
@@ -305,6 +305,7 @@ void RISCVFrameLowering::determineCalleeSaves(MachineFunction &MF,
                                               BitVector &SavedRegs,
                                               RegScavenger *RS) const {
   TargetFrameLowering::determineCalleeSaves(MF, SavedRegs, RS);
+  const TargetRegisterInfo *TRI = STI.getRegisterInfo();
 
   unsigned FP = STI.isRV64() ? RISCV::X8_64 : RISCV::X8_32;
   unsigned BP = STI.isRV64() ? RISCV::X5_64 : RISCV::X5_32;
@@ -323,10 +324,11 @@ void RISCVFrameLowering::determineCalleeSaves(MachineFunction &MF,
   if (isInt<12>(MaxSPOffset))
     return;
 
-  const TargetRegisterClass *RC =
-      STI.isRV64() ? &RISCV::GPR64RegClass : &RISCV::GPRRegClass;
-  int FI = MF.getFrameInfo().CreateStackObject(RC->getSize(),
-                                               RC->getAlignment(), false);
+  const TargetRegisterClass RC =
+      STI.isRV64() ? RISCV::GPR64RegClass : RISCV::GPRRegClass;
+  int FI = MF.getFrameInfo().CreateStackObject(TRI->getSpillSize(RC),
+                                               TRI->getSpillAlignment(RC),
+                                               false);
   RS->addScavengingFrameIndex(FI);
 }
 

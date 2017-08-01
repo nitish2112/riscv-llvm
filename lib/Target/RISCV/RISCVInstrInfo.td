@@ -48,7 +48,8 @@ class RV64Pat<dag pattern, dag result> : Pat<pattern, result> {
 // Type Profiles.
 //===----------------------------------------------------------------------===//
 
-def SDT_RISCVCallSeqStart : SDCallSeqStart<[SDTCisVT<0, iPTR>]>;
+def SDT_RISCVCallSeqStart : SDCallSeqStart<[SDTCisVT<0, iPTR>,
+                                            SDTCisVT<1, iPTR>]>;
 def SDT_RISCVCallSeqEnd   : SDCallSeqEnd<[SDTCisVT<0, iPTR>,
                                           SDTCisVT<1, iPTR>]>;
 def SDT_RISCVCall         : SDTypeProfile<0, -1, [SDTCisVT<0, iPTR>]>;
@@ -70,9 +71,10 @@ def Call             : SDNode<"RISCVISD::CALL", SDT_RISCVCall,
 def RetFlag          : SDNode<"RISCVISD::RET_FLAG", SDTNone,
                               [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
 def CallSeqStart     : SDNode<"ISD::CALLSEQ_START", SDT_RISCVCallSeqStart,
-                              [SDNPHasChain, SDNPOutGlue]>;
+                              [SDNPHasChain, SDNPSideEffect, SDNPOutGlue]>;
 def CallSeqEnd       : SDNode<"ISD::CALLSEQ_END", SDT_RISCVCallSeqEnd,
-                              [SDNPHasChain, SDNPOptInGlue, SDNPOutGlue]>;
+                              [SDNPHasChain, SDNPSideEffect, SDNPOptInGlue,
+                               SDNPOutGlue]>;
 def SelectCC         : SDNode<"RISCVISD::SELECT_CC", SDT_RISCVSelectCC,
                               [SDNPInGlue]>;
 
@@ -123,9 +125,9 @@ let isReturn=1, isTerminator=1, isBarrier=1 in {
 }
 
 // Pessimstically assume the stack pointer will be clobbered
-let Defs = [X2_32], Uses = [X2_32] in {
-  def ADJCALLSTACKDOWN : Pseudo<(outs), (ins i32imm:$amt),
-                                [(CallSeqStart timm:$amt)]>;
+let Defs = [X2_32], Uses = [X2_32], hasSideEffects = 1 in {
+  def ADJCALLSTACKDOWN : Pseudo<(outs), (ins i32imm:$amt1, i32imm:$amt2),
+                                 [(CallSeqStart timm:$amt1, timm:$amt2)]>;
   def ADJCALLSTACKUP   : Pseudo<(outs), (ins i32imm:$amt1, i32imm:$amt2),
                                 [(CallSeqEnd timm:$amt1, timm:$amt2)]>;
 }

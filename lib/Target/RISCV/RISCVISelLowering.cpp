@@ -1203,7 +1203,7 @@ RISCVTargetLowering::LowerCall(CallLoweringInfo &CLI,
   SDValue NextStackOffsetVal = DAG.getIntPtrConstant(NextStackOffset, DL, true);
 
   if (!CLI.IsTailCall)
-    Chain = DAG.getCALLSEQ_START(Chain, NextStackOffsetVal, DL);
+    Chain = DAG.getCALLSEQ_START(Chain, NextStackOffset, 0, DL);
 
   // Copy argument values to their designated locations.
   SmallVector<std::pair<unsigned, SDValue>, 8> RegsToPass;

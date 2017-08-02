@@ -212,8 +212,7 @@ void RISCVRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
 
   // Transfer to 16 bit format
   // if the instruction fit 16 bit load/store limitation
-  if (FitFrameBase16BitLoadStore (MI, BasePtr, Offset)) {
-    // should add subtarget.hasC() here.
+  if (FitFrameBase16BitLoadStore (MI, BasePtr, Offset) && Subtarget.hasC()) {
     unsigned NewOpc;
 
     switch (MI.getOpcode()) {

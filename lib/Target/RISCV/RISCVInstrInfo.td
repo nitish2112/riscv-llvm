@@ -307,6 +307,8 @@ def CSRRCI : CSR_ri<0b111, "csrrci">;
 // signed 12-bit immediate
 def : Pat<(simm12:$imm), (ADDI X0_32, simm12:$imm)>;
 
+def : InstAlias<"nop", (SLLI X0_32, X0_32, 0)>, Requires<[IsRV32]>;
+
 //===----------------------------------------------------------------------===//
 // Subtarget features
 //===----------------------------------------------------------------------===//

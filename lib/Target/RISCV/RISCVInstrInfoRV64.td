@@ -388,3 +388,5 @@ def CSRRWI64 : CSR64_ri<0b101, "csrrwi">;
 def CSRRSI64 : CSR64_ri<0b110, "csrrsi">;
 def CSRRCI64 : CSR64_ri<0b111, "csrrci">;
 }
+
+def : InstAlias<"nop", (SLLI64 X0_64, X0_64, 0)>, Requires<[IsRV64]>;

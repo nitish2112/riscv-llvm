@@ -152,7 +152,7 @@ void RISCVFrameLowering::emitPrologue(MachineFunction &MF,
       // multiple sp adjustment in this case.
       if (hasBP(MF)) {
         // move BP, SP
-        unsigned BP = STI.isRV64() ? RISCV::X5_64 : RISCV::X5_32;
+        unsigned BP = STI.isRV64() ? RISCV::X9_64 : RISCV::X9_32;
         BuildMI(MBB, MBBI, DL, TII.get(ADDI), BP)
           .addReg(SP)
           .addImm(0);
@@ -308,12 +308,12 @@ void RISCVFrameLowering::determineCalleeSaves(MachineFunction &MF,
   const TargetRegisterInfo *TRI = STI.getRegisterInfo();
 
   unsigned FP = STI.isRV64() ? RISCV::X8_64 : RISCV::X8_32;
-  unsigned BP = STI.isRV64() ? RISCV::X5_64 : RISCV::X5_32;
+  unsigned BP = STI.isRV64() ? RISCV::X9_64 : RISCV::X9_32;
   // Mark X8 as used if function has dedicated frame pointer.
   if (hasFP(MF))
     setAliasRegs(MF, SavedRegs, FP);
 
-  // Mark X5 as used if function has dedicated base pointer.
+  // Mark X9 as used if function has dedicated base pointer.
   if (hasBP(MF))
     setAliasRegs(MF, SavedRegs, BP);
 
@@ -339,7 +339,7 @@ int RISCVFrameLowering::getFrameIndexReference(const MachineFunction &MF,
 
   unsigned SP = STI.isRV64() ? RISCV::X2_64 : RISCV::X2_32;
   unsigned FP = STI.isRV64() ? RISCV::X8_64 : RISCV::X8_32;
-  unsigned BP = STI.isRV64() ? RISCV::X5_64 : RISCV::X5_32;
+  unsigned BP = STI.isRV64() ? RISCV::X9_64 : RISCV::X9_32;
 
   if (MFI.isFixedObjectIndex(FI))
     FrameReg = hasFP(MF) ? FP : SP;

@@ -79,8 +79,8 @@ BitVector RISCVRegisterInfo::getReservedRegs(const MachineFunction &MF) const {
   // allocate variable-sized objects at runtime. This should test the
   if (needsStackRealignment(MF) &&
       MF.getFrameInfo().hasVarSizedObjects()) {
-    Reserved.set(RISCV::X5_64);
-    Reserved.set(RISCV::X5_32);
+    Reserved.set(RISCV::X9_64);
+    Reserved.set(RISCV::X9_32);
   }
 
   return Reserved;
@@ -153,7 +153,7 @@ void RISCVRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
 
   unsigned SP = Subtarget.isRV64() ? RISCV::X2_64 : RISCV::X2_32;
   unsigned FP = Subtarget.isRV64() ? RISCV::X8_64 : RISCV::X8_32;
-  unsigned BP = Subtarget.isRV64() ? RISCV::X5_64 : RISCV::X5_32;
+  unsigned BP = Subtarget.isRV64() ? RISCV::X9_64 : RISCV::X9_32;
 
   MachineFrameInfo &MFI = MF.getFrameInfo();
   const RISCVInstrInfo &TII =

@@ -263,8 +263,8 @@ RISCVTargetLowering::RISCVTargetLowering(const TargetMachine &TM,
   setBooleanContents(ZeroOrOneBooleanContent);
 
   // Function alignments (log2)
-  setMinFunctionAlignment(3);
-  setPrefFunctionAlignment(3);
+  setMinFunctionAlignment(Subtarget->hasC() ? 1 : 2);
+  setPrefFunctionAlignment(2);
 
   // inline memcpy() for kernel to see explicit copy
   MaxStoresPerMemset = MaxStoresPerMemsetOptSize = 128;

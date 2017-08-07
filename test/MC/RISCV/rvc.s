@@ -12,3 +12,6 @@ c.swsp  ra, 12(sp)
 # CHECK-INST: c.lw    a2, 4(a0)
 # CHECK: encoding: [0x50,0x41]
 c.lw    a2, 4(a0)
+# CHECK-INST: c.sw    a5, 8(a3)
+# CHECK: encoding: [0x9c,0xc6]
+c.sw    a5, 8(a3)

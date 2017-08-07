@@ -339,14 +339,11 @@ class CS<bits<3> funct3, bits<2> opcode, dag outs, dag ins,
          string asmstr, list<dag> pattern>
     : RISCV16Inst<outs, ins, asmstr, pattern, FrmC>
 {
-  bits<5> imm;
-  bits<3> rs1;
   bits<3> rs2;
+  bits<8> addr;
 
   let Inst{15-13} = funct3;
-  let Inst{12-10} = imm{4-2};
-  let Inst{9-7} = rs1;
-  let Inst{6-5} = imm{1-0};
+  let Inst{12-5} = addr;
   let Inst{4-2} = rs2;
   let Inst{1-0} = opcode;
 }

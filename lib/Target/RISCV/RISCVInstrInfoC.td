@@ -44,3 +44,14 @@ class Reg_Load<bits<3> funct3, string OpcodeStr, SDPatternOperator Op,
 
 def CLW  : Reg_Load<0b010, "c.lw", load, GPRC, addr_reg_imm5u_word>,
            Requires<[HasC]>;
+
+class Reg_Store<bits<3> funct3, string OpcodeStr, SDPatternOperator Op,
+               RegisterClass cls, DAGOperand opnd> :
+      CS<funct3, 0b00, (outs), (ins cls:$rs2, opnd:$addr),
+         OpcodeStr#"\t$rs2, $addr",
+         [(Op cls:$rs2, opnd:$addr)]> {
+  let mayStore = 1;
+}
+
+def CSW  : Reg_Store<0b110, "c.sw", store, GPRC, addr_reg_imm5u_word>,
+           Requires<[HasC]>;

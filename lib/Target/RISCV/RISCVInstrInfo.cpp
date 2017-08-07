@@ -496,5 +496,24 @@ MachineBasicBlock *RISCVInstrInfo::getBranchDestBlock(
 }
 
 unsigned RISCVInstrInfo::getInstSizeInBytes(const MachineInstr &MI) const {
-  return 4;
+  unsigned NumBytes = 0;
+  const MCInstrDesc &Desc = MI.getDesc();
+
+  switch (Desc.getOpcode()) {
+  default:
+    NumBytes = Desc.Size;
+    break;
+  case RISCV::PseudoRET:
+  case RISCV::PseudoRET64:
+  case RISCV::PseudoCALL:
+  case RISCV::PseudoCALL64:
+  case RISCV::PseudoBR:
+  case RISCV::PseudoBR64:
+  case RISCV::PseudoBRIND:
+  case RISCV::PseudoBRIND64:
+    NumBytes = 4;
+    break;
+  }
+
+  return NumBytes;
 }

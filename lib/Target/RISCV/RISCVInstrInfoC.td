@@ -9,24 +9,30 @@
 
 class Stack_Load<bits<3> funct3, string OpcodeStr, SDPatternOperator Op,
                  RegisterClass cls, DAGOperand opnd> :
-      CI<funct3, 0b10, (outs cls:$rd), (ins opnd:$imm),
-         OpcodeStr#"\t$rd, $imm", []> {
+      CI<funct3, 0b10, (outs cls:$rd), (ins opnd:$offset),
+         OpcodeStr#"\t$rd, $offset", []> {
   let Inst{11-7} = rd;
   let mayLoad = 1;
 }
 
 def CLWSP  : Stack_Load<0b010, "c.lwsp", load, GPR, addr_sp_imm6u_word>,
-             Requires<[HasC]>;
+             Requires<[HasC]> {
+  let Inst{3-2} = offset{7-6};
+  let Inst{6-4} = offset{4-2};
+}
 
 class Stack_Store<bits<3> funct3, string OpcodeStr, SDPatternOperator Op,
                   RegisterClass cls, DAGOperand opnd> :
-      CSS<funct3, 0b10, (outs), (ins cls:$rs2, opnd:$imm),
-          OpcodeStr#"\t$rs2, $imm", []> {
+      CSS<funct3, 0b10, (outs), (ins cls:$rs2, opnd:$offset),
+          OpcodeStr#"\t$rs2, $offset", []> {
   let mayStore = 1;
 }
 
 def CSWSP  : Stack_Store<0b110, "c.swsp", store, GPR, addr_sp_imm6u_word>,
-             Requires<[HasC]>;
+             Requires<[HasC]> {
+  let Inst{8-7}  = offset{7-6};
+  let Inst{12-9} = offset{5-2};
+}
 
 class Reg_Load<bits<3> funct3, string OpcodeStr, SDPatternOperator Op,
                RegisterClass cls, DAGOperand opnd> :

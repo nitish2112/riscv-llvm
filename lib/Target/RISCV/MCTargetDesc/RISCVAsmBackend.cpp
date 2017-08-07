@@ -28,11 +28,23 @@ namespace {
 class RISCVAsmBackend : public MCAsmBackend {
   uint8_t OSABI;
   bool Is64Bit;
+  bool HasC;
 
 public:
-  RISCVAsmBackend(uint8_t OSABI, bool Is64Bit)
-      : MCAsmBackend(), OSABI(OSABI), Is64Bit(Is64Bit) {}
+  RISCVAsmBackend(const Triple &TT, uint8_t OSABI, bool Is64Bit)
+      : MCAsmBackend(), OSABI(OSABI), Is64Bit(Is64Bit) {
+    StringRef Arch = TT.getArchName();
+    HasC = false;
+    if (Arch.startswith("riscv32emac") ||
+        Arch.startswith("riscv32imac") ||
+        Arch.startswith("riscv64imac") ||
+        Arch.startswith("riscv32imafdc") ||
+        Arch.startswith("riscv64imafdc"))
+      HasC = true;
+  }
   ~RISCVAsmBackend() override {}
+
+  bool hasC() const { return HasC; }
 
   void applyFixup(const MCAssembler &Asm, const MCFixup &Fixup,
                   const MCValue &Target, MutableArrayRef<char> Data,
@@ -85,14 +97,21 @@ public:
 };
 
 bool RISCVAsmBackend::writeNopData(uint64_t Count, MCObjectWriter *OW) const {
-  // Once support for the compressed instruction set is added, we will be able
-  // to conditionally support 16-bit NOPs
-  if ((Count % 4) != 0)
-    return false;
-
+  if (hasC()) {
+    if ((Count % 2) != 0)
+      return false;
+  } else {
+    if ((Count % 4) != 0)
+      return false;
+  }
   // The canonical nop on RISC-V is addi x0, x0, 0
-  for (uint64_t i = 0; i < Count; i += 4)
+  uint64_t i = Count;
+  for (; i >= 4; i -= 4)
     OW->write32(0x13);
+
+  // The canonical nop on RVC is c.nop
+  if (hasC() && i)
+    OW->write16(0x01);
 
   return true;
 }
@@ -181,5 +200,5 @@ MCAsmBackend *llvm::createRISCVAsmBackend(const Target &T,
                                           const Triple &TT, StringRef CPU,
                                           const MCTargetOptions &Options) {
   uint8_t OSABI = MCELFObjectTargetWriter::getOSABI(TT.getOS());
-  return new RISCVAsmBackend(OSABI, TT.isArch64Bit());
+  return new RISCVAsmBackend(TT, OSABI, TT.isArch64Bit());
 }

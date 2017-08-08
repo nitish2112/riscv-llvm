@@ -96,6 +96,12 @@ public:
 
   unsigned getInstSizeInBytes(const MachineInstr &MI) const override;
 
+  unsigned insertIndirectBranch(MachineBasicBlock &MBB,
+                                MachineBasicBlock &NewDestBB,
+                                const DebugLoc &DL,
+                                int64_t BrOffset,
+                                RegScavenger *RS = nullptr) const override;
+
 private:
   void BuildCondBr(MachineBasicBlock &MBB, MachineBasicBlock *TBB,
                    const DebugLoc &DL, ArrayRef<MachineOperand> Cond) const;

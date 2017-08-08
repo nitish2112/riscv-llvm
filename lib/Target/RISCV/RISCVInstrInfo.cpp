@@ -528,3 +528,17 @@ unsigned RISCVInstrInfo::getInstSizeInBytes(const MachineInstr &MI) const {
 
   return NumBytes;
 }
+
+unsigned RISCVInstrInfo::insertIndirectBranch(MachineBasicBlock &MBB,
+                                              MachineBasicBlock &DestBB,
+                                              const DebugLoc &DL,
+                                              int64_t BrOffset,
+                                              RegScavenger *RS) const {
+  // Relax CJ to JAL instruction
+  if (isInt<21>(BrOffset)) {
+    unsigned Br = STI.isRV64() ? RISCV::PseudoBR64 : RISCV::PseudoBR;
+    BuildMI(&MBB, DL, get(Br)).addMBB(&DestBB);
+    return 4;
+  }
+  llvm_unreachable("Not support relax to indirect branch yet");
+}

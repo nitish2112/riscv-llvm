@@ -73,6 +73,7 @@ public:
       { "fixup_riscv_lo12_s",      0,     32,  0 },
       { "fixup_riscv_pcrel_hi20", 12,     20,  MCFixupKindInfo::FKF_IsPCRel },
       { "fixup_riscv_jal",        12,     20,  MCFixupKindInfo::FKF_IsPCRel },
+      { "fixup_riscv_rvc_jump",    2,     11,  MCFixupKindInfo::FKF_IsPCRel },
       { "fixup_riscv_branch",      0,     32,  MCFixupKindInfo::FKF_IsPCRel }
     };
 
@@ -146,6 +147,20 @@ static uint64_t adjustFixupValue(unsigned Kind, uint64_t Value) {
     Value = (Sbit << 19) | (Lo10 << 9) | (Mid1 << 8) | Hi8;
     return Value;
   }
+  case RISCV::fixup_riscv_rvc_jump: {
+    // Need to produce offset[11|4|9:8|10|6|7|3:1|5] from the 11-bit Value.
+    unsigned Bit11  = (Value >> 11) & 0x1;
+    unsigned Bit4   = (Value >> 4) & 0x1;
+    unsigned Bit9_8 = (Value >> 8) & 0x3;
+    unsigned Bit10  = (Value >> 10) & 0x1;
+    unsigned Bit6   = (Value >> 6) & 0x1;
+    unsigned Bit7   = (Value >> 7) & 0x1;
+    unsigned Bit3_1 = (Value >> 1) & 0x7;
+    unsigned Bit5   = (Value >> 5) & 0x1;
+    Value = (Bit11 << 10) | (Bit4 << 9) | (Bit9_8 << 7) | (Bit10 << 6) |
+            (Bit6 << 5) | (Bit7 << 4) | (Bit3_1 << 1) | Bit5;
+    return Value;
+  }
   case RISCV::fixup_riscv_branch: {
     // Need to extract imm[12], imm[10:5], imm[4:1], imm[11] from the 13-bit
     // Value.
@@ -164,6 +179,16 @@ static uint64_t adjustFixupValue(unsigned Kind, uint64_t Value) {
   }
 }
 
+static unsigned getSize(unsigned Kind) {
+  switch (Kind) {
+  default:
+    break;
+  case RISCV::fixup_riscv_rvc_jump:
+    return 2;
+  }
+  return 4;
+}
+
 void RISCVAsmBackend::applyFixup(const MCAssembler &Asm, const MCFixup &Fixup,
                                  const MCValue &Target,
                                  MutableArrayRef<char> Data, uint64_t Value,
@@ -178,10 +203,11 @@ void RISCVAsmBackend::applyFixup(const MCAssembler &Asm, const MCFixup &Fixup,
   Value <<= Info.TargetOffset;
 
   unsigned Offset = Fixup.getOffset();
+  unsigned FullSize = getSize(Fixup.getKind());
 
   // For each byte of the fragment that the fixup touches, mask in the
   // bits from the fixup value.
-  for (unsigned i = 0; i != 4; ++i) {
+  for (unsigned i = 0; i != FullSize; ++i) {
     unsigned Idx = i;
     Data[Offset + i] |= uint8_t((Value >> (Idx * 8)) & 0xff);
   }

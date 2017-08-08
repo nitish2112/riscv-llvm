@@ -3,6 +3,7 @@
 # RUN: llvm-mc -filetype=obj -triple riscv32imac < %s \
 # RUN:     | llvm-objdump -d - | FileCheck -check-prefix=CHECK-INST %s
 
+.LBB0_3:
 # CHECK-INST: c.lwsp  ra, 12(sp)
 # CHECK: encoding: [0xb2,0x40]
 c.lwsp  ra, 12(sp)
@@ -15,3 +16,9 @@ c.lw    a2, 4(a0)
 # CHECK-INST: c.sw    a5, 8(a3)
 # CHECK: encoding: [0x9c,0xc6]
 c.sw    a5, 8(a3)
+# CHECK: encoding: [0bAAAAAA01,0b101AAAAA]
+# CHECK:  fixup A - offset: 0, value: .LBB0_3, kind: fixup_riscv_rvc_jump
+c.j     .LBB0_3
+# CHECK-INST: c.j     -16
+# CHECK: encoding: [0xe5,0xbf]
+c.j     -16

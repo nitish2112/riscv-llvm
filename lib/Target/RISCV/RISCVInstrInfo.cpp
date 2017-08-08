@@ -30,7 +30,14 @@ using namespace llvm;
 
 RISCVInstrInfo::RISCVInstrInfo(RISCVSubtarget &sti)
   : RISCVGenInstrInfo(RISCV::ADJCALLSTACKDOWN, RISCV::ADJCALLSTACKUP),
-    RI(sti), STI(sti) {}
+    RI(sti), STI(sti) {
+  if (sti.hasC())
+    UncondBranch = RISCV::CJ;
+  else if (sti.isRV32())
+    UncondBranch = RISCV::PseudoBR;
+  else
+    UncondBranch = RISCV::PseudoBR64;
+}
 
 void RISCVInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                                  MachineBasicBlock::iterator Position,
@@ -205,7 +212,8 @@ RISCVInstrInfo::basePlusImmediateStripOffset(unsigned BaseReg, int64_t &Imm,
 
 static bool isUncondBranch(unsigned Opcode) {
   if (Opcode == RISCV::PseudoBR ||
-      Opcode == RISCV::PseudoBR64)
+      Opcode == RISCV::PseudoBR64 ||
+      Opcode == RISCV::CJ)
     return true;
   return false;
 }
@@ -265,7 +273,7 @@ unsigned RISCVInstrInfo::insertBranch(MachineBasicBlock &MBB,
   // Two-way Conditional branch.
   if (FBB) {
     BuildCondBr(MBB, TBB, DL, Cond);
-    BuildMI(&MBB, DL, get(RISCV::PseudoBR)).addMBB(FBB);
+    BuildMI(&MBB, DL, get(UncondBranch)).addMBB(FBB);
 
     if (BytesAdded)
       *BytesAdded = 8;
@@ -276,7 +284,7 @@ unsigned RISCVInstrInfo::insertBranch(MachineBasicBlock &MBB,
   // One way branch.
   // Unconditional branch.
   if (Cond.empty())
-    BuildMI(&MBB, DL, get(RISCV::PseudoBR)).addMBB(TBB);
+    BuildMI(&MBB, DL, get(UncondBranch)).addMBB(TBB);
   else // Conditional branch.
     BuildCondBr(MBB, TBB, DL, Cond);
 
@@ -441,6 +449,8 @@ static unsigned getBranchDisplacementBits(unsigned Opc) {
   switch (Opc) {
     default:
     llvm_unreachable("unexpected opcode!");
+  case RISCV::CJ:
+    return 11;
   case RISCV::BEQ:
   case RISCV::BNE:
   case RISCV::BLT:
@@ -473,6 +483,7 @@ MachineBasicBlock *RISCVInstrInfo::getBranchDestBlock(
   switch (MI.getOpcode()) {
   default:
     llvm_unreachable("unexpected opcode!");
+  case RISCV::CJ:
   case RISCV::PseudoBR:
   case RISCV::PseudoBR64:
     return MI.getOperand(0).getMBB();

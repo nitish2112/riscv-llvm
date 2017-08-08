@@ -221,6 +221,8 @@ getExprOpValue(const MCInst &MI, const MCExpr *Expr,
       FixupKind = RISCV::fixup_riscv_jal;
     } else if (MIFrm == RISCVII::FrmSB) {
       FixupKind = RISCV::fixup_riscv_branch;
+    } else if (Desc.getOpcode() == RISCV::CJ) {
+      FixupKind = RISCV::fixup_riscv_rvc_jump;
     } else {
       llvm_unreachable("Unhandled expression!");
     }

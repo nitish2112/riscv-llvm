@@ -56,6 +56,8 @@ unsigned RISCVELFObjectWriter::getRelocType(MCContext &Ctx,
     return ELF::R_RISCV_PCREL_HI20;
   case RISCV::fixup_riscv_jal:
     return ELF::R_RISCV_JAL;
+  case RISCV::fixup_riscv_rvc_jump:
+    return ELF::R_RISCV_RVC_JUMP;
   case RISCV::fixup_riscv_branch:
     return ELF::R_RISCV_BRANCH;
   }

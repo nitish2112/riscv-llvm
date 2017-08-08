@@ -47,6 +47,12 @@ def uimm12 : Operand<i32> {
   let DecoderMethod = "decodeUImmOperand<12>";
 }
 
+def simm12_lsb0 : Operand<OtherVT> {
+  let ParserMatchClass = SImmAsmOperand<12, "Lsb0">;
+  let EncoderMethod = "getImmOpValueAsr1";
+  let DecoderMethod = "decodeSImmOperandAndLsl1<12>";
+}
+
 // A 13-bit signed immediate where the least significant bit is zero.
 def simm13_lsb0 : Operand<OtherVT> {
   let ParserMatchClass = SImmAsmOperand<13, "Lsb0">;

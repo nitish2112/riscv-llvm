@@ -26,6 +26,7 @@ class RISCVSubtarget;
 class RISCVInstrInfo : public RISCVGenInstrInfo {
   const RISCVRegisterInfo RI;
   RISCVSubtarget &STI;
+  int UncondBranch;
 
 public:
   explicit RISCVInstrInfo(RISCVSubtarget &STI);

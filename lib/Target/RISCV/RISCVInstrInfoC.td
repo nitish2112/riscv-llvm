@@ -7,6 +7,10 @@
 //
 //===----------------------------------------------------------------------===//
 
+//===----------------------------------------------------------------------===//
+// Stack-Pointer-Based Loads and Stores
+//===----------------------------------------------------------------------===//
+
 class Stack_Load<bits<3> funct3, string OpcodeStr, SDPatternOperator Op,
                  RegisterClass cls, DAGOperand opnd> :
       CI<funct3, 0b10, (outs cls:$rd), (ins opnd:$offset),
@@ -34,6 +38,10 @@ def CSWSP  : Stack_Store<0b110, "c.swsp", store, GPR, addr_sp_imm6u_word>,
   let Inst{12-9} = offset{5-2};
 }
 
+//===----------------------------------------------------------------------===//
+// Register-Based Loads and Stores
+//===----------------------------------------------------------------------===//
+
 class Reg_Load<bits<3> funct3, string OpcodeStr, SDPatternOperator Op,
                RegisterClass cls, DAGOperand opnd> :
       CL<funct3, 0b00, (outs cls:$rd), (ins opnd:$addr),
@@ -55,3 +63,13 @@ class Reg_Store<bits<3> funct3, string OpcodeStr, SDPatternOperator Op,
 
 def CSW  : Reg_Store<0b110, "c.sw", store, GPRC, addr_reg_imm5u_word>,
            Requires<[HasC]>;
+
+//===----------------------------------------------------------------------===//
+// Control Transfer Instructions
+//===----------------------------------------------------------------------===//
+
+let isBranch = 1, isTerminator=1, isBarrier=1 in {
+def CJ : CJ<0b101, 0b01, (outs), (ins simm12_lsb0:$offset),
+            "c.j\t$offset",
+	    [(br bb:$offset)]>;
+}

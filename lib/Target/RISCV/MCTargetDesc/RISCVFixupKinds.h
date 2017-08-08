@@ -32,6 +32,9 @@ enum Fixups {
   // fixup_riscv_jal - 20-bit fixup for symbol references in the jal
   // instruction
   fixup_riscv_jal,
+  // fixup_riscv_rvc_jump - 11-bit fixup for symbol references in the
+  // compressed instruction
+  fixup_riscv_rvc_jump,
   // fixup_riscv_branch - 12-bit fixup for symbol references in the branch
   // instructions
   fixup_riscv_branch,

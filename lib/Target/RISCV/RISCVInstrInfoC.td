@@ -71,12 +71,18 @@ def CSW  : Reg_Store<0b110, "c.sw", store, GPRC, addr_reg_imm5u_word>,
 let isBranch = 1, isTerminator=1, isBarrier=1 in {
 def CJ : CJ<0b101, 0b01, (outs), (ins simm12_lsb0:$offset),
             "c.j\t$offset",
-	    [(br bb:$offset)]>;
+	    [(br bb:$offset)]>, Requires<[HasC]>;
 }
 
 let isBranch = 1, isBarrier = 1, isTerminator = 1, isIndirectBranch = 1,
     rs2 = 0 in {
 def CJR : CR<0b1000, 0b10, (outs), (ins GPR:$rs1),
-             "c.jr\t$rs1",
-	     [(brind GPR:$rs1)]>;
+               "c.jr\t$rs1",
+               [(brind GPR:$rs1)]>, Requires<[HasC]>;
+}
+
+let isCall=1, Defs=[X1_32], rs2 = 0 in {
+def CJALR : CR<0b1001, 0b10, (outs), (ins GPR:$rs1),
+               "c.jalr\t$rs1",
+               [(Call GPR:$rs1)]>, Requires<[HasC]>;
 }

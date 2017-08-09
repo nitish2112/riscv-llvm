@@ -276,10 +276,10 @@ class CR<bits<4> funct4, bits<2> opcode, dag outs, dag ins,
     : RISCV16Inst<outs, ins, asmstr, pattern, FrmC>
 {
   bits<5> rs1;
-  bits<5> rd;
   bits<5> rs2;
 
   let Inst{15-12} = funct4;
+  let Inst{11-7} = rs1;
   let Inst{6-2} = rs2;
   let Inst{1-0} = opcode;
 }

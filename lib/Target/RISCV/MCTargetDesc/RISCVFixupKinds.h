@@ -35,6 +35,9 @@ enum Fixups {
   // fixup_riscv_rvc_jump - 11-bit fixup for symbol references in the
   // compressed instruction
   fixup_riscv_rvc_jump,
+  // fixup_riscv_rvc_branch - 8-bit fixup for symbol references in the
+  // compressed branch instruction
+  fixup_riscv_rvc_branch,
   // fixup_riscv_branch - 12-bit fixup for symbol references in the branch
   // instructions
   fixup_riscv_branch,

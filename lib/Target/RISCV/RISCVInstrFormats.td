@@ -352,13 +352,16 @@ class CB<bits<3> funct3, bits<2> opcode, dag outs, dag ins,
          string asmstr, list<dag> pattern>
     : RISCV16Inst<outs, ins, asmstr, pattern, FrmC>
 {
-  bits<8> offset;
+  bits<9> offset;
   bits<3> rs1;
 
   let Inst{15-13} = funct3;
-  let Inst{12-10} = offset{7-5};
+  let Inst{12} = offset{8};
+  let Inst{11-10} = offset{4-3};
   let Inst{9-7} = rs1;
-  let Inst{6-2} = offset{4-0};
+  let Inst{6-5} = offset{7-6};
+  let Inst{4-3} = offset{2-1};
+  let Inst{2} = offset{5};
   let Inst{1-0} = opcode;
 }
 

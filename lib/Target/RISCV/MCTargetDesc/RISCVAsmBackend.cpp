@@ -74,6 +74,7 @@ public:
       { "fixup_riscv_pcrel_hi20", 12,     20,  MCFixupKindInfo::FKF_IsPCRel },
       { "fixup_riscv_jal",        12,     20,  MCFixupKindInfo::FKF_IsPCRel },
       { "fixup_riscv_rvc_jump",    2,     11,  MCFixupKindInfo::FKF_IsPCRel },
+      { "fixup_riscv_rvc_branch",  2,     11,  MCFixupKindInfo::FKF_IsPCRel },
       { "fixup_riscv_branch",      0,     32,  MCFixupKindInfo::FKF_IsPCRel }
     };
 
@@ -161,6 +162,17 @@ static uint64_t adjustFixupValue(unsigned Kind, uint64_t Value) {
             (Bit6 << 5) | (Bit7 << 4) | (Bit3_1 << 1) | Bit5;
     return Value;
   }
+  case RISCV::fixup_riscv_rvc_branch: {
+    // Need to produce offset[8|4:3], [reg 3 bit], offset[7:6|2:1|5]
+    unsigned Bit8  = (Value >> 8) & 0x1;
+    unsigned Bit7_6 = (Value >> 6) & 0x3;
+    unsigned Bit5  = (Value >> 5) & 0x1;
+    unsigned Bit4_3 = (Value >> 3) & 0x3;
+    unsigned Bit2_1 = (Value >> 1) & 0x3;
+    Value = (Bit8 << 10) | (Bit4_3 << 8) | (Bit7_6 << 3) |
+            (Bit2_1 << 1) | Bit5;
+    return Value;
+  }
   case RISCV::fixup_riscv_branch: {
     // Need to extract imm[12], imm[10:5], imm[4:1], imm[11] from the 13-bit
     // Value.
@@ -184,6 +196,7 @@ static unsigned getSize(unsigned Kind) {
   default:
     break;
   case RISCV::fixup_riscv_rvc_jump:
+  case RISCV::fixup_riscv_rvc_branch:
     return 2;
   }
   return 4;

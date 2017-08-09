@@ -223,6 +223,9 @@ getExprOpValue(const MCInst &MI, const MCExpr *Expr,
       FixupKind = RISCV::fixup_riscv_branch;
     } else if (Desc.getOpcode() == RISCV::CJ) {
       FixupKind = RISCV::fixup_riscv_rvc_jump;
+    } else if (Desc.getOpcode() == RISCV::CBEQZ ||
+               Desc.getOpcode() == RISCV::CBNEZ) {
+      FixupKind = RISCV::fixup_riscv_rvc_branch;
     } else {
       llvm_unreachable("Unhandled expression!");
     }
@@ -248,7 +251,8 @@ bool RISCVMCCodeEmitter::isLoad(unsigned Opc) const {
 }
 
 bool RISCVMCCodeEmitter::useGPRC(unsigned Opc) const {
-  if (Opc == RISCV::CLW || Opc == RISCV::CSW)
+  if (Opc == RISCV::CLW || Opc == RISCV::CSW ||
+      Opc == RISCV::CBEQZ || Opc == RISCV::CBNEZ)
     return true;
   return false;
 }

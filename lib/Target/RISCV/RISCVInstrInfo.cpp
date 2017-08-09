@@ -239,7 +239,9 @@ static bool isCondBranch(unsigned Opcode) {
       Opcode == RISCV::BLT64 ||
       Opcode == RISCV::BGE64 ||
       Opcode == RISCV::BLTU64 ||
-      Opcode == RISCV::BGEU64)
+      Opcode == RISCV::BGEU64 ||
+      Opcode == RISCV::CBEQZ ||
+      Opcode == RISCV::CBNEZ)
     return true;
   return false;
 }
@@ -300,7 +302,9 @@ unsigned RISCVInstrInfo::insertBranch(MachineBasicBlock &MBB,
 // could do the right thing.
 unsigned RISCVInstrInfo::removeBranch(MachineBasicBlock &MBB,
                                       int *BytesRemoved) const {
+  int RemovedSize = 0;
   MachineBasicBlock::iterator I = MBB.getLastNonDebugInstr();
+
   if (I == MBB.end())
     return 0;
 
@@ -308,6 +312,7 @@ unsigned RISCVInstrInfo::removeBranch(MachineBasicBlock &MBB,
       !isCondBranch(I->getOpcode()))
     return 0;
 
+  RemovedSize += getInstSizeInBytes(*I);
   // Remove the branch.
   I->eraseFromParent();
 
@@ -315,20 +320,21 @@ unsigned RISCVInstrInfo::removeBranch(MachineBasicBlock &MBB,
 
   if (I == MBB.begin()) {
     if (BytesRemoved)
-      *BytesRemoved = 4;
+      *BytesRemoved = RemovedSize;
     return 1;
   }
   --I;
   if (!isCondBranch(I->getOpcode())) {
     if (BytesRemoved)
-      *BytesRemoved = 4;
+      *BytesRemoved = RemovedSize;
     return 1;
   }
 
+  RemovedSize += getInstSizeInBytes(*I);
   // Remove the branch.
   I->eraseFromParent();
   if (BytesRemoved)
-    *BytesRemoved = 8;
+    *BytesRemoved = RemovedSize;
 
   return 2;
 }
@@ -435,6 +441,8 @@ unsigned RISCVInstrInfo::getOppositeBranchOpc(unsigned Opc) const {
   case RISCV::BGE64:   return RISCV::BLT64;
   case RISCV::BLTU64:  return RISCV::BGEU64;
   case RISCV::BGEU64:  return RISCV::BLTU64;
+  case RISCV::CBEQZ:   return RISCV::CBNEZ;
+  case RISCV::CBNEZ:   return RISCV::CBEQZ;
   }
 }
 
@@ -450,8 +458,11 @@ static unsigned getBranchDisplacementBits(unsigned Opc) {
   switch (Opc) {
     default:
     llvm_unreachable("unexpected opcode!");
+  case RISCV::CBEQZ:
+  case RISCV::CBNEZ:
+    return 9;
   case RISCV::CJ:
-    return 11;
+    return 12;
   case RISCV::BEQ:
   case RISCV::BNE:
   case RISCV::BLT:
@@ -464,7 +475,7 @@ static unsigned getBranchDisplacementBits(unsigned Opc) {
   case RISCV::BGE64:
   case RISCV::BLTU64:
   case RISCV::BGEU64:
-    return 12;
+    return 13;
   case RISCV::JAL:
   case RISCV::JAL64:
   case RISCV::PseudoBR:
@@ -490,6 +501,8 @@ MachineBasicBlock *RISCVInstrInfo::getBranchDestBlock(
     return MI.getOperand(0).getMBB();
   case RISCV::JAL:
   case RISCV::JAL64:
+  case RISCV::CBEQZ:
+  case RISCV::CBNEZ:
     return MI.getOperand(1).getMBB();
   case RISCV::BEQ:
   case RISCV::BNE:

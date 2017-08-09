@@ -86,3 +86,14 @@ def CJALR : CR<0b1001, 0b10, (outs), (ins GPR:$rs1),
                "c.jalr\t$rs1",
                [(Call GPR:$rs1)]>, Requires<[HasC]>;
 }
+
+class Bcz<bits<3> funct3, string OpcodeStr, PatFrag CondOp> :
+      CB<funct3, 0b01, (outs), (ins GPRC:$rs1, simm9_lsb0:$offset),
+         OpcodeStr#"\t$rs1, $offset",
+         [(brcond (i32 (CondOp GPRC:$rs1, 0)), bb:$offset)]> {
+  let isBranch = 1;
+  let isTerminator = 1;
+}
+
+def CBEQZ   : Bcz<0b110, "c.beqz",  seteq>;
+def CBNEZ   : Bcz<0b111, "c.bnez",  setne>;

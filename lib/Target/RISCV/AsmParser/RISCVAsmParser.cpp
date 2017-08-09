@@ -257,6 +257,17 @@ struct RISCVOperand : public MCParsedAsmOperand {
     return (isConstantImm() && isUInt<12>(getConstantImm()));
   }
 
+  bool isSImm9Lsb0() const {
+    if (isConstantImm()) {
+      return isShiftedInt<8, 1>(getConstantImm());
+    } else if (isImm()) {
+      RISCVMCExpr::VariantKind VK;
+      int64_t Addend;
+      return RISCVAsmParser::classifySymbolRef(getImm(), VK, Addend);
+    }
+    return false;
+  }
+
   bool isSImm12Lsb0() const {
     if (isConstantImm()) {
       return isShiftedInt<11, 1>(getConstantImm());

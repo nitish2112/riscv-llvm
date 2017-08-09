@@ -22,3 +22,9 @@ c.j     .LBB0_3
 # CHECK-INST: c.j     -16
 # CHECK: encoding: [0xe5,0xbf]
 c.j     -16
+# CHECK-INST: c.jr    a7
+# CHECK: encoding: [0x82,0x88]
+c.jr    a7
+# CHECK-INST: c.jalr  a1
+# CHECK: encoding: [0x82,0x95]
+c.jalr  a1

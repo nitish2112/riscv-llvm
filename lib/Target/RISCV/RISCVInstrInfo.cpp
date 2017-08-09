@@ -220,7 +220,8 @@ static bool isUncondBranch(unsigned Opcode) {
 
 static bool isIndirectBranch(unsigned Opcode) {
   if (Opcode == RISCV::PseudoBRIND ||
-      Opcode == RISCV::PseudoBRIND64)
+      Opcode == RISCV::PseudoBRIND64 ||
+      Opcode == RISCV::CJR)
     return true;
   return false;
 }

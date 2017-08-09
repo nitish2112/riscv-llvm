@@ -73,3 +73,10 @@ def CJ : CJ<0b101, 0b01, (outs), (ins simm12_lsb0:$offset),
             "c.j\t$offset",
 	    [(br bb:$offset)]>;
 }
+
+let isBranch = 1, isBarrier = 1, isTerminator = 1, isIndirectBranch = 1,
+    rs2 = 0 in {
+def CJR : CR<0b1000, 0b10, (outs), (ins GPR:$rs1),
+             "c.jr\t$rs1",
+	     [(brind GPR:$rs1)]>;
+}

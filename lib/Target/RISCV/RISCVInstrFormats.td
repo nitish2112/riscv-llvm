@@ -288,12 +288,12 @@ class CI<bits<3> funct3, bits<2> opcode, dag outs, dag ins,
          string asmstr, list<dag> pattern>
     : RISCV16Inst<outs, ins, asmstr, pattern, FrmC>
 {
-  bits<10> offset;
+  bits<10> imm;
   bits<5> rs1;
   bits<5> rd;
 
   let Inst{15-13} = funct3;
-  let Inst{12} = offset{5};
+  let Inst{12} = imm{5};
   let Inst{1-0} = opcode;
 }
 

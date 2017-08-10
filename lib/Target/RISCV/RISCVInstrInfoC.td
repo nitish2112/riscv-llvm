@@ -13,16 +13,16 @@
 
 class Stack_Load<bits<3> funct3, string OpcodeStr, SDPatternOperator Op,
                  RegisterClass cls, DAGOperand opnd> :
-      CI<funct3, 0b10, (outs cls:$rd), (ins opnd:$offset),
-         OpcodeStr#"\t$rd, $offset", []> {
+      CI<funct3, 0b10, (outs cls:$rd), (ins opnd:$imm),
+         OpcodeStr#"\t$rd, $imm", []> {
   let Inst{11-7} = rd;
   let mayLoad = 1;
 }
 
 def CLWSP  : Stack_Load<0b010, "c.lwsp", load, GPR, addr_sp_imm6u_word>,
              Requires<[HasC]> {
-  let Inst{3-2} = offset{7-6};
-  let Inst{6-4} = offset{4-2};
+  let Inst{3-2} = imm{7-6};
+  let Inst{6-4} = imm{4-2};
 }
 
 class Stack_Store<bits<3> funct3, string OpcodeStr, SDPatternOperator Op,
@@ -102,9 +102,9 @@ def CBNEZ   : Bcz<0b111, "c.bnez",  setne>, Requires<[HasC]>;
 // Integer Computational Instructions
 //===----------------------------------------------------------------------===//
 
-def CLI : CI<0b010, 0b01, (outs GPR:$rd), (ins simm6:$offset),
-             "c.li\t$rd, $offset",
-             [(set GPR:$rd, simm6:$offset)]>, Requires<[HasC]> {
-  let Inst{6-2} = offset{4-0};
+def CLI : CI<0b010, 0b01, (outs GPR:$rd), (ins simm6:$imm),
+             "c.li\t$rd, $imm",
+             [(set GPR:$rd, simm6:$imm)]>, Requires<[HasC]> {
+  let Inst{6-2} = imm{4-0};
   let Inst{11-7} = rd;
 }

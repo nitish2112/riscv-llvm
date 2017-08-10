@@ -36,15 +36,27 @@ def uimm6 : Operand<i32>, ImmLeaf<i32, [{return isUInt<6>(Imm);}]> {
   let DecoderMethod = "decodeUImmOperand<6>";
 }
 
+def uimm12 : Operand<i32> {
+  let ParserMatchClass = UImmAsmOperand<12>;
+  let DecoderMethod = "decodeUImmOperand<12>";
+}
+
+def uimm20 : Operand<i32> {
+  let ParserMatchClass = UImmAsmOperand<20>;
+  let EncoderMethod = "getImmOpValue";
+  let DecoderMethod = "decodeUImmOperand<20>";
+}
+
+def simm6 : Operand<i32>, ImmLeaf<i32, [{return isInt<6>(Imm);}]> {
+  let ParserMatchClass = SImmAsmOperand<6>;
+  let EncoderMethod = "getImmOpValue";
+  let DecoderMethod = "decodeSImmOperand<6>";
+}
+
 def simm12 : Operand<i32>, ImmLeaf<i32, [{return isInt<12>(Imm);}]> {
   let ParserMatchClass = SImmAsmOperand<12>;
   let EncoderMethod = "getImmOpValue";
   let DecoderMethod = "decodeSImmOperand<12>";
-}
-
-def uimm12 : Operand<i32> {
-  let ParserMatchClass = UImmAsmOperand<12>;
-  let DecoderMethod = "decodeUImmOperand<12>";
 }
 
 // A 9-bit signed immediate where the least significant bit is zero.
@@ -65,12 +77,6 @@ def simm13_lsb0 : Operand<OtherVT> {
   let ParserMatchClass = SImmAsmOperand<13, "Lsb0">;
   let EncoderMethod = "getImmOpValueAsr1";
   let DecoderMethod = "decodeSImmOperandAndLsl1<13>";
-}
-
-def uimm20 : Operand<i32> {
-  let ParserMatchClass = UImmAsmOperand<20>;
-  let EncoderMethod = "getImmOpValue";
-  let DecoderMethod = "decodeUImmOperand<20>";
 }
 
 // A 21-bit signed immediate where the least significant bit is zero.

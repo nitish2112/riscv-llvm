@@ -95,5 +95,16 @@ class Bcz<bits<3> funct3, string OpcodeStr, PatFrag CondOp> :
   let isTerminator = 1;
 }
 
-def CBEQZ   : Bcz<0b110, "c.beqz",  seteq>;
-def CBNEZ   : Bcz<0b111, "c.bnez",  setne>;
+def CBEQZ   : Bcz<0b110, "c.beqz",  seteq>, Requires<[HasC]>;
+def CBNEZ   : Bcz<0b111, "c.bnez",  setne>, Requires<[HasC]>;
+
+//===----------------------------------------------------------------------===//
+// Integer Computational Instructions
+//===----------------------------------------------------------------------===//
+
+def CLI : CI<0b010, 0b01, (outs GPR:$rd), (ins simm6:$offset),
+             "c.li\t$rd, $offset",
+             [(set GPR:$rd, simm6:$offset)]>, Requires<[HasC]> {
+  let Inst{6-2} = offset{4-0};
+  let Inst{11-7} = rd;
+}

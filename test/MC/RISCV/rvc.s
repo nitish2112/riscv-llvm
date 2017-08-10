@@ -42,3 +42,7 @@ c.beqz  a3, -8
 # CHECK-INST: c.bnez  a5, -12
 # CHECK: encoding: [0xed,0xff]
 c.bnez  a5, -12
+
+# CHECK-INST: c.li  a7, 31
+# CHECK: encoding: [0xfd,0x48]
+c.li    a7, 31

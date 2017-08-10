@@ -240,6 +240,19 @@ struct RISCVOperand : public MCParsedAsmOperand {
     return isSImm12();
   }
 
+  bool isSImm6() const {
+    if (isConstantImm()) {
+      return isInt<6>(getConstantImm());
+    } else if (isImm()) {
+      RISCVMCExpr::VariantKind VK;
+      int64_t Addend;
+      if (!RISCVAsmParser::classifySymbolRef(getImm(), VK, Addend))
+        return false;
+      return VK == RISCVMCExpr::VK_RISCV_LO;
+    }
+    return false;
+  }
+
   bool isSImm12() const {
     if (isConstantImm()) {
       return isInt<12>(getConstantImm());

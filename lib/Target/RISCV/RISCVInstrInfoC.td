@@ -117,3 +117,16 @@ def CADDI : CI<0b000, 0b01, (outs GPR:$rd_wb), (ins GPR:$rd, simm6:$imm),
   let Inst{6-2} = imm{4-0};
   let Inst{11-7} = rd;
 }
+
+def CADDI16SP : CI<0b011, 0b01, (outs SP:$rd_wb),
+                   (ins SP:$rd, simm10_4lsb0:$imm),
+                   "c.addi16sp\t$rd, $imm", []>,
+                Requires<[HasC]> {
+  let Constraints = "$rd = $rd_wb";
+  let Inst{12} = imm{9};
+  let Inst{11-7} = rd;
+  let Inst{6} = imm{4};
+  let Inst{5} = imm{6};
+  let Inst{4-3} = imm{8-7};
+  let Inst{2} = imm{5};
+}

@@ -59,6 +59,14 @@ def simm12 : Operand<i32>, ImmLeaf<i32, [{return isInt<12>(Imm);}]> {
   let DecoderMethod = "decodeSImmOperand<12>";
 }
 
+def simm10_4lsb0 : Operand<i32>,
+                   ImmLeaf<i32, [{return isInt<10>(Imm) &&
+                                         ((Imm % 16) == 0);}]> {
+  let ParserMatchClass = SImmAsmOperand<10, "_4Lsb0">;
+  let EncoderMethod = "getImmOpValue";
+  let DecoderMethod = "decodeSImmOperand<10>";
+}
+
 // A 9-bit signed immediate where the least significant bit is zero.
 def simm9_lsb0 : Operand<OtherVT> {
   let ParserMatchClass = SImmAsmOperand<9, "Lsb0">;

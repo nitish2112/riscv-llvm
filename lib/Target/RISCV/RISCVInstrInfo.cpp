@@ -65,7 +65,8 @@ void RISCVInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
 void RISCVInstrInfo::getLoadStoreOpcodes(const TargetRegisterClass *RC,
                                          unsigned &LoadOpcode,
                                          unsigned &StoreOpcode) const {
-  if (RC == &RISCV::GPRRegClass || RC == &RISCV::GPRCRegClass){
+  if (RC == &RISCV::GPRRegClass || RC == &RISCV::GPRCRegClass ||
+      RC == &RISCV::SPRegClass) {
     LoadOpcode = RISCV::LW;
     StoreOpcode = RISCV::SW;
   } else if (RC == &RISCV::GPR64RegClass) {
@@ -118,9 +119,15 @@ void RISCVInstrInfo::adjustStackPtr(unsigned SP, int64_t Amount,
     return;
 
   if (isInt<12>(Amount)) {
-    // addi sp, sp, amount
-    BuildMI(MBB, I, DL, get(RISCV::ADDI), SP).
-      addReg(SP).addImm(Amount);
+    if (isInt<10>(Amount) && ((Amount % 16) == 0) && STI.hasC()) {
+      // c.addi16sp amount
+      BuildMI(MBB, I, DL, get(RISCV::CADDI16SP), SP).
+        addReg(SP).addImm(Amount);
+    } else {
+      // addi sp, sp, amount
+      BuildMI(MBB, I, DL, get(RISCV::ADDI), SP).
+        addReg(SP).addImm(Amount);
+    }
   } else {
     basePlusImmediate (SP, SP, Amount, MBB, I, DL);
   }

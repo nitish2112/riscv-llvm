@@ -49,3 +49,6 @@ c.li    a7, 31
 # CHECK-INST: c.addi  a3, 15
 # CHECK: encoding: [0xbd,0x06]
 c.addi  a3, 15
+# CHECK-INST: c.addi16sp  sp, -16
+# CHECK: encoding: [0x7d,0x71]
+c.addi16sp  sp, -16

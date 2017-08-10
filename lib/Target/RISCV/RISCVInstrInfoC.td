@@ -108,3 +108,12 @@ def CLI : CI<0b010, 0b01, (outs GPR:$rd), (ins simm6:$imm),
   let Inst{6-2} = imm{4-0};
   let Inst{11-7} = rd;
 }
+
+def CADDI : CI<0b000, 0b01, (outs GPR:$rd_wb), (ins GPR:$rd, simm6:$imm),
+               "c.addi\t$rd, $imm",
+               [(set GPR:$rd_wb, (add GPR:$rd, simm6:$imm))]>,
+            Requires<[HasC]> {
+  let Constraints = "$rd = $rd_wb";
+  let Inst{6-2} = imm{4-0};
+  let Inst{11-7} = rd;
+}

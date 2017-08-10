@@ -46,3 +46,6 @@ c.bnez  a5, -12
 # CHECK-INST: c.li  a7, 31
 # CHECK: encoding: [0xfd,0x48]
 c.li    a7, 31
+# CHECK-INST: c.addi  a3, 15
+# CHECK: encoding: [0xbd,0x06]
+c.addi  a3, 15

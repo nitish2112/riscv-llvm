@@ -59,6 +59,14 @@ def simm12 : Operand<i32>, ImmLeaf<i32, [{return isInt<12>(Imm);}]> {
   let DecoderMethod = "decodeSImmOperand<12>";
 }
 
+def uimm10_2lsb0 : Operand<i32>,
+                   ImmLeaf<i32, [{return isUInt<10>(Imm) &&
+                                         ((Imm % 4) == 0);}]> {
+  let ParserMatchClass = UImmAsmOperand<10, "_2Lsb0">;
+  let EncoderMethod = "getImmOpValue";
+  let DecoderMethod = "decodeUImmOperand<10>";
+}
+
 def simm10_4lsb0 : Operand<i32>,
                    ImmLeaf<i32, [{return isInt<10>(Imm) &&
                                          ((Imm % 16) == 0);}]> {

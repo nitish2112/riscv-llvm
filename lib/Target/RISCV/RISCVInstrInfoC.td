@@ -130,3 +130,13 @@ def CADDI16SP : CI<0b011, 0b01, (outs SP:$rd_wb),
   let Inst{4-3} = imm{8-7};
   let Inst{2} = imm{5};
 }
+
+def CADDI4SPN : CIW<0b000, 0b00, (outs GPRC:$rd),
+                    (ins uimm10_2lsb0:$imm),
+                    "c.addi4spn\t$rd, sp, $imm", []>,
+                Requires<[HasC]> {
+  let Inst{12-11} = imm{5-4};
+  let Inst{10-7} = imm{9-6};
+  let Inst{6} = imm{2};
+  let Inst{5} = imm{3};
+}

@@ -132,6 +132,38 @@ static bool FitFrameBase16BitLoadStore (MachineInstr &MI, unsigned BaseReg,
   return true;
 }
 
+static bool FitCADDI4SPN (MachineInstr &MI, unsigned BaseReg,
+                          int64_t Offset) {
+  unsigned Opc = MI.getOpcode();
+  unsigned RegNum = 0;
+
+  // BaseReg must be SP
+  if (BaseReg != RISCV::X2_32 && BaseReg != RISCV::X2_64)
+    return false;
+
+  // Offset limitation is (imm8u << 2)
+  if (!isUInt<10>(Offset))
+    return false;
+  if ((Offset % 4) != 0)
+    return false;
+
+  if ((MI.getOpcode() != RISCV::ADDI) &&
+      (MI.getOpcode() != RISCV::ADDI64))
+    return false;
+
+  if (!MI.getOperand(0).isReg())
+    return false;
+
+  RegNum = MI.getOperand(0).getReg();
+
+  if ((RegNum >= RISCV::X8_32) && (RegNum <= RISCV::X15_32))
+    return true;
+  if ((RegNum >= RISCV::X8_64) && (RegNum <= RISCV::X15_64))
+    return true;
+
+  return false;
+}
+
 void RISCVRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
                                             int SPAdj, unsigned FIOperandNum,
                                             RegScavenger *RS) const {
@@ -212,7 +244,7 @@ void RISCVRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
 
   // Transfer to 16 bit format
   // if the instruction fit 16 bit load/store limitation
-  if (FitFrameBase16BitLoadStore (MI, BasePtr, Offset) && Subtarget.hasC()) {
+  if (Subtarget.hasC() && FitFrameBase16BitLoadStore(MI, BasePtr, Offset)) {
     unsigned NewOpc;
 
     switch (MI.getOpcode()) {
@@ -231,6 +263,10 @@ void RISCVRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
     MI.getOperand(FIOperandNum).ChangeToRegister(BasePtr, false);
     MI.getOperand(FIOperandNum + 1).ChangeToImmediate(Offset);
     return;
+  } else if (Subtarget.hasC() && FitCADDI4SPN(MI, BasePtr, Offset)) {
+    MI.setDesc(TII.get(RISCV::CADDI4SPN));
+    MI.getOperand(FIOperandNum).ChangeToImmediate(Offset);
+    MI.RemoveOperand(FIOperandNum + 1);
   // If the offset fits in an immediate, then directly encode it
   } else if (isInt<12>(Offset)) {
     MI.getOperand(FIOperandNum).ChangeToRegister(BasePtr, false);

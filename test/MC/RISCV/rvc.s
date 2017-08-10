@@ -52,3 +52,6 @@ c.addi  a3, 15
 # CHECK-INST: c.addi16sp  sp, -16
 # CHECK: encoding: [0x7d,0x71]
 c.addi16sp  sp, -16
+# CHECK-INST: c.addi4spn  a3, sp, 16
+# CHECK: encoding: [0x14,0x08]
+c.addi4spn      a3, sp, 16

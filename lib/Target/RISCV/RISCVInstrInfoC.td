@@ -167,3 +167,12 @@ class Shift_right<bits<2> funct2, string OpcodeStr, SDPatternOperator OpNode> :
 
 def CSRLI   : Shift_right<0b00, "c.srli",  srl>, Requires<[HasC]>;
 def CSRAI   : Shift_right<0b01, "c.srai",  sra>, Requires<[HasC]>;
+
+def CANDI : CB<0b100, 0b01, (outs GPRC:$rs1_wb), (ins GPRC:$rs1, simm6:$imm),
+               "c.andi\t$rs1, $imm",
+            [(set GPRC:$rs1_wb, (and GPRC:$rs1, simm6:$imm))]> {
+  let Constraints = "$rs1 = $rs1_wb";
+  let Inst{12} = imm{5};
+  let Inst{11-10} = 0b10;
+  let Inst{6-2} = imm{4-0};
+}

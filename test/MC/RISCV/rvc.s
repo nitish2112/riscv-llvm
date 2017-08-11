@@ -64,3 +64,6 @@ c.srli  a3, 3
 # CHECK-INST: c.srai  a4, 2
 # CHECK: encoding: [0x09,0x87]
 c.srai  a4, 2
+# CHECK-INST: c.andi  a5, 15
+# CHECK: encoding: [0xbd,0x8b]
+c.andi  a5, 15

@@ -170,7 +170,8 @@ def CSRAI   : Shift_right<0b01, "c.srai",  sra>, Requires<[HasC]>;
 
 def CANDI : CB<0b100, 0b01, (outs GPRC:$rs1_wb), (ins GPRC:$rs1, simm6:$imm),
                "c.andi\t$rs1, $imm",
-            [(set GPRC:$rs1_wb, (and GPRC:$rs1, simm6:$imm))]> {
+               [(set GPRC:$rs1_wb, (and GPRC:$rs1, simm6:$imm))]>,
+            Requires<[HasC]> {
   let Constraints = "$rs1 = $rs1_wb";
   let Inst{12} = imm{5};
   let Inst{11-10} = 0b10;
@@ -179,3 +180,10 @@ def CANDI : CB<0b100, 0b01, (outs GPRC:$rs1_wb), (ins GPRC:$rs1, simm6:$imm),
 
 def CMV : CR<0b1000, 0b10, (outs GPR:$rs1), (ins GPR:$rs2),
              "c.mv\t$rs1, $rs2", []>, Requires<[HasC]>;
+
+def CADD : CR<0b1001, 0b10, (outs GPR:$rs1_wb), (ins GPR:$rs1, GPR:$rs2),
+              "c.add\t$rs1, $rs2",
+              [(set GPR:$rs1_wb, (add GPR:$rs1, GPR:$rs2))]>,
+           Requires<[HasC]> {
+  let Constraints = "$rs1 = $rs1_wb";
+}

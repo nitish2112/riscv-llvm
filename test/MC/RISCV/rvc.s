@@ -70,3 +70,6 @@ c.andi  a5, 15
 # CHECK-INST: c.mv  a7, s0
 # CHECK: encoding: [0xa2,0x88]
 c.mv    a7, s0
+# CHECK-INST: c.add   a5, s2
+# CHECK: encoding: [0xca,0x97]
+c.add   a5, s2

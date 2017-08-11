@@ -58,3 +58,9 @@ c.addi4spn      a3, sp, 16
 # CHECK-INST: c.slli  a1, 2
 # CHECK: encoding: [0x8a,0x05]
 c.slli  a1, 2
+# CHECK-INST: c.srli  a3, 3
+# CHECK: encoding: [0x8d,0x82]
+c.srli  a3, 3
+# CHECK-INST: c.srai  a4, 2
+# CHECK: encoding: [0x09,0x87]
+c.srai  a4, 2

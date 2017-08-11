@@ -88,11 +88,16 @@ def CJALR : CR<0b1001, 0b10, (outs), (ins GPR:$rs1),
 }
 
 class Bcz<bits<3> funct3, string OpcodeStr, PatFrag CondOp> :
-      CB<funct3, 0b01, (outs), (ins GPRC:$rs1, simm9_lsb0:$offset),
-         OpcodeStr#"\t$rs1, $offset",
-         [(brcond (i32 (CondOp GPRC:$rs1, 0)), bb:$offset)]> {
+      CB<funct3, 0b01, (outs), (ins GPRC:$rs1, simm9_lsb0:$imm),
+         OpcodeStr#"\t$rs1, $imm",
+         [(brcond (i32 (CondOp GPRC:$rs1, 0)), bb:$imm)]> {
   let isBranch = 1;
   let isTerminator = 1;
+  let Inst{12} = imm{8};
+  let Inst{11-10} = imm{4-3};
+  let Inst{6-5} = imm{7-6};
+  let Inst{4-3} = imm{2-1};
+  let Inst{2} = imm{5};
 }
 
 def CBEQZ   : Bcz<0b110, "c.beqz",  seteq>, Requires<[HasC]>;
@@ -150,3 +155,15 @@ def CSLLI : CI<0b000, 0b10, (outs GPR:$rd_wb),
   let Inst{11-7} = rd;
   let Inst{6-2} = imm{4-0};
 }
+
+class Shift_right<bits<2> funct2, string OpcodeStr, SDPatternOperator OpNode> :
+      CB<0b100, 0b01, (outs GPRC:$rs1_wb), (ins GPRC:$rs1, uimm5:$imm),
+         OpcodeStr#"\t$rs1, $imm",
+         [(set GPRC:$rs1_wb, (OpNode GPRC:$rs1, uimm5:$imm))]> {
+  let Constraints = "$rs1 = $rs1_wb";
+  let Inst{11-10} = funct2;
+  let Inst{6-2} = imm{4-0};
+}
+
+def CSRLI   : Shift_right<0b00, "c.srli",  srl>, Requires<[HasC]>;
+def CSRAI   : Shift_right<0b01, "c.srai",  sra>, Requires<[HasC]>;

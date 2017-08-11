@@ -253,7 +253,8 @@ bool RISCVMCCodeEmitter::isLoad(unsigned Opc) const {
 bool RISCVMCCodeEmitter::useGPRC(unsigned Opc) const {
   if (Opc == RISCV::CLW || Opc == RISCV::CSW ||
       Opc == RISCV::CBEQZ || Opc == RISCV::CBNEZ ||
-      Opc == RISCV::CADDI4SPN)
+      Opc == RISCV::CADDI4SPN || Opc == RISCV::CSRLI ||
+      Opc == RISCV::CSRAI)
     return true;
   return false;
 }

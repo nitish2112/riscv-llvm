@@ -140,3 +140,13 @@ def CADDI4SPN : CIW<0b000, 0b00, (outs GPRC:$rd),
   let Inst{6} = imm{2};
   let Inst{5} = imm{3};
 }
+
+def CSLLI : CI<0b000, 0b10, (outs GPR:$rd_wb),
+              (ins GPR:$rd, uimm5:$imm),
+              "c.slli\t$rd, $imm",
+              [(set GPR:$rd_wb, (shl GPR:$rd, uimm5:$imm))]>,
+              Requires<[HasC]> {
+  let Constraints = "$rd = $rd_wb";
+  let Inst{11-7} = rd;
+  let Inst{6-2} = imm{4-0};
+}

@@ -45,6 +45,8 @@ StringRef RISCV_MC::selectRISCVCPU(const Triple &TT, StringRef CPU) {
       return "rv32ema";
     if (MArch.startswith("riscv32imac"))
       return "rv32imac";
+    if (MArch.startswith("riscv64imac"))
+      return "rv64imac";
 
     if (Is64Bit)
       CPU = "generic-rv64";

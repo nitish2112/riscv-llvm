@@ -127,6 +127,7 @@ static bool FitFrameBase16BitLoadStore(MachineInstr &MI, unsigned BaseReg,
     Shift = 2;
     break;
   case RISCV::LD:
+  case RISCV::SD:
     Shift = 3;
     break;
   default:
@@ -267,6 +268,9 @@ void RISCVRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
       break;
     case RISCV::LD:
       NewOpc = RISCV::CLDSP;
+      break;
+    case RISCV::SD:
+      NewOpc = RISCV::CSDSP;
       break;
     default:
       llvm_unreachable("Cannot transfer to 16-bit instruction");

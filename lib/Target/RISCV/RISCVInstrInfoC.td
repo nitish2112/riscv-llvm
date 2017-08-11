@@ -30,17 +30,23 @@ def CLDSP  : Stack_Load<0b011, "c.ldsp", GPR64, addr_sp_imm6u_double>,
   let Inst{4-2} = imm{8-6};
 }
 
-class Stack_Store<bits<3> funct3, string OpcodeStr, SDPatternOperator Op,
+class Stack_Store<bits<3> funct3, string OpcodeStr,
                   RegisterClass cls, DAGOperand opnd> :
       CSS<funct3, 0b10, (outs), (ins cls:$rs2, opnd:$offset),
           OpcodeStr#"\t$rs2, $offset", []> {
   let mayStore = 1;
 }
 
-def CSWSP  : Stack_Store<0b110, "c.swsp", store, GPR, addr_sp_imm6u_word>,
+def CSWSP  : Stack_Store<0b110, "c.swsp", GPR, addr_sp_imm6u_word>,
              Requires<[HasC]> {
-  let Inst{8-7}  = offset{7-6};
   let Inst{12-9} = offset{5-2};
+  let Inst{8-7}  = offset{7-6};
+}
+
+def CSDSP  : Stack_Store<0b111, "c.sdsp", GPR64, addr_sp_imm6u_double>,
+             Requires<[HasC, IsRV64]> {
+  let Inst{12-10} = offset{5-3};
+  let Inst{9-7}   = offset{8-6};
 }
 
 //===----------------------------------------------------------------------===//

@@ -176,3 +176,6 @@ def CANDI : CB<0b100, 0b01, (outs GPRC:$rs1_wb), (ins GPRC:$rs1, simm6:$imm),
   let Inst{11-10} = 0b10;
   let Inst{6-2} = imm{4-0};
 }
+
+def CMV : CR<0b1000, 0b10, (outs GPR:$rs1), (ins GPR:$rs2),
+             "c.mv\t$rs1, $rs2", []>, Requires<[HasC]>;

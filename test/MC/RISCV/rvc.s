@@ -82,3 +82,9 @@ c.xor   a3, a4
 # CHECK-INST: c.sub   a4, a5
 # CHECK: encoding: [0x1d,0x8f]
 c.sub   a4, a5
+# CHECK-INST: c.nop
+# CHECK: encoding: [0x01,0x00]
+c.nop
+# CHECK-INST: c.ebreak
+# CHECK: encoding: [0x02,0x90]
+c.ebreak

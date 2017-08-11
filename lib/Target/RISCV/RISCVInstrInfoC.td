@@ -15,7 +15,6 @@ class Stack_Load<bits<3> funct3, string OpcodeStr, SDPatternOperator Op,
                  RegisterClass cls, DAGOperand opnd> :
       CI<funct3, 0b10, (outs cls:$rd), (ins opnd:$imm),
          OpcodeStr#"\t$rd, $imm", []> {
-  let Inst{11-7} = rd;
   let mayLoad = 1;
 }
 
@@ -113,7 +112,6 @@ def CLI : CI<0b010, 0b01, (outs GPR:$rd), (ins simm6:$imm),
              "c.li\t$rd, $imm",
              [(set GPR:$rd, simm6:$imm)]>, Requires<[HasC]> {
   let Inst{6-2} = imm{4-0};
-  let Inst{11-7} = rd;
 }
 
 def CADDI : CI<0b000, 0b01, (outs GPR:$rd_wb), (ins GPR:$rd, simm6:$imm),
@@ -122,7 +120,6 @@ def CADDI : CI<0b000, 0b01, (outs GPR:$rd_wb), (ins GPR:$rd, simm6:$imm),
             Requires<[HasC]> {
   let Constraints = "$rd = $rd_wb";
   let Inst{6-2} = imm{4-0};
-  let Inst{11-7} = rd;
 }
 
 def CADDI16SP : CI<0b011, 0b01, (outs SP:$rd_wb),
@@ -131,7 +128,6 @@ def CADDI16SP : CI<0b011, 0b01, (outs SP:$rd_wb),
                 Requires<[HasC]> {
   let Constraints = "$rd = $rd_wb";
   let Inst{12} = imm{9};
-  let Inst{11-7} = rd;
   let Inst{6} = imm{4};
   let Inst{5} = imm{6};
   let Inst{4-3} = imm{8-7};
@@ -154,7 +150,6 @@ def CSLLI : CI<0b000, 0b10, (outs GPR:$rd_wb),
               [(set GPR:$rd_wb, (shl GPR:$rd, uimm5:$imm))]>,
               Requires<[HasC]> {
   let Constraints = "$rd = $rd_wb";
-  let Inst{11-7} = rd;
   let Inst{6-2} = imm{4-0};
 }
 
@@ -206,3 +201,10 @@ def CAND   : CS_ALU<0b11, "c.and", and>, Requires<[HasC]>;
 def COR    : CS_ALU<0b10, "c.or" ,  or>, Requires<[HasC]>;
 def CXOR   : CS_ALU<0b01, "c.xor", xor>, Requires<[HasC]>;
 def CSUB   : CS_ALU<0b00, "c.sub", sub>, Requires<[HasC]>;
+
+
+let rd = 0, imm = 0 in
+def CNOP : CI<0b000, 0b01, (outs), (ins), "c.nop", []>, Requires<[HasC]>;
+
+let rs1 = 0, rs2 = 0 in
+def CEBREAK : CR<0b1001, 0b10, (outs), (ins), "c.ebreak", []>, Requires<[HasC]>;

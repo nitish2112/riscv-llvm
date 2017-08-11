@@ -339,10 +339,8 @@ class CS<bits<3> funct3, bits<2> opcode, dag outs, dag ins,
     : RISCV16Inst<outs, ins, asmstr, pattern, FrmC>
 {
   bits<3> rs2;
-  bits<8> addr;
 
   let Inst{15-13} = funct3;
-  let Inst{12-5} = addr;
   let Inst{4-2} = rs2;
   let Inst{1-0} = opcode;
 }

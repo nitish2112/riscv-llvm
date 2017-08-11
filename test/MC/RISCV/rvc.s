@@ -67,9 +67,18 @@ c.srai  a4, 2
 # CHECK-INST: c.andi  a5, 15
 # CHECK: encoding: [0xbd,0x8b]
 c.andi  a5, 15
-# CHECK-INST: c.mv  a7, s0
+# CHECK-INST: c.mv    a7, s0
 # CHECK: encoding: [0xa2,0x88]
 c.mv    a7, s0
-# CHECK-INST: c.add   a5, s2
-# CHECK: encoding: [0xca,0x97]
-c.add   a5, s2
+# CHECK-INST: c.and   a1, a2
+# CHECK: encoding: [0xf1,0x8d]
+c.and   a1, a2
+# CHECK-INST: c.or    a2, a3
+# CHECK: encoding: [0x55,0x8e]
+c.or    a2, a3
+# CHECK-INST: c.xor   a3, a4
+# CHECK: encoding: [0xb9,0x8e]
+c.xor   a3, a4
+# CHECK-INST: c.sub   a4, a5
+# CHECK: encoding: [0x1d,0x8f]
+c.sub   a4, a5

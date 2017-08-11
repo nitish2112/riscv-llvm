@@ -59,6 +59,8 @@ class Reg_Store<bits<3> funct3, string OpcodeStr, SDPatternOperator Op,
          OpcodeStr#"\t$rs2, $addr",
          [(Op cls:$rs2, opnd:$addr)]> {
   let mayStore = 1;
+  bits<8> addr;
+  let Inst{12-5} = addr;
 }
 
 def CSW  : Reg_Store<0b110, "c.sw", store, GPRC, addr_reg_imm5u_word>,
@@ -187,3 +189,20 @@ def CADD : CR<0b1001, 0b10, (outs GPR:$rs1_wb), (ins GPR:$rs1, GPR:$rs2),
            Requires<[HasC]> {
   let Constraints = "$rs1 = $rs1_wb";
 }
+
+class CS_ALU<bits<2> funct2, string OpcodeStr, SDPatternOperator OpNode> :
+      CS<0b100, 0b01, (outs GPRC:$rd_wb), (ins GPRC:$rd, GPRC:$rs2),
+         OpcodeStr#"\t$rd, $rs2",
+         [(set GPRC:$rd_wb, (OpNode GPRC:$rd, GPRC:$rs2))]> {
+  bits<3> rd;
+  let Constraints = "$rd = $rd_wb";
+  let Inst{12} = 0b0;
+  let Inst{11-10} = 0b11;
+  let Inst{9-7} = rd;
+  let Inst{6-5} = funct2;
+}
+
+def CAND   : CS_ALU<0b11, "c.and", and>, Requires<[HasC]>;
+def COR    : CS_ALU<0b10, "c.or" ,  or>, Requires<[HasC]>;
+def CXOR   : CS_ALU<0b01, "c.xor", xor>, Requires<[HasC]>;
+def CSUB   : CS_ALU<0b00, "c.sub", sub>, Requires<[HasC]>;

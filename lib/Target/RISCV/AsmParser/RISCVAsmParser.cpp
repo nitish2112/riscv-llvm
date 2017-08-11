@@ -343,7 +343,7 @@ struct RISCVOperand : public MCParsedAsmOperand {
     return isMem();
   }
 
-  // Sp + imm6u
+  // Sp + imm6u << 2
   bool isAddrSpImm6uWord() const {
     if (!isMem()) return false;
     if (Mem.Reg != RISCV::X2_32 &&
@@ -354,6 +354,19 @@ struct RISCVOperand : public MCParsedAsmOperand {
       return false;
     int64_t Val = static_cast<const MCConstantExpr*>(Mem.Offset)->getValue();
     return isUIntN(6 + 2, Val) && (Val % 4 == 0);
+  }
+
+   // Sp + imm6u << 3
+  bool isAddrSpImm6uDouble() const {
+    if (!isMem()) return false;
+    if (Mem.Reg != RISCV::X2_32 &&
+        Mem.Reg != RISCV::X2_64)
+      return false;
+    if (!Mem.Offset) return true;
+    if (!dyn_cast<MCConstantExpr>(Mem.Offset))
+      return false;
+    int64_t Val = static_cast<const MCConstantExpr*>(Mem.Offset)->getValue();
+    return isUIntN(6 + 3, Val) && (Val % 8 == 0);
   }
  
   bool isRVC3BitReg(unsigned Reg) const {
@@ -458,6 +471,9 @@ struct RISCVOperand : public MCParsedAsmOperand {
     addAddrRegImmOperands(Inst, N);
   }
   void addAddrSpImm6uWordOperands(MCInst &Inst, unsigned N) const {
+    addAddrRegImmOperands(Inst, N);
+  }
+  void addAddrSpImm6uDoubleOperands(MCInst &Inst, unsigned N) const {
     addAddrRegImmOperands(Inst, N);
   }
   void addAddrRegImm5uWordOperands(MCInst &Inst, unsigned N) const {

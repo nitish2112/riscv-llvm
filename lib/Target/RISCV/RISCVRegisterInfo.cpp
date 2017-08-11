@@ -112,28 +112,39 @@ requiresVirtualBaseRegisters(const MachineFunction &MF) const {
 
 // Return true if the instruction fit
 // 16 bit load/store format.
-static bool FitFrameBase16BitLoadStore (MachineInstr &MI, unsigned BaseReg,
-                                        int64_t Offset) {
+static bool FitFrameBase16BitLoadStore(MachineInstr &MI, unsigned BaseReg,
+                                       int64_t Offset) {
   unsigned Opc = MI.getOpcode();
+  int64_t Shift = 0;
 
   // BaseReg must be SP
   if (BaseReg != RISCV::X2_32 && BaseReg != RISCV::X2_64)
     return false;
 
-  // Offset limitation is (imm6u << 2)
-  if (!isUInt<6>(Offset))
+  switch (Opc) {
+  case RISCV::LW:
+  case RISCV::SW:
+    Shift = 2;
+    break;
+  case RISCV::LD:
+    Shift = 3;
+    break;
+  default:
     return false;
-  if (Offset % 4 != 0)
+  }
+
+  // Offset limitation is (imm6u << Shift)
+  if (!isUIntN(6 + Shift, Offset))
     return false;
 
-  if (Opc != RISCV::LW && Opc != RISCV::SW)
+  if (Offset % (1 << Shift) != 0)
     return false;
 
   return true;
 }
 
-static bool FitCADDI4SPN (MachineInstr &MI, unsigned BaseReg,
-                          int64_t Offset) {
+static bool FitCADDI4SPN(MachineInstr &MI, unsigned BaseReg,
+                         int64_t Offset) {
   unsigned Opc = MI.getOpcode();
   unsigned RegNum = 0;
 
@@ -254,9 +265,11 @@ void RISCVRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
     case RISCV::SW:
       NewOpc = RISCV::CSWSP;
       break;
-    default:
+    case RISCV::LD:
+      NewOpc = RISCV::CLDSP;
       break;
-      // should add llvm_unreach here later.
+    default:
+      llvm_unreachable("Cannot transfer to 16-bit instruction");
     }
 
     MI.setDesc(TII.get(NewOpc));

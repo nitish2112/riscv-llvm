@@ -11,17 +11,23 @@
 // Stack-Pointer-Based Loads and Stores
 //===----------------------------------------------------------------------===//
 
-class Stack_Load<bits<3> funct3, string OpcodeStr, SDPatternOperator Op,
+class Stack_Load<bits<3> funct3, string OpcodeStr,
                  RegisterClass cls, DAGOperand opnd> :
       CI<funct3, 0b10, (outs cls:$rd), (ins opnd:$imm),
          OpcodeStr#"\t$rd, $imm", []> {
   let mayLoad = 1;
 }
 
-def CLWSP  : Stack_Load<0b010, "c.lwsp", load, GPR, addr_sp_imm6u_word>,
+def CLWSP  : Stack_Load<0b010, "c.lwsp", GPR, addr_sp_imm6u_word>,
              Requires<[HasC]> {
-  let Inst{3-2} = imm{7-6};
   let Inst{6-4} = imm{4-2};
+  let Inst{3-2} = imm{7-6};
+}
+
+def CLDSP  : Stack_Load<0b011, "c.ldsp", GPR64, addr_sp_imm6u_double>,
+             Requires<[HasC, IsRV64]> {
+  let Inst{6-5} = imm{4-3};
+  let Inst{4-2} = imm{8-6};
 }
 
 class Stack_Store<bits<3> funct3, string OpcodeStr, SDPatternOperator Op,

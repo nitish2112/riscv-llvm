@@ -93,6 +93,10 @@ public:
                                       SmallVectorImpl<MCFixup> &Fixups,
                                       const MCSubtargetInfo &STI) const;
 
+  unsigned getAddrSpImm6uDoubleEncoding(const MCInst &MI, unsigned OpNo,
+                                        SmallVectorImpl<MCFixup> &Fixups,
+                                        const MCSubtargetInfo &STI) const;
+
   unsigned getAddrRegImm5uWordEncoding(const MCInst &MI, unsigned OpNo,
                                        SmallVectorImpl<MCFixup> &Fixups,
                                        const MCSubtargetInfo &STI) const;
@@ -280,11 +284,22 @@ RISCVMCCodeEmitter::getAddrRegImmEncoding(const MCInst &MI, unsigned OpNo,
   }
 }
 
-// Encoding Sp + Imm6u addressing mode
+// Encoding Sp + Imm6u << 2 addressing mode
 unsigned
 RISCVMCCodeEmitter::getAddrSpImm6uWordEncoding(const MCInst &MI, unsigned OpNo,
                                                SmallVectorImpl<MCFixup> &Fixups,
                                                const MCSubtargetInfo &STI) const {
+  const MCOperand &MO1 = MI.getOperand(OpNo + 1);
+  unsigned Imm = getMachineOpValue(MI, MO1, Fixups, STI);
+
+  return Imm;
+}
+
+// Encoding Sp + Imm6u << 3 addressing mode
+unsigned
+RISCVMCCodeEmitter::getAddrSpImm6uDoubleEncoding(const MCInst &MI, unsigned OpNo,
+                                                 SmallVectorImpl<MCFixup> &Fixups,
+                                                 const MCSubtargetInfo &STI) const {
   const MCOperand &MO1 = MI.getOperand(OpNo + 1);
   unsigned Imm = getMachineOpValue(MI, MO1, Fixups, STI);
 

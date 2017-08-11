@@ -171,6 +171,10 @@ static DecodeStatus decodeAddrSpImm6uWord(MCInst &Inst, unsigned Insn,
                                           uint64_t Address,
                                           const void *Decoder);
 
+static DecodeStatus decodeAddrSpImm6uDouble(MCInst &Inst, unsigned Insn,
+                                            uint64_t Address,
+                                            const void *Decoder);
+
 static DecodeStatus decodeAddrRegImm5uWord(MCInst &Inst, unsigned Insn,
                                            uint64_t Address,
                                            const void *Decoder);
@@ -282,6 +286,21 @@ static DecodeStatus decodeAddrSpImm6uWord(MCInst &Inst,
   Imm = fieldFromInstruction(Insn, 0, 6);
 
   DecodeGPRRegisterClass(Inst, Reg, Address, Decoder);
+
+  Inst.addOperand(MCOperand::createImm(Imm));
+
+  return MCDisassembler::Success;
+}
+
+static DecodeStatus decodeAddrSpImm6uDouble(MCInst &Inst,
+                                            unsigned Insn,
+                                            uint64_t Address,
+                                            const void *Decoder) {
+  int32_t Imm, Reg = 2;
+
+  Imm = fieldFromInstruction(Insn, 0, 6);
+
+  DecodeGPR64RegisterClass(Inst, Reg, Address, Decoder);
 
   Inst.addOperand(MCOperand::createImm(Imm));
 

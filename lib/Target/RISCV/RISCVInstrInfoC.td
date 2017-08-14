@@ -144,10 +144,24 @@ def CLI : CI<0b010, 0b01, (outs GPR:$rd), (ins simm6:$imm),
   let Inst{6-2} = imm{4-0};
 }
 
-def CADDI : CI<0b000, 0b01, (outs GPR:$rd_wb), (ins GPR:$rd, simm6:$imm),
-               "c.addi\t$rd, $imm",
-               [(set GPR:$rd_wb, (add GPR:$rd, simm6:$imm))]>,
-            Requires<[HasC]> {
+class Add_Imm<RegisterClass cls, Operand ImmOpnd> :
+      CI<0b000, 0b01, (outs cls:$rd_wb), (ins cls:$rd, ImmOpnd:$imm),
+         "c.addi\t$rd, $imm",
+         [(set cls:$rd_wb, (add cls:$rd, ImmOpnd:$imm))]> {
+  let Constraints = "$rd = $rd_wb";
+  let Inst{6-2} = imm{4-0};
+}
+
+def CADDI   : Add_Imm<GPR, simm6>, Requires<[HasC, IsRV32]>;
+
+let DecoderNamespace = "RISCV64_" in
+def CADDI64 : Add_Imm<GPR64, imm64sx6>, Requires<[HasC, IsRV64]>;
+
+let DecoderNamespace = "RISCV64_" in
+def CADDIW : CI<0b001, 0b01, (outs GPR:$rd_wb), (ins GPR:$rd, simm6:$imm),
+                "c.addiw\t$rd, $imm",
+                [(set GPR:$rd_wb, (add GPR:$rd, simm6:$imm))]>,
+             Requires<[HasC, IsRV64]> {
   let Constraints = "$rd = $rd_wb";
   let Inst{6-2} = imm{4-0};
 }

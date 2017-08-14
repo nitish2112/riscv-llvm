@@ -71,6 +71,16 @@ void RISCVInstPrinter::printAddrRegImmOperand(const MCInst *MI, unsigned OpNum,
   O << ")";
 }
 
+void RISCVInstPrinter::printS6ImmOperand(const MCInst *MI, int OpNum,
+                                           raw_ostream &O) {
+  if(MI->getOperand(OpNum).isImm()){
+    int64_t Value = MI->getOperand(OpNum).getImm();
+    assert(isInt<6>(Value) && "Invalid s6imm argument");
+    O << Value;
+  }else
+    printOperand(MI, OpNum, O);
+}
+
 void RISCVInstPrinter::printS12ImmOperand(const MCInst *MI, int OpNum,
                                            raw_ostream &O) {
   if(MI->getOperand(OpNum).isImm()){

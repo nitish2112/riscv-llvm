@@ -164,6 +164,14 @@ class Immediate<ValueType vt, code pred, SDNodeXForm xform, string asmop>
   //let ParserMatchClass = !cast<AsmOperandClass>(asmop);
 }
 
+//sign-extended 6 bit immediate
+def imm64sx6 : Immediate<i64, [{
+  return isInt<6>(N->getSExtValue());
+}], NOOP_SDNodeXForm, "S6Imm"> {
+  let EncoderMethod = "getImmOpValue";
+  let DecoderMethod = "decodeSImmOperand<6>";
+}
+
 //sign-extended 12 bit immediate
 def imm64sx12 : Immediate<i64, [{
   return isInt<12>(N->getSExtValue());

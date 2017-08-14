@@ -37,6 +37,8 @@ public:
 
   void printAddrRegImmOperand(const MCInst *MI, unsigned OpNum, raw_ostream &O);
 
+  void printS6ImmOperand(const MCInst *MI, int OpNum, raw_ostream &O);
+
   void printS12ImmOperand(const MCInst *MI, int OpNum, raw_ostream &O);
 
   void printU20ImmOperand(const MCInst *MI, int OpNum, raw_ostream &O);

@@ -102,6 +102,12 @@ def simm21_lsb0 : Operand<OtherVT> {
   let DecoderMethod = "decodeSImmOperandAndLsl1<21>";
 }
 
+// shamt field must fit in 5 bits.
+def immZExt5 : ImmLeaf<i32, [{return Imm == (Imm & 0x1f);}]>;
+
+// shamt field must fit in 5 bits.
+def immZExt6 : ImmLeaf<i32, [{return Imm == (Imm & 0x3f);}]>;
+
 // Extract least significant 12 bits from an immediate value and sign extend
 // them.
 def LO12Sext : SDNodeXForm<imm, [{

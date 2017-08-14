@@ -174,26 +174,44 @@ def CADDI4SPN : CIW<0b000, 0b00, (outs GPRC:$rd),
   let Inst{5} = imm{3};
 }
 
-def CSLLI : CI<0b000, 0b10, (outs GPR:$rd_wb),
-              (ins GPR:$rd, uimm5:$imm),
-              "c.slli\t$rd, $imm",
-              [(set GPR:$rd_wb, (shl GPR:$rd, uimm5:$imm))]>,
-              Requires<[HasC]> {
+class Shift_left<RegisterClass cls, Operand ImmOpnd, SDPatternOperator PF> :
+      CI<0b000, 0b10, (outs cls:$rd_wb),
+         (ins cls:$rd, ImmOpnd:$imm),
+         "c.slli\t$rd, $imm",
+         [(set cls:$rd_wb, (shl cls:$rd, PF:$imm))]> {
   let Constraints = "$rd = $rd_wb";
   let Inst{6-2} = imm{4-0};
 }
 
-class Shift_right<bits<2> funct2, string OpcodeStr, SDPatternOperator OpNode> :
-      CB<0b100, 0b01, (outs GPRC:$rs1_wb), (ins GPRC:$rs1, uimm5:$imm),
+def CSLLI   : Shift_left<GPR,   uimm5, immZExt5>, Requires<[HasC, IsRV32]>;
+
+let DecoderNamespace = "RISCV64_" in
+def CSLLI64 : Shift_left<GPR64, uimm6, immZExt6>, Requires<[HasC, IsRV64]>;
+
+class Shift_right<bits<2> funct2, string OpcodeStr, SDPatternOperator OpNode,
+                  RegisterClass cls, Operand ImmOpnd, SDPatternOperator PF> :
+      CB<0b100, 0b01, (outs cls:$rs1_wb), (ins cls:$rs1, ImmOpnd:$imm),
          OpcodeStr#"\t$rs1, $imm",
-         [(set GPRC:$rs1_wb, (OpNode GPRC:$rs1, uimm5:$imm))]> {
+         [(set cls:$rs1_wb, (OpNode cls:$rs1, PF:$imm))]> {
   let Constraints = "$rs1 = $rs1_wb";
   let Inst{11-10} = funct2;
   let Inst{6-2} = imm{4-0};
 }
 
-def CSRLI   : Shift_right<0b00, "c.srli",  srl>, Requires<[HasC]>;
-def CSRAI   : Shift_right<0b01, "c.srai",  sra>, Requires<[HasC]>;
+def CSRLI   : Shift_right<0b00, "c.srli",  srl, GPRC,   uimm5, immZExt5>,
+              Requires<[HasC, IsRV32]>;
+
+let DecoderNamespace = "RISCV64_" in
+def CSRLI64 : Shift_right<0b00, "c.srli",  srl, GPR64C, uimm6, immZExt6>,
+              Requires<[HasC, IsRV64]>;
+
+def CSRAI   : Shift_right<0b01, "c.srai",  sra, GPRC,   uimm5, immZExt5>,
+              Requires<[HasC, IsRV32]>;
+
+let DecoderNamespace = "RISCV64_" in
+def CSRAI64 : Shift_right<0b01, "c.srai",  sra, GPR64C, uimm6, immZExt6>,
+              Requires<[HasC, IsRV64]>;
+
 
 def CANDI : CB<0b100, 0b01, (outs GPRC:$rs1_wb), (ins GPRC:$rs1, simm6:$imm),
                "c.andi\t$rs1, $imm",

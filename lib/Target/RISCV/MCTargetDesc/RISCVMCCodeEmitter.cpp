@@ -266,7 +266,8 @@ bool RISCVMCCodeEmitter::useGPRC(unsigned Opc) const {
       Opc == RISCV::CAND || Opc == RISCV::COR ||
       Opc == RISCV::CSUB || Opc == RISCV::CXOR ||
       Opc == RISCV::CLW64 || Opc == RISCV::CLD ||
-      Opc == RISCV::CSW64 || Opc == RISCV::CSD)
+      Opc == RISCV::CSW64 || Opc == RISCV::CSD ||
+      Opc == RISCV::CSRLI64 || Opc == RISCV::CSRAI64)
     return true;
   return false;
 }

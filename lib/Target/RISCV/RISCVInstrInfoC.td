@@ -194,6 +194,7 @@ class Shift_right<bits<2> funct2, string OpcodeStr, SDPatternOperator OpNode,
          OpcodeStr#"\t$rs1, $imm",
          [(set cls:$rs1_wb, (OpNode cls:$rs1, PF:$imm))]> {
   let Constraints = "$rs1 = $rs1_wb";
+  let Inst{12} = imm{5};
   let Inst{11-10} = funct2;
   let Inst{6-2} = imm{4-0};
 }

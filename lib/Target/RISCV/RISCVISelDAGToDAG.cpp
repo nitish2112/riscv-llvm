@@ -123,6 +123,27 @@ bool RISCVDAGToDAGISel::SelectAddrRegImm12s(SDValue Addr, SDValue &Base,
       && selectAddrFrameIndexOffset(Addr, Base, Offset, 12))
     return true;
 
+  if (Addr.isMachineOpcode()
+      && Addr.getMachineOpcode() == RISCV::ADDI
+      && Addr.getOperand(0).isMachineOpcode ()
+      && Addr.getOperand(0).getMachineOpcode() == RISCVDAGToDAGISel::LUI) {
+    // Use the hi-part register content, if possible.
+    // Example:
+    // lui reg, %hi(sym)
+    // addi reg, reg, %lo(sym)
+    // lw rt, 0(reg)
+    // To:
+    // lui reg, %hi(sym)
+    // lw rt, %lo(sym)(reg)
+      SDValue Opnd0 = Addr.getOperand(1);
+      if (isa<ConstantPoolSDNode>(Opnd0) || isa<GlobalAddressSDNode>(Opnd0) ||
+          isa<JumpTableSDNode>(Opnd0)) {
+        Base = Addr.getOperand(0);
+        Offset = Opnd0;
+        return true;
+      }
+  }
+
   if (selectAddrFrameIndex(Addr, Base, Offset))
     return true;
 

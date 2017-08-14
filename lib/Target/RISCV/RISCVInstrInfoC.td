@@ -87,6 +87,14 @@ class Reg_Store<bits<3> funct3, string OpcodeStr, SDPatternOperator Op,
 def CSW  : Reg_Store<0b110, "c.sw", store, GPRC, addr_reg_imm5u_word>,
            Requires<[HasC]>;
 
+let DecoderNamespace = "RISCV64_" in
+def CSW64: Reg_Store<0b110, "c.sw", truncstorei32, GPR64C, addr_reg_imm5u_word_rv64>,
+           Requires<[HasC, IsRV64]>;
+
+let DecoderNamespace = "RISCV64_" in
+def CSD  : Reg_Store<0b111, "c.sd", store, GPR64C, addr_reg_imm5u_double>,
+           Requires<[HasC, IsRV64]>;
+
 //===----------------------------------------------------------------------===//
 // Control Transfer Instructions
 //===----------------------------------------------------------------------===//

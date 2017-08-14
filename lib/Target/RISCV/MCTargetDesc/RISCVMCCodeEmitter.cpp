@@ -100,6 +100,10 @@ public:
   unsigned getAddrRegImm5uWordEncoding(const MCInst &MI, unsigned OpNo,
                                        SmallVectorImpl<MCFixup> &Fixups,
                                        const MCSubtargetInfo &STI) const;
+
+  unsigned getAddrRegImm5uDoubleEncoding(const MCInst &MI, unsigned OpNo,
+                                         SmallVectorImpl<MCFixup> &Fixups,
+                                         const MCSubtargetInfo &STI) const;
 };
 } // end anonymous namespace
 
@@ -260,7 +264,8 @@ bool RISCVMCCodeEmitter::useGPRC(unsigned Opc) const {
       Opc == RISCV::CADDI4SPN || Opc == RISCV::CSRLI ||
       Opc == RISCV::CSRAI || Opc == RISCV::CANDI ||
       Opc == RISCV::CAND || Opc == RISCV::COR ||
-      Opc == RISCV::CSUB || Opc == RISCV::CXOR)
+      Opc == RISCV::CSUB || Opc == RISCV::CXOR ||
+      Opc == RISCV::CLW64 || Opc == RISCV::CLD)
     return true;
   return false;
 }
@@ -306,7 +311,7 @@ RISCVMCCodeEmitter::getAddrSpImm6uDoubleEncoding(const MCInst &MI, unsigned OpNo
   return Imm;
 }
 
-// Encoding Reg + Imm5u addressing mode
+// Encoding Reg + Imm5u << 2 addressing mode
 unsigned
 RISCVMCCodeEmitter::getAddrRegImm5uWordEncoding(const MCInst &MI, unsigned OpNo,
                                                 SmallVectorImpl<MCFixup> &Fixups,
@@ -320,6 +325,19 @@ RISCVMCCodeEmitter::getAddrRegImm5uWordEncoding(const MCInst &MI, unsigned OpNo,
   if (Imm & (1 << 6)) Imm2Encode = Imm2Encode + 1;
 
   return Imm2Encode | ((Imm >> 3) << 5) |
+         (getMachineOpValue(MI, MO, Fixups, STI)) << 2;
+}
+
+// Encoding Reg + Imm5u << 3 addressing mode
+unsigned
+RISCVMCCodeEmitter::getAddrRegImm5uDoubleEncoding(const MCInst &MI, unsigned OpNo,
+                                                  SmallVectorImpl<MCFixup> &Fixups,
+                                                  const MCSubtargetInfo &STI) const {
+  const MCOperand &MO = MI.getOperand(OpNo);
+  const MCOperand &MO1 = MI.getOperand(OpNo + 1);
+  unsigned Imm = getMachineOpValue(MI, MO1, Fixups, STI);
+
+  return (Imm >> 6) | ((Imm >> 3) << 5) |
          (getMachineOpValue(MI, MO, Fixups, STI)) << 2;
 }
 

@@ -124,6 +124,17 @@ static DecodeStatus DecodeGPRCRegisterClass(MCInst &Inst, uint64_t RegNo,
    return MCDisassembler::Success;
 }
 
+static DecodeStatus DecodeGPR64CRegisterClass(MCInst &Inst, uint64_t RegNo,
+                                              uint64_t Address,
+                                              const void *Decoder) {
+   if (RegNo > sizeof(GPR64DecoderTable)) {
+     return MCDisassembler::Fail;
+   }
+   unsigned Reg = GPR64DecoderTable[RegNo + 8];
+   Inst.addOperand(MCOperand::createReg(Reg));
+   return MCDisassembler::Success;
+}
+
 template <unsigned N>
 static DecodeStatus decodeUImmOperand(MCInst &Inst, uint64_t Imm,
                                       int64_t Address, const void *Decoder) {
@@ -178,6 +189,10 @@ static DecodeStatus decodeAddrSpImm6uDouble(MCInst &Inst, unsigned Insn,
 static DecodeStatus decodeAddrRegImm5uWord(MCInst &Inst, unsigned Insn,
                                            uint64_t Address,
                                            const void *Decoder);
+
+static DecodeStatus decodeAddrRegImm5uDouble(MCInst &Inst, unsigned Insn,
+                                             uint64_t Address,
+                                             const void *Decoder);
 
 #include "RISCVGenDisassemblerTables.inc"
 
@@ -239,10 +254,13 @@ DecodeStatus RISCVDisassembler::getInstruction(MCInst &MI, uint64_t &Size,
     if (Result == MCDisassembler::Fail)
       return MCDisassembler::Fail;
 
-    DEBUG(dbgs() << "Trying RISCV_C table (16-bit Instruction):\n");
-    // Calling the auto-generated decoder function.
-    Result =
-      decodeInstruction(DecoderTable16, MI, Insn, Address, this, STI);
+    if (isRV64()) {
+      DEBUG(dbgs() << "Trying RISCV64_RVC table (16-bit Instruction):\n");
+      Result = decodeInstruction(DecoderTableRISCV64_16, MI, Insn, Address, this, STI);
+    } else {
+      DEBUG(dbgs() << "Trying RISCV32_RVC table (16-bit Instruction):\n");
+      Result = decodeInstruction(DecoderTable16, MI, Insn, Address, this, STI);
+    }
 
     Size = 2;
   }
@@ -285,7 +303,10 @@ static DecodeStatus decodeAddrSpImm6uWord(MCInst &Inst,
 
   Imm = fieldFromInstruction(Insn, 0, 6);
 
-  DecodeGPRRegisterClass(Inst, Reg, Address, Decoder);
+  if (static_cast<const RISCVDisassembler *>(Decoder)->isRV64())
+    DecodeGPR64RegisterClass(Inst, Reg, Address, Decoder);
+  else
+    DecodeGPRRegisterClass(Inst, Reg, Address, Decoder);
 
   Inst.addOperand(MCOperand::createImm(Imm));
 
@@ -318,7 +339,27 @@ static DecodeStatus decodeAddrRegImm5uWord(MCInst &Inst,
         fieldFromInstruction(Insn, 1, 1) << 2 |
         fieldFromInstruction(Insn, 5, 3) << 3;
 
-  DecodeGPRCRegisterClass(Inst, Reg, Address, Decoder);
+  if (static_cast<const RISCVDisassembler *>(Decoder)->isRV64())
+    DecodeGPR64CRegisterClass(Inst, Reg, Address, Decoder);
+  else
+    DecodeGPRCRegisterClass(Inst, Reg, Address, Decoder);
+
+  Inst.addOperand(MCOperand::createImm(Imm));
+
+  return MCDisassembler::Success;
+}
+
+static DecodeStatus decodeAddrRegImm5uDouble(MCInst &Inst,
+                                             unsigned Insn,
+                                             uint64_t Address,
+                                             const void *Decoder) {
+  int32_t Imm, Reg;
+
+  Reg = fieldFromInstruction(Insn, 2, 3);
+  Imm = fieldFromInstruction(Insn, 0, 2) << 6 |
+        fieldFromInstruction(Insn, 5, 3) << 3;
+
+  DecodeGPR64CRegisterClass(Inst, Reg, Address, Decoder);
 
   Inst.addOperand(MCOperand::createImm(Imm));
 

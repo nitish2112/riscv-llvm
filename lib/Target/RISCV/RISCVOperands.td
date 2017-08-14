@@ -245,10 +245,10 @@ def addr_sp_imm6u_double : MemOperand {
   let DecoderMethod = "decodeAddrSpImm6uDouble";
 }
 
-// addr_reg_imm5u_word := [reg + imm5u]
+// addr_reg_imm5u_word := [reg + imm5u << 2]
 def AddrRegImm5uWordAsmOperand : AsmOperandClass { let Name = "AddrRegImm5uWord"; }
 def addr_reg_imm5u_word : MemOperand,
-    ComplexPattern<i32, 2, "SelectAddrRegImm5uWord", []> {
+    ComplexPattern<iPTR, 2, "SelectAddrRegImm5uWord", []> {
   // 5-bit unsigned immediate operand.
   // Immediate access range would be (imm5u << 2).
 
@@ -257,4 +257,30 @@ def addr_reg_imm5u_word : MemOperand,
   let ParserMatchClass = AddrRegImm5uWordAsmOperand;
   let EncoderMethod = "getAddrRegImm5uWordEncoding";
   let DecoderMethod = "decodeAddrRegImm5uWord";
+}
+// addr_reg_imm5u_word_rv64 := [reg + imm5u << 2]
+def addr_reg_imm5u_word_rv64 : MemOperand,
+    ComplexPattern<iPTR, 2, "SelectAddrRegImm5uWord", []> {
+  // 5-bit unsigned immediate operand.
+  // Immediate access range would be (imm5u << 2).
+
+  let MIOperandInfo = (ops GPR64C:$base, iPTR:$offsimm);
+  let PrintMethod = "printAddrRegImmOperand";
+  let ParserMatchClass = AddrRegImm5uWordAsmOperand;
+  let EncoderMethod = "getAddrRegImm5uWordEncoding";
+  let DecoderMethod = "decodeAddrRegImm5uWord";
+}
+
+// addr_reg_imm5u_double := [reg + imm5u << 3]
+def AddrRegImm5uDoubleAsmOperand : AsmOperandClass { let Name = "AddrRegImm5uDouble"; }
+def addr_reg_imm5u_double : MemOperand,
+    ComplexPattern<iPTR, 2, "SelectAddrRegImm5uDouble", []> {
+  // 5-bit unsigned immediate operand.
+  // Immediate access range would be (imm5u << 3).
+
+  let MIOperandInfo = (ops GPR64C:$base, iPTR:$offsimm);
+  let PrintMethod = "printAddrRegImmOperand";
+  let ParserMatchClass = AddrRegImm5uDoubleAsmOperand;
+  let EncoderMethod = "getAddrRegImm5uDoubleEncoding";
+  let DecoderMethod = "decodeAddrRegImm5uDouble";
 }

@@ -24,6 +24,7 @@ def CLWSP  : Stack_Load<0b010, "c.lwsp", GPR, addr_sp_imm6u_word>,
   let Inst{3-2} = imm{7-6};
 }
 
+let DecoderNamespace = "RISCV64_" in
 def CLDSP  : Stack_Load<0b011, "c.ldsp", GPR64, addr_sp_imm6u_double>,
              Requires<[HasC, IsRV64]> {
   let Inst{6-5} = imm{4-3};
@@ -43,6 +44,7 @@ def CSWSP  : Stack_Store<0b110, "c.swsp", GPR, addr_sp_imm6u_word>,
   let Inst{8-7}  = offset{7-6};
 }
 
+let DecoderNamespace = "RISCV64_" in
 def CSDSP  : Stack_Store<0b111, "c.sdsp", GPR64, addr_sp_imm6u_double>,
              Requires<[HasC, IsRV64]> {
   let Inst{12-10} = offset{5-3};
@@ -63,6 +65,14 @@ class Reg_Load<bits<3> funct3, string OpcodeStr, SDPatternOperator Op,
 
 def CLW  : Reg_Load<0b010, "c.lw", load, GPRC, addr_reg_imm5u_word>,
            Requires<[HasC]>;
+
+let DecoderNamespace = "RISCV64_" in
+def CLW64: Reg_Load<0b010, "c.lw", sextloadi32, GPR64C, addr_reg_imm5u_word_rv64>,
+           Requires<[HasC, IsRV64]>;
+
+let DecoderNamespace = "RISCV64_" in
+def CLD  : Reg_Load<0b011, "c.ld", load, GPR64C, addr_reg_imm5u_double>,
+           Requires<[HasC, IsRV64]>;
 
 class Reg_Store<bits<3> funct3, string OpcodeStr, SDPatternOperator Op,
                RegisterClass cls, DAGOperand opnd> :

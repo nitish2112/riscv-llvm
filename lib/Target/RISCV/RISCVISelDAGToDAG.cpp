@@ -29,10 +29,14 @@ using namespace llvm;
 namespace {
 class RISCVDAGToDAGISel final : public SelectionDAGISel {
   const RISCVSubtarget &Subtarget;
+  unsigned LUI, ADDI;
 public:
   explicit RISCVDAGToDAGISel(RISCVTargetMachine &TargetMachine)
       : SelectionDAGISel(TargetMachine),
-        Subtarget(*TargetMachine.getSubtargetImpl()) {}
+        Subtarget(*TargetMachine.getSubtargetImpl()) {
+    LUI = Subtarget.isRV64() ? RISCV::LUI64 : RISCV::LUI;
+    ADDI = Subtarget.isRV64() ? RISCV::ADDI64 : RISCV::ADDI;
+  }
 
   StringRef getPassName() const override {
     return "RISCV DAG->DAG Pattern Instruction Selection";
@@ -205,15 +209,14 @@ void RISCVDAGToDAGISel::Select(SDNode *Node) {
   default: break;
   case ISD::FrameIndex: {
     MVT PtrVT = Subtarget.isRV64() ? MVT::i64 : MVT::i32;
-    unsigned addi = Subtarget.isRV64() ? RISCV::ADDI64 : RISCV::ADDI;
     int FI = cast<FrameIndexSDNode>(Node)->getIndex();
     SDValue TFI = CurDAG->getTargetFrameIndex(FI, PtrVT);
     if (Node->hasOneUse()) {
-      CurDAG->SelectNodeTo(Node, addi, PtrVT, TFI,
+      CurDAG->SelectNodeTo(Node, ADDI, PtrVT, TFI,
                            CurDAG->getTargetConstant(0, DL, PtrVT));
       return;
     }
-    ReplaceNode(Node, CurDAG->getMachineNode(addi, DL, PtrVT, TFI,
+    ReplaceNode(Node, CurDAG->getMachineNode(ADDI, DL, PtrVT, TFI,
                           CurDAG->getTargetConstant(0, DL, PtrVT)));
     return;
   }

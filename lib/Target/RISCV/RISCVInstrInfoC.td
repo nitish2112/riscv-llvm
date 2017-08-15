@@ -275,9 +275,11 @@ def CAND   : CS_ALU<0b11, "c.and",  and, GPRC, 0>, Requires<[HasC]>;
 def COR    : CS_ALU<0b10, "c.or" ,   or, GPRC, 0>, Requires<[HasC]>;
 def CXOR   : CS_ALU<0b01, "c.xor",  xor, GPRC, 0>, Requires<[HasC]>;
 def CSUB   : CS_ALU<0b00, "c.sub",  sub, GPRC, 0>, Requires<[HasC, IsRV32]>;
+
+let DecoderNamespace = "RISCV64_" in {
 def CSUBW  : CS_ALU<0b00, "c.subw", sub, GPRC, 1>, Requires<[HasC, IsRV64]>;
 def CADDW  : CS_ALU<0b01, "c.addw", add, GPRC, 1>, Requires<[HasC, IsRV64]>;
-
+}
 
 let rd = 0, imm = 0 in
 def CNOP : CI<0b000, 0b01, (outs), (ins), "c.nop", []>, Requires<[HasC]>;

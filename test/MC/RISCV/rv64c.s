@@ -21,3 +21,12 @@ c.sw    a3, 8(a4)
 # CHECK-INST: c.sd    a5, 24(a3)
 # CHECK: encoding: [0x9c,0xee]
 c.sd    a5, 24(a3)
+# CHECK-INST: c.addiw a5, 24
+# CHECK: encoding: [0xe1,0x27]
+c.addiw a5, 24
+# CHECK-INST: c.addw  a1, a2
+# CHECK: encoding: [0xb1,0x9d]
+c.addw a1, a2
+# CHECK-INST: c.subw  a3, a4
+# CHECK: encoding: [0x99,0x9e]
+c.subw a3, a4

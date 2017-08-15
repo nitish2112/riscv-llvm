@@ -91,7 +91,7 @@ class RISCVAsmParser : public MCTargetAsmParser {
                                uint64_t &ErrorInfo,
                                bool MatchingInlineAsm) override;
 
-  Optional<unsigned> matchCPURegisterName(StringRef Symbol) const;
+  Optional<unsigned> matchCPURegisterName(StringRef Symbol, bool Reg32Bit) const;
 
   bool ParseRegister(unsigned &RegNo, SMLoc &StartLoc, SMLoc &EndLoc) override;
 
@@ -108,11 +108,11 @@ class RISCVAsmParser : public MCTargetAsmParser {
   ParseResult<void> parseRightParen();
   ParseResult<StringRef> peekIdentifier();
   ParseResult<StringRef> parseIdentifier();
-  ParseResult<unsigned> parseRegister();
+  ParseResult<unsigned> parseRegister(bool Reg32Bit);
   ParseResult<const MCExpr*> parseExpression();
   ParseResult<const MCExpr*> parseImmediate();
 
-  bool parseOperand(OperandVector &Operands);
+  bool parseOperand(OperandVector &Operands, bool Reg32Bit);
 
 public:
   enum RISCVMatchResultTy {
@@ -563,8 +563,9 @@ bool RISCVAsmParser::MatchAndEmitInstruction(SMLoc IDLoc, unsigned &Opcode,
   llvm_unreachable("Unknown match type detected!");
 }
 
-Optional<unsigned> RISCVAsmParser::matchCPURegisterName(StringRef Name) const {
-  if (getSTI().getFeatureBits()[RISCV::FeatureRV32]) {
+Optional<unsigned> RISCVAsmParser::matchCPURegisterName(StringRef Name,
+                                                        bool Reg32Bit) const {
+  if (getSTI().getFeatureBits()[RISCV::FeatureRV32] || Reg32Bit) {
       return StringSwitch<Optional<unsigned>>(Name)
                .Cases("zero", "x0" , Optional<unsigned>(RISCV::X0_32 ))
                .Cases("ra"  , "x1" , Optional<unsigned>(RISCV::X1_32 ))
@@ -641,7 +642,7 @@ Optional<unsigned> RISCVAsmParser::matchCPURegisterName(StringRef Name) const {
 
 bool RISCVAsmParser::ParseRegister(unsigned &RegNo, SMLoc &StartLoc,
                                    SMLoc &EndLoc) {
-  const ParseResult<unsigned> Reg = parseRegister();
+  const ParseResult<unsigned> Reg = parseRegister(false);
   if (Reg) {
     RegNo = Reg->Val;
     StartLoc = Reg->StartLoc;
@@ -688,10 +689,10 @@ ParseResult<StringRef> RISCVAsmParser::parseIdentifier() {
   return Identifier;
 }
 
-ParseResult<unsigned> RISCVAsmParser::parseRegister() {
+ParseResult<unsigned> RISCVAsmParser::parseRegister(bool Reg32Bit) {
   const ParseResult<StringRef> Identifier = peekIdentifier();
   if (Identifier) {
-    const Optional<unsigned> Reg = matchCPURegisterName(Identifier->Val);
+    const Optional<unsigned> Reg = matchCPURegisterName(Identifier->Val, Reg32Bit);
     if (Reg) {
         getLexer().Lex();
         return ParseSuccess<unsigned> { *Reg, Identifier->StartLoc, Identifier->EndLoc };
@@ -749,8 +750,8 @@ ParseResult<const MCExpr*> RISCVAsmParser::parseImmediate() {
 /// Looks at a token type and creates the relevant operand
 /// from this information, adding to Operands.
 /// If operand was parsed, returns false, else true.
-bool RISCVAsmParser::parseOperand(OperandVector &Operands) {
-  const ParseResult<unsigned> Reg = parseRegister();
+bool RISCVAsmParser::parseOperand(OperandVector &Operands, bool Reg32Bit) {
+  const ParseResult<unsigned> Reg = parseRegister(Reg32Bit);
   if (Reg) {
     Operands.push_back(make_unique<RISCVOperand>(Reg->Val, Reg->StartLoc, Reg->EndLoc));
     return false;
@@ -761,7 +762,7 @@ bool RISCVAsmParser::parseOperand(OperandVector &Operands) {
     return Error(Err->ErrorLoc, Err->ErrorMsg);
 
   if (parseLeftParen()) { // offset(reg)
-    const ParseResult<unsigned> Reg = parseRegister();
+    const ParseResult<unsigned> Reg = parseRegister(Reg32Bit);
     if (!Reg)
       return Error(getLoc(), "expected register");
 
@@ -777,6 +778,25 @@ bool RISCVAsmParser::parseOperand(OperandVector &Operands) {
   }
 }
 
+static bool use32BitReg(StringRef Name) {
+  return StringSwitch<bool>(Name)
+           .Case("addiw",   true)
+           .Case("asllw",   true)
+           .Case("asrlw",   true)
+           .Case("asraw",   true)
+           .Case("subw",    true)
+           .Case("addw",    true)
+           .Case("mulw",    true)
+           .Case("divw",    true)
+           .Case("remw",    true)
+           .Case("divuw",   true)
+           .Case("remuw",   true)
+           .Case("c.addw",  true)
+           .Case("c.subw",  true)
+           .Case("c.addiw", true)
+           .Default(false);
+}
+
 bool RISCVAsmParser::ParseInstruction(ParseInstructionInfo &Info,
                                       StringRef Name, SMLoc NameLoc,
                                       OperandVector &Operands) {
@@ -789,8 +809,10 @@ bool RISCVAsmParser::ParseInstruction(ParseInstructionInfo &Info,
     return false;
   }
 
+  bool Reg32Bit = use32BitReg(Name);
+
   // Parse first operand
-  if (parseOperand(Operands))
+  if (parseOperand(Operands, Reg32Bit))
     return true;
 
   // Parse until end of statement, consuming commas between operands
@@ -799,7 +821,7 @@ bool RISCVAsmParser::ParseInstruction(ParseInstructionInfo &Info,
     getLexer().Lex();
 
     // Parse next operand
-    if (parseOperand(Operands))
+    if (parseOperand(Operands, Reg32Bit))
       return true;
   }
 

@@ -241,29 +241,38 @@ def CANDI : CB<0b100, 0b01, (outs GPRC:$rs1_wb), (ins GPRC:$rs1, simm6:$imm),
 def CMV : CR<0b1000, 0b10, (outs GPR:$rs1), (ins GPR:$rs2),
              "c.mv\t$rs1, $rs2", []>, Requires<[HasC]>;
 
-def CADD : CR<0b1001, 0b10, (outs GPR:$rs1_wb), (ins GPR:$rs1, GPR:$rs2),
+class Add_Reg<RegisterClass cls> :
+      CR<0b1001, 0b10, (outs cls:$rs1_wb), (ins cls:$rs1, cls:$rs2),
               "c.add\t$rs1, $rs2",
-              [(set GPR:$rs1_wb, (add GPR:$rs1, GPR:$rs2))]>,
-           Requires<[HasC]> {
+              [(set cls:$rs1_wb, (add cls:$rs1, cls:$rs2))]> {
   let Constraints = "$rs1 = $rs1_wb";
 }
 
-class CS_ALU<bits<2> funct2, string OpcodeStr, SDPatternOperator OpNode> :
-      CS<0b100, 0b01, (outs GPRC:$rd_wb), (ins GPRC:$rd, GPRC:$rs2),
+def CADD   : Add_Reg<GPR>, Requires<[HasC, IsRV32]>;
+
+let DecoderNamespace = "RISCV64_" in
+def CADD64 : Add_Reg<GPR64>, Requires<[HasC, IsRV64]>;
+
+
+class CS_ALU<bits<2> funct2, string OpcodeStr, SDPatternOperator OpNode,
+             RegisterClass cls, bit RV64only> :
+      CS<0b100, 0b01, (outs cls:$rd_wb), (ins cls:$rd, cls:$rs2),
          OpcodeStr#"\t$rd, $rs2",
-         [(set GPRC:$rd_wb, (OpNode GPRC:$rd, GPRC:$rs2))]> {
+         [(set cls:$rd_wb, (OpNode cls:$rd, cls:$rs2))]> {
   bits<3> rd;
   let Constraints = "$rd = $rd_wb";
-  let Inst{12} = 0b0;
+  let Inst{12} = RV64only;
   let Inst{11-10} = 0b11;
   let Inst{9-7} = rd;
   let Inst{6-5} = funct2;
 }
 
-def CAND   : CS_ALU<0b11, "c.and", and>, Requires<[HasC]>;
-def COR    : CS_ALU<0b10, "c.or" ,  or>, Requires<[HasC]>;
-def CXOR   : CS_ALU<0b01, "c.xor", xor>, Requires<[HasC]>;
-def CSUB   : CS_ALU<0b00, "c.sub", sub>, Requires<[HasC]>;
+def CAND   : CS_ALU<0b11, "c.and",  and, GPRC, 0>, Requires<[HasC]>;
+def COR    : CS_ALU<0b10, "c.or" ,   or, GPRC, 0>, Requires<[HasC]>;
+def CXOR   : CS_ALU<0b01, "c.xor",  xor, GPRC, 0>, Requires<[HasC]>;
+def CSUB   : CS_ALU<0b00, "c.sub",  sub, GPRC, 0>, Requires<[HasC, IsRV32]>;
+def CSUBW  : CS_ALU<0b00, "c.subw", sub, GPRC, 1>, Requires<[HasC, IsRV64]>;
+def CADDW  : CS_ALU<0b01, "c.addw", add, GPRC, 1>, Requires<[HasC, IsRV64]>;
 
 
 let rd = 0, imm = 0 in

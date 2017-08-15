@@ -100,10 +100,17 @@ void RISCVExpandPseudo::expandMOV32BitImm(MachineBasicBlock &MBB,
   unsigned DstReg = MI.getOperand(0).getReg();
   bool DstIsDead = MI.getOperand(0).isDead();
   const MachineOperand &MO = MI.getOperand(1);
+  int32_t Imm = MO.getImm();
+  int32_t Lo12 = SignExtend32<12>(Imm);
+  int32_t Hi20 = ((Imm + 0x800) >> 12) & 0xfffff;
   MachineInstrBuilder LO12, HI20;
 
   unsigned LO12Opc = STI->isRV32() ? RISCV::ADDI : RISCV::ADDIW;
   unsigned HI20Opc = RISCV::LUI;
+
+  if ((LO12Opc == RISCV::ADDIW) && STI->hasC() &&
+      isIntN(6, Lo12))
+    LO12Opc = RISCV::CADDIW;
 
   HI20 = BuildMI(MBB, MBBI, MI.getDebugLoc(), TII->get(HI20Opc))
     .addReg(DstReg, RegState::Define | getDeadRegState(DstIsDead));
@@ -112,9 +119,6 @@ void RISCVExpandPseudo::expandMOV32BitImm(MachineBasicBlock &MBB,
 
   switch (MO.getType()) {
   case MachineOperand::MO_Immediate: {
-    int32_t Imm = MO.getImm();
-    int32_t Lo12 = SignExtend32<12>(Imm);
-    int32_t Hi20 = ((Imm + 0x800) >> 12) & 0xfffff;
     LO12 = LO12.addImm(Lo12);
     HI20 = HI20.addImm(Hi20);
     break;

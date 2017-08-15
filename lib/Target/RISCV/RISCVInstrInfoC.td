@@ -166,6 +166,10 @@ def CADDIW : CI<0b001, 0b01, (outs GPR:$rd_wb), (ins GPR:$rd, simm6:$imm),
   let Inst{6-2} = imm{4-0};
 }
 
+// Get i32 value from GPR64 register
+def :RVCPat<(i32 (trunc GPR64:$src)),
+            (CADDIW (EXTRACT_SUBREG GPR64:$src, sub_32), 0)>;
+
 def CADDI16SP : CI<0b011, 0b01, (outs SP:$rd_wb),
                    (ins SP:$rd, simm10_4lsb0:$imm),
                    "c.addi16sp\t$rd, $imm", []>,

@@ -43,6 +43,10 @@ class RV32Pat<dag pattern, dag result> : Pat<pattern, result> {
 class RV64Pat<dag pattern, dag result> : Pat<pattern, result> {
     list<Predicate> Predicates = [IsRV64];
 }
+// RVCPat - Same as Pat<>, but requires has RISCV C ISA support.
+class RVCPat<dag pattern, dag result> : Pat<pattern, result> {
+    list<Predicate> Predicates = [HasC];
+}
 
 //===----------------------------------------------------------------------===//
 // Type Profiles.

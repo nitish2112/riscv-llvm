@@ -12,6 +12,20 @@
 //===----------------------------------------------------------------------===//
 
 let DecoderNamespace = "RISCV64_" in
+def CLWSP64: Stack_Load<0b010, "c.lwsp", GPR64, addr_sp_imm6u_word>,
+             Requires<[HasC]> {
+  let Inst{6-4} = imm{4-2};
+  let Inst{3-2} = imm{7-6};
+}
+
+let DecoderNamespace = "RISCV64_" in
+def CSWSP64: Stack_Store<0b110, "c.swsp", GPR64, addr_sp_imm6u_word>,
+             Requires<[HasC]> {
+  let Inst{12-9} = offset{5-2};
+  let Inst{8-7}  = offset{7-6};
+}
+
+let DecoderNamespace = "RISCV64_" in
 def CLDSP  : Stack_Load<0b011, "c.ldsp", GPR64, addr_sp_imm6u_double>,
              Requires<[HasC, IsRV64]> {
   let Inst{6-5} = imm{4-3};
@@ -48,6 +62,13 @@ def CSD  : Reg_Store<0b111, "c.sd", store, GPR64C, addr_reg_imm5u_double>,
 //===----------------------------------------------------------------------===//
 // Control Transfer Instructions
 //===----------------------------------------------------------------------===//
+
+let isBranch = 1, isTerminator=1, isBarrier=1,
+    DecoderNamespace = "RISCV64_" in {
+def CJ64 : CJ<0b101, 0b01, (outs), (ins simm12_lsb0:$offset),
+             "c.j\t$offset",
+	      [(br bb:$offset)]>, Requires<[HasC]>;
+}
 
 let isBranch = 1, isBarrier = 1, isTerminator = 1, isIndirectBranch = 1,
     rs2 = 0, DecoderNamespace = "RISCV64_" in {

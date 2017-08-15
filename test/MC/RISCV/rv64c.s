@@ -3,6 +3,7 @@
 # RUN: llvm-mc -filetype=obj -triple riscv64imac < %s \
 # RUN:     | llvm-objdump -d - | FileCheck -check-prefix=CHECK-INST %s
 
+.LBB0_3:
 # CHECK-INST: c.ldsp  ra, 8(sp)
 # CHECK: encoding: [0xa2,0x60]
 c.ldsp  ra, 8(sp)
@@ -30,3 +31,11 @@ c.addw a1, a2
 # CHECK-INST: c.subw  a3, a4
 # CHECK: encoding: [0x99,0x9e]
 c.subw a3, a4
+# CHECK-INST: c.lwsp  a1, 4(sp)
+# CHECK: encoding: [0x92,0x45]
+c.lwsp  a1, 4(sp)
+# CHECK-INST: c.swsp  a4, 12(sp)
+# CHECK: encoding: [0x3a,0xc6]
+c.swsp  a4, 12(sp)
+
+c.j     .LBB0_3

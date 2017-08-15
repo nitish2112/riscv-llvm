@@ -24,13 +24,6 @@ def CLWSP  : Stack_Load<0b010, "c.lwsp", GPR, addr_sp_imm6u_word>,
   let Inst{3-2} = imm{7-6};
 }
 
-let DecoderNamespace = "RISCV64_" in
-def CLDSP  : Stack_Load<0b011, "c.ldsp", GPR64, addr_sp_imm6u_double>,
-             Requires<[HasC, IsRV64]> {
-  let Inst{6-5} = imm{4-3};
-  let Inst{4-2} = imm{8-6};
-}
-
 class Stack_Store<bits<3> funct3, string OpcodeStr,
                   RegisterClass cls, DAGOperand opnd> :
       CSS<funct3, 0b10, (outs), (ins cls:$rs2, opnd:$offset),
@@ -42,13 +35,6 @@ def CSWSP  : Stack_Store<0b110, "c.swsp", GPR, addr_sp_imm6u_word>,
              Requires<[HasC]> {
   let Inst{12-9} = offset{5-2};
   let Inst{8-7}  = offset{7-6};
-}
-
-let DecoderNamespace = "RISCV64_" in
-def CSDSP  : Stack_Store<0b111, "c.sdsp", GPR64, addr_sp_imm6u_double>,
-             Requires<[HasC, IsRV64]> {
-  let Inst{12-10} = offset{5-3};
-  let Inst{9-7}   = offset{8-6};
 }
 
 //===----------------------------------------------------------------------===//
@@ -66,14 +52,6 @@ class Reg_Load<bits<3> funct3, string OpcodeStr, SDPatternOperator Op,
 def CLW  : Reg_Load<0b010, "c.lw", load, GPRC, addr_reg_imm5u_word>,
            Requires<[HasC]>;
 
-let DecoderNamespace = "RISCV64_" in
-def CLW64: Reg_Load<0b010, "c.lw", sextloadi32, GPR64C, addr_reg_imm5u_word_rv64>,
-           Requires<[HasC, IsRV64]>;
-
-let DecoderNamespace = "RISCV64_" in
-def CLD  : Reg_Load<0b011, "c.ld", load, GPR64C, addr_reg_imm5u_double>,
-           Requires<[HasC, IsRV64]>;
-
 class Reg_Store<bits<3> funct3, string OpcodeStr, SDPatternOperator Op,
                RegisterClass cls, DAGOperand opnd> :
       CS<funct3, 0b00, (outs), (ins cls:$rs2, opnd:$addr),
@@ -86,14 +64,6 @@ class Reg_Store<bits<3> funct3, string OpcodeStr, SDPatternOperator Op,
 
 def CSW  : Reg_Store<0b110, "c.sw", store, GPRC, addr_reg_imm5u_word>,
            Requires<[HasC]>;
-
-let DecoderNamespace = "RISCV64_" in
-def CSW64: Reg_Store<0b110, "c.sw", truncstorei32, GPR64C, addr_reg_imm5u_word_rv64>,
-           Requires<[HasC, IsRV64]>;
-
-let DecoderNamespace = "RISCV64_" in
-def CSD  : Reg_Store<0b111, "c.sd", store, GPR64C, addr_reg_imm5u_double>,
-           Requires<[HasC, IsRV64]>;
 
 //===----------------------------------------------------------------------===//
 // Control Transfer Instructions
@@ -118,10 +88,11 @@ def CJALR : CR<0b1001, 0b10, (outs), (ins GPR:$rs1),
                [(Call GPR:$rs1)]>, Requires<[HasC]>;
 }
 
-class Bcz<bits<3> funct3, string OpcodeStr, PatFrag CondOp> :
-      CB<funct3, 0b01, (outs), (ins GPRC:$rs1, simm9_lsb0:$imm),
+class Bcz<bits<3> funct3, string OpcodeStr, PatFrag CondOp,
+          RegisterClass cls> :
+      CB<funct3, 0b01, (outs), (ins cls:$rs1, simm9_lsb0:$imm),
          OpcodeStr#"\t$rs1, $imm",
-         [(brcond (i32 (CondOp GPRC:$rs1, 0)), bb:$imm)]> {
+         [(brcond (i32 (CondOp cls:$rs1, 0)), bb:$imm)]> {
   let isBranch = 1;
   let isTerminator = 1;
   let Inst{12} = imm{8};
@@ -131,18 +102,21 @@ class Bcz<bits<3> funct3, string OpcodeStr, PatFrag CondOp> :
   let Inst{2} = imm{5};
 }
 
-def CBEQZ   : Bcz<0b110, "c.beqz",  seteq>, Requires<[HasC]>;
-def CBNEZ   : Bcz<0b111, "c.bnez",  setne>, Requires<[HasC]>;
+def CBEQZ   : Bcz<0b110, "c.beqz",  seteq, GPRC>, Requires<[HasC]>;
+def CBNEZ   : Bcz<0b111, "c.bnez",  setne, GPRC>, Requires<[HasC]>;
 
 //===----------------------------------------------------------------------===//
 // Integer Computational Instructions
 //===----------------------------------------------------------------------===//
 
-def CLI : CI<0b010, 0b01, (outs GPR:$rd), (ins simm6:$imm),
-             "c.li\t$rd, $imm",
-             [(set GPR:$rd, simm6:$imm)]>, Requires<[HasC]> {
+class Move_Imm<RegisterClass cls, Operand ImmOpnd> :
+      CI<0b010, 0b01, (outs cls:$rd), (ins ImmOpnd:$imm),
+         "c.li\t$rd, $imm",
+         [(set cls:$rd, ImmOpnd:$imm)]> {
   let Inst{6-2} = imm{4-0};
 }
+
+def CLI   : Move_Imm<GPR, simm6>, Requires<[HasC]>;
 
 class Add_Imm<RegisterClass cls, Operand ImmOpnd> :
       CI<0b000, 0b01, (outs cls:$rd_wb), (ins cls:$rd, ImmOpnd:$imm),
@@ -153,22 +127,6 @@ class Add_Imm<RegisterClass cls, Operand ImmOpnd> :
 }
 
 def CADDI   : Add_Imm<GPR, simm6>, Requires<[HasC, IsRV32]>;
-
-let DecoderNamespace = "RISCV64_" in
-def CADDI64 : Add_Imm<GPR64, imm64sx6>, Requires<[HasC, IsRV64]>;
-
-let DecoderNamespace = "RISCV64_" in
-def CADDIW : CI<0b001, 0b01, (outs GPR:$rd_wb), (ins GPR:$rd, simm6:$imm),
-                "c.addiw\t$rd, $imm",
-                [(set GPR:$rd_wb, (add GPR:$rd, simm6:$imm))]>,
-             Requires<[HasC, IsRV64]> {
-  let Constraints = "$rd = $rd_wb";
-  let Inst{6-2} = imm{4-0};
-}
-
-// Get i32 value from GPR64 register
-def :RVCPat<(i32 (trunc GPR64:$src)),
-            (CADDIW (EXTRACT_SUBREG GPR64:$src, sub_32), 0)>;
 
 def CADDI16SP : CI<0b011, 0b01, (outs SP:$rd_wb),
                    (ins SP:$rd, simm10_4lsb0:$imm),
@@ -203,9 +161,6 @@ class Shift_left<RegisterClass cls, Operand ImmOpnd, SDPatternOperator PF> :
 
 def CSLLI   : Shift_left<GPR,   uimm5, immZExt5>, Requires<[HasC, IsRV32]>;
 
-let DecoderNamespace = "RISCV64_" in
-def CSLLI64 : Shift_left<GPR64, uimm6, immZExt6>, Requires<[HasC, IsRV64]>;
-
 class Shift_right<bits<2> funct2, string OpcodeStr, SDPatternOperator OpNode,
                   RegisterClass cls, Operand ImmOpnd, SDPatternOperator PF> :
       CB<0b100, 0b01, (outs cls:$rs1_wb), (ins cls:$rs1, ImmOpnd:$imm),
@@ -220,27 +175,21 @@ class Shift_right<bits<2> funct2, string OpcodeStr, SDPatternOperator OpNode,
 def CSRLI   : Shift_right<0b00, "c.srli",  srl, GPRC,   uimm5, immZExt5>,
               Requires<[HasC, IsRV32]>;
 
-let DecoderNamespace = "RISCV64_" in
-def CSRLI64 : Shift_right<0b00, "c.srli",  srl, GPR64C, uimm6, immZExt6>,
-              Requires<[HasC, IsRV64]>;
-
 def CSRAI   : Shift_right<0b01, "c.srai",  sra, GPRC,   uimm5, immZExt5>,
               Requires<[HasC, IsRV32]>;
 
-let DecoderNamespace = "RISCV64_" in
-def CSRAI64 : Shift_right<0b01, "c.srai",  sra, GPR64C, uimm6, immZExt6>,
-              Requires<[HasC, IsRV64]>;
 
-
-def CANDI : CB<0b100, 0b01, (outs GPRC:$rs1_wb), (ins GPRC:$rs1, simm6:$imm),
+class And_Imm<RegisterClass cls, Operand ImmOpnd> :
+      CB<0b100, 0b01, (outs cls:$rs1_wb), (ins cls:$rs1, ImmOpnd:$imm),
                "c.andi\t$rs1, $imm",
-               [(set GPRC:$rs1_wb, (and GPRC:$rs1, simm6:$imm))]>,
-            Requires<[HasC]> {
+               [(set cls:$rs1_wb, (and cls:$rs1, ImmOpnd:$imm))]> {
   let Constraints = "$rs1 = $rs1_wb";
   let Inst{12} = imm{5};
   let Inst{11-10} = 0b10;
   let Inst{6-2} = imm{4-0};
 }
+
+def CANDI  : And_Imm<GPRC, simm6>, Requires<[HasC]>;
 
 def CMV : CR<0b1000, 0b10, (outs GPR:$rs1), (ins GPR:$rs2),
              "c.mv\t$rs1, $rs2", []>, Requires<[HasC]>;
@@ -253,10 +202,6 @@ class Add_Reg<RegisterClass cls> :
 }
 
 def CADD   : Add_Reg<GPR>, Requires<[HasC, IsRV32]>;
-
-let DecoderNamespace = "RISCV64_" in
-def CADD64 : Add_Reg<GPR64>, Requires<[HasC, IsRV64]>;
-
 
 class CS_ALU<bits<2> funct2, string OpcodeStr, SDPatternOperator OpNode,
              RegisterClass cls, bit RV64only> :
@@ -275,11 +220,6 @@ def CAND   : CS_ALU<0b11, "c.and",  and, GPRC, 0>, Requires<[HasC]>;
 def COR    : CS_ALU<0b10, "c.or" ,   or, GPRC, 0>, Requires<[HasC]>;
 def CXOR   : CS_ALU<0b01, "c.xor",  xor, GPRC, 0>, Requires<[HasC]>;
 def CSUB   : CS_ALU<0b00, "c.sub",  sub, GPRC, 0>, Requires<[HasC, IsRV32]>;
-
-let DecoderNamespace = "RISCV64_" in {
-def CSUBW  : CS_ALU<0b00, "c.subw", sub, GPRC, 1>, Requires<[HasC, IsRV64]>;
-def CADDW  : CS_ALU<0b01, "c.addw", add, GPRC, 1>, Requires<[HasC, IsRV64]>;
-}
 
 let rd = 0, imm = 0 in
 def CNOP : CI<0b000, 0b01, (outs), (ins), "c.nop", []>, Requires<[HasC]>;

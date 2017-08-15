@@ -87,6 +87,7 @@ def SelectCC         : SDNode<"RISCVISD::SELECT_CC", SDT_RISCVSelectCC,
 //===----------------------------------------------------------------------===//
 
 include "RISCVInstrInfoC.td"
+include "RISCVInstrInfoRV64C.td"
 
 //===----------------------------------------------------------------------===//
 // Instruction definition

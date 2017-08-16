@@ -133,6 +133,10 @@ void RISCVInstrInfo::adjustStackPtr(unsigned SP, int64_t Amount,
       // c.addi16sp amount
       BuildMI(MBB, I, DL, get(RISCV::CADDI16SP), SP).
         addReg(SP).addImm(Amount);
+    } else if (isInt<6>(Amount) && STI.hasC()) {
+      // c.addi sp amount
+      BuildMI(MBB, I, DL, get(RISCV::CADDI), SP).
+        addReg(SP).addImm(Amount);
     } else {
       // addi sp, sp, amount
       BuildMI(MBB, I, DL, get(RISCV::ADDI), SP).
@@ -155,14 +159,21 @@ void RISCVInstrInfo::loadImmediate(unsigned ScratchReg,
     return;
 
   int64_t LuiImm = ((Imm + 0x800) >> 12) & 0xfffff;
+  int64_t LowImm = SignExtend64<12>(Imm);
 
-  if ((LuiImm != 0) && (SignExtend64<12>(Imm) == 0)) {
+  if ((LuiImm != 0) && (LowImm == 0)) {
     BuildMI(MBB, II, DL, get(RISCV::LUI), ScratchReg)
       .addImm(LuiImm);
-  } else if ((LuiImm == 0) && (SignExtend64<12>(Imm) != 0)) {
-    BuildMI(MBB, II, DL, get(RISCV::ADDI), ScratchReg)
-      .addReg(RISCV::X0_32)
-      .addImm(SignExtend64<12>(Imm));
+  } else if ((LuiImm == 0) && (LowImm != 0)) {
+    if (isInt<6>(LowImm) && STI.hasC()) {
+      // c.li
+      BuildMI(MBB, II, DL, get(RISCV::CLI), ScratchReg).
+        addImm(LowImm);
+    } else {
+      BuildMI(MBB, II, DL, get(RISCV::ADDI), ScratchReg).
+        addReg(RISCV::X0_32).
+        addImm(LowImm);
+    }
   } else {
     // Create TempReg here because Virtual register expect as SSA form.
     // So ADDI ScratchReg, ScratchReg, Imm is not allow.
@@ -173,7 +184,7 @@ void RISCVInstrInfo::loadImmediate(unsigned ScratchReg,
 
     BuildMI(MBB, II, DL, get(RISCV::ADDI), ScratchReg)
       .addReg(TempReg, getKillRegState (true))
-      .addImm(SignExtend64<12>(Imm));
+      .addImm(LowImm);
   }
 }
 

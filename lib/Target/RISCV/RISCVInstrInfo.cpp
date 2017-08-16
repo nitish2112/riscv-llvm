@@ -75,11 +75,11 @@ void RISCVInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
 void RISCVInstrInfo::getLoadStoreOpcodes(const TargetRegisterClass *RC,
                                          unsigned &LoadOpcode,
                                          unsigned &StoreOpcode) const {
-  if (RC == &RISCV::GPRRegClass || RC == &RISCV::GPRCRegClass ||
-      RC == &RISCV::SPRegClass) {
+  if (RC == &RISCV::GPRRegClass || RC == &RISCV::GPRCRegClass) {
     LoadOpcode = RISCV::LW;
     StoreOpcode = RISCV::SW;
-  } else if (RC == &RISCV::GPR64RegClass) {
+  } else if (RC == &RISCV::GPR64RegClass ||
+             RC == &RISCV::GPR64CRegClass) {
     LoadOpcode = RISCV::LD;
     StoreOpcode = RISCV::SD;
   } else

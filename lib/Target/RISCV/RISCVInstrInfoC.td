@@ -80,6 +80,13 @@ class Jump_Imm : CJ<0b101, 0b01, (outs), (ins simm12_lsb0:$offset),
 
 def CJ : Jump_Imm, Requires<[HasC]>;
 
+class Call_Imm : CJ<0b001, 0b01, (outs), (ins simm12_lsb0:$offset),
+                    "c.jal\t$offset", []> {
+  let isCall = 1;
+}
+
+def CJAL : Call_Imm, Requires<[HasC, IsRV32]>;
+
 class Jump_Reg<RegisterClass cls> :
       CR<0b1000, 0b10, (outs), (ins cls:$rs1),
          "c.jr\t$rs1",

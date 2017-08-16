@@ -229,10 +229,14 @@ getExprOpValue(const MCInst &MI, const MCExpr *Expr,
       FixupKind = RISCV::fixup_riscv_jal;
     } else if (MIFrm == RISCVII::FrmSB) {
       FixupKind = RISCV::fixup_riscv_branch;
-    } else if (Desc.getOpcode() == RISCV::CJ) {
+    } else if (Desc.getOpcode() == RISCV::CJ ||
+               Desc.getOpcode() == RISCV::CJ64 ||
+               Desc.getOpcode() == RISCV::CJAL) {
       FixupKind = RISCV::fixup_riscv_rvc_jump;
     } else if (Desc.getOpcode() == RISCV::CBEQZ ||
-               Desc.getOpcode() == RISCV::CBNEZ) {
+               Desc.getOpcode() == RISCV::CBNEZ ||
+               Desc.getOpcode() == RISCV::CBEQZ64 ||
+               Desc.getOpcode() == RISCV::CBNEZ64) {
       FixupKind = RISCV::fixup_riscv_rvc_branch;
     } else {
       llvm_unreachable("Unhandled expression!");

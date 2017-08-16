@@ -88,3 +88,9 @@ c.nop
 # CHECK-INST: c.ebreak
 # CHECK: encoding: [0x02,0x90]
 c.ebreak
+# CHECK: encoding: [0bAAAAAA01,0b001AAAAA]
+# CHECK:   fixup A - offset: 0, value: func1, kind: fixup_riscv_rvc_jump
+c.jal   func1
+# CHECK-INST: c.jal   256
+# CHECK: encoding: [0x41,0x20]
+c.jal   256

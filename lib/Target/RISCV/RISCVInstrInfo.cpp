@@ -51,9 +51,14 @@ void RISCVInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
         .addReg(SourceRegister, getKillRegState(KillSource))
         .addImm(0);
     } else {
-      BuildMI(MBB, Position, DL, get(RISCV::ADDI64), DestinationRegister)
-        .addReg(SourceRegister, getKillRegState(KillSource))
-        .addImm(0);
+      if (STI.hasC()) {
+        BuildMI(MBB, Position, DL, get(RISCV::CMV64), DestinationRegister)
+          .addReg(SourceRegister, getKillRegState(KillSource));
+      } else {
+        BuildMI(MBB, Position, DL, get(RISCV::ADDI64), DestinationRegister)
+          .addReg(SourceRegister, getKillRegState(KillSource))
+          .addImm(0);
+      }
     }
   } else {
     if (STI.hasC()) {

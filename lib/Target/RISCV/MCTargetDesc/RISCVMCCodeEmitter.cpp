@@ -259,16 +259,20 @@ bool RISCVMCCodeEmitter::isLoad(unsigned Opc) const {
 }
 
 bool RISCVMCCodeEmitter::useGPRC(unsigned Opc) const {
-  if (Opc == RISCV::CLW || Opc == RISCV::CSW ||
-      Opc == RISCV::CBEQZ || Opc == RISCV::CBNEZ ||
+  if (Opc == RISCV::CLW       || Opc == RISCV::CSW ||
+      Opc == RISCV::CBEQZ     || Opc == RISCV::CBNEZ ||
       Opc == RISCV::CADDI4SPN || Opc == RISCV::CSRLI ||
-      Opc == RISCV::CSRAI || Opc == RISCV::CANDI ||
-      Opc == RISCV::CAND || Opc == RISCV::COR ||
-      Opc == RISCV::CSUB || Opc == RISCV::CXOR ||
-      Opc == RISCV::CLW64 || Opc == RISCV::CLD ||
-      Opc == RISCV::CSW64 || Opc == RISCV::CSD ||
-      Opc == RISCV::CSRLI64 || Opc == RISCV::CSRAI64 ||
-      Opc == RISCV::CSUBW || Opc == RISCV::CADDW)
+      Opc == RISCV::CSRAI     || Opc == RISCV::CANDI ||
+      Opc == RISCV::CAND      || Opc == RISCV::COR ||
+      Opc == RISCV::CSUB      || Opc == RISCV::CXOR ||
+      Opc == RISCV::CLW64     || Opc == RISCV::CLD ||
+      Opc == RISCV::CSW64     || Opc == RISCV::CSD ||
+      Opc == RISCV::CSRLI64   || Opc == RISCV::CSRAI64 ||
+      Opc == RISCV::CBEQZ64   || Opc == RISCV::CBNEZ64 ||
+      Opc == RISCV::CSUBW     || Opc == RISCV::CADDW ||
+      Opc == RISCV::CAND64    || Opc == RISCV::COR64 ||
+      Opc == RISCV::CSUB64    || Opc == RISCV::CXOR64 ||
+      Opc == RISCV::CANDI64   || Opc == RISCV::CADDI4SPN64)
     return true;
   return false;
 }

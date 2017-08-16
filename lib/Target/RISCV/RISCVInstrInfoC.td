@@ -53,7 +53,7 @@ def CLW  : Reg_Load<0b010, "c.lw", load, GPRC, addr_reg_imm5u_word>,
            Requires<[HasC]>;
 
 class Reg_Store<bits<3> funct3, string OpcodeStr, SDPatternOperator Op,
-               RegisterClass cls, DAGOperand opnd> :
+                RegisterClass cls, DAGOperand opnd> :
       CS<funct3, 0b00, (outs), (ins cls:$rs2, opnd:$addr),
          OpcodeStr#"\t$rs2, $addr",
          [(Op cls:$rs2, opnd:$addr)]> {
@@ -69,18 +69,29 @@ def CSW  : Reg_Store<0b110, "c.sw", store, GPRC, addr_reg_imm5u_word>,
 // Control Transfer Instructions
 //===----------------------------------------------------------------------===//
 
-let isBranch = 1, isTerminator=1, isBarrier=1 in {
-def CJ : CJ<0b101, 0b01, (outs), (ins simm12_lsb0:$offset),
-            "c.j\t$offset",
-	    [(br bb:$offset)]>, Requires<[HasC]>;
+
+class Jump_Imm : CJ<0b101, 0b01, (outs), (ins simm12_lsb0:$offset),
+                    "c.j\t$offset",
+                    [(br bb:$offset)]> {
+  let isBranch = 1;
+  let isTerminator=1;
+  let isBarrier=1;
 }
 
-let isBranch = 1, isBarrier = 1, isTerminator = 1, isIndirectBranch = 1,
-    rs2 = 0 in {
-def CJR : CR<0b1000, 0b10, (outs), (ins GPR:$rs1),
-               "c.jr\t$rs1",
-               [(brind GPR:$rs1)]>, Requires<[HasC]>;
+def CJ : Jump_Imm, Requires<[HasC]>;
+
+class Jump_Reg<RegisterClass cls> :
+      CR<0b1000, 0b10, (outs), (ins cls:$rs1),
+         "c.jr\t$rs1",
+         [(brind cls:$rs1)]> {
+  let isBranch = 1;
+  let isBarrier = 1;
+  let isTerminator = 1;
+  let isIndirectBranch = 1;
+  let rs2 = 0;
 }
+
+def CJR : Jump_Reg<GPR>, Requires<[HasC]>;
 
 let isCall=1, Defs=[X1_32], rs2 = 0 in {
 def CJALR : CR<0b1001, 0b10, (outs), (ins GPR:$rs1),
@@ -128,10 +139,10 @@ class Add_Imm<RegisterClass cls, Operand ImmOpnd> :
 
 def CADDI   : Add_Imm<GPR, simm6>, Requires<[HasC, IsRV32]>;
 
-def CADDI16SP : CI<0b011, 0b01, (outs SP:$rd_wb),
-                   (ins SP:$rd, simm10_4lsb0:$imm),
-                   "c.addi16sp\t$rd, $imm", []>,
-                Requires<[HasC]> {
+class ADDI_16SP<RegisterClass cls> :
+      CI<0b011, 0b01, (outs cls:$rd_wb),
+         (ins cls:$rd, simm10_4lsb0:$imm),
+         "c.addi16sp\t$rd, $imm", []> {
   let Constraints = "$rd = $rd_wb";
   let Inst{12} = imm{9};
   let Inst{6} = imm{4};
@@ -140,15 +151,19 @@ def CADDI16SP : CI<0b011, 0b01, (outs SP:$rd_wb),
   let Inst{2} = imm{5};
 }
 
-def CADDI4SPN : CIW<0b000, 0b00, (outs GPRC:$rd),
-                    (ins uimm10_2lsb0:$imm),
-                    "c.addi4spn\t$rd, sp, $imm", []>,
-                Requires<[HasC]> {
+def CADDI16SP : ADDI_16SP<SP>, Requires<[HasC]>;
+
+class ADDI_4SPN<RegisterClass cls> :
+      CIW<0b000, 0b00, (outs cls:$rd),
+          (ins uimm10_2lsb0:$imm),
+          "c.addi4spn\t$rd, sp, $imm", []> {
   let Inst{12-11} = imm{5-4};
   let Inst{10-7} = imm{9-6};
   let Inst{6} = imm{2};
   let Inst{5} = imm{3};
 }
+
+def CADDI4SPN : ADDI_4SPN<GPRC>, Requires<[HasC]>;
 
 class Shift_left<RegisterClass cls, Operand ImmOpnd, SDPatternOperator PF> :
       CI<0b000, 0b10, (outs cls:$rd_wb),
@@ -191,8 +206,11 @@ class And_Imm<RegisterClass cls, Operand ImmOpnd> :
 
 def CANDI  : And_Imm<GPRC, simm6>, Requires<[HasC]>;
 
-def CMV : CR<0b1000, 0b10, (outs GPR:$rs1), (ins GPR:$rs2),
-             "c.mv\t$rs1, $rs2", []>, Requires<[HasC]>;
+class Move_Reg<RegisterClass cls> :
+      CR<0b1000, 0b10, (outs cls:$rs1), (ins cls:$rs2),
+         "c.mv\t$rs1, $rs2", []>;
+
+def CMV    : Move_Reg<GPR>, Requires<[HasC]>;
 
 class Add_Reg<RegisterClass cls> :
       CR<0b1001, 0b10, (outs cls:$rs1_wb), (ins cls:$rs1, cls:$rs2),

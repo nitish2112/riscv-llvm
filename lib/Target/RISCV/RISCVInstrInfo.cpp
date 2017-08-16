@@ -225,7 +225,8 @@ RISCVInstrInfo::basePlusImmediateStripOffset(unsigned BaseReg, int64_t &Imm,
 static bool isUncondBranch(unsigned Opcode) {
   if (Opcode == RISCV::PseudoBR ||
       Opcode == RISCV::PseudoBR64 ||
-      Opcode == RISCV::CJ)
+      Opcode == RISCV::CJ ||
+      Opcode == RISCV::CJ64)
     return true;
   return false;
 }
@@ -233,7 +234,8 @@ static bool isUncondBranch(unsigned Opcode) {
 static bool isIndirectBranch(unsigned Opcode) {
   if (Opcode == RISCV::PseudoBRIND ||
       Opcode == RISCV::PseudoBRIND64 ||
-      Opcode == RISCV::CJR)
+      Opcode == RISCV::CJR ||
+      Opcode == RISCV::CJR64)
     return true;
   return false;
 }
@@ -253,7 +255,9 @@ static bool isCondBranch(unsigned Opcode) {
       Opcode == RISCV::BLTU64 ||
       Opcode == RISCV::BGEU64 ||
       Opcode == RISCV::CBEQZ ||
-      Opcode == RISCV::CBNEZ)
+      Opcode == RISCV::CBNEZ ||
+      Opcode == RISCV::CBEQZ64 ||
+      Opcode == RISCV::CBNEZ64)
     return true;
   return false;
 }
@@ -455,6 +459,8 @@ unsigned RISCVInstrInfo::getOppositeBranchOpc(unsigned Opc) const {
   case RISCV::BGEU64:  return RISCV::BLTU64;
   case RISCV::CBEQZ:   return RISCV::CBNEZ;
   case RISCV::CBNEZ:   return RISCV::CBEQZ;
+  case RISCV::CBEQZ64: return RISCV::CBNEZ64;
+  case RISCV::CBNEZ64: return RISCV::CBEQZ64;
   }
 }
 
@@ -472,8 +478,11 @@ static unsigned getBranchDisplacementBits(unsigned Opc) {
     llvm_unreachable("unexpected opcode!");
   case RISCV::CBEQZ:
   case RISCV::CBNEZ:
+  case RISCV::CBEQZ64:
+  case RISCV::CBNEZ64:
     return 9;
   case RISCV::CJ:
+  case RISCV::CJ64:
     return 12;
   case RISCV::BEQ:
   case RISCV::BNE:
@@ -508,6 +517,7 @@ MachineBasicBlock *RISCVInstrInfo::getBranchDestBlock(
   default:
     llvm_unreachable("unexpected opcode!");
   case RISCV::CJ:
+  case RISCV::CJ64:
   case RISCV::PseudoBR:
   case RISCV::PseudoBR64:
     return MI.getOperand(0).getMBB();
@@ -515,6 +525,8 @@ MachineBasicBlock *RISCVInstrInfo::getBranchDestBlock(
   case RISCV::JAL64:
   case RISCV::CBEQZ:
   case RISCV::CBNEZ:
+  case RISCV::CBEQZ64:
+  case RISCV::CBNEZ64:
     return MI.getOperand(1).getMBB();
   case RISCV::BEQ:
   case RISCV::BNE:

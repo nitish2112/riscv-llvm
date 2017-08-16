@@ -63,20 +63,6 @@ def CSD  : Reg_Store<0b111, "c.sd", store, GPR64C, addr_reg_imm5u_double>,
 // Control Transfer Instructions
 //===----------------------------------------------------------------------===//
 
-let isBranch = 1, isTerminator=1, isBarrier=1,
-    DecoderNamespace = "RISCV64_" in {
-def CJ64 : CJ<0b101, 0b01, (outs), (ins simm12_lsb0:$offset),
-             "c.j\t$offset",
-	      [(br bb:$offset)]>, Requires<[HasC]>;
-}
-
-let isBranch = 1, isBarrier = 1, isTerminator = 1, isIndirectBranch = 1,
-    rs2 = 0, DecoderNamespace = "RISCV64_" in {
-def CJR64 : CR<0b1000, 0b10, (outs), (ins GPR64:$rs1),
-               "c.jr\t$rs1",
-               [(brind GPR64:$rs1)]>, Requires<[HasC]>;
-}
-
 let isCall=1, Defs=[X1_64], rs2 = 0, DecoderNamespace = "RISCV64_" in {
 def CJALR64 : CR<0b1001, 0b10, (outs), (ins GPR64:$rs1),
                  "c.jalr\t$rs1",
@@ -84,6 +70,8 @@ def CJALR64 : CR<0b1001, 0b10, (outs), (ins GPR64:$rs1),
 }
 
 let DecoderNamespace = "RISCV64_" in {
+def CJ64  : Jump_Imm, Requires<[HasC]>;
+def CJR64 : Jump_Reg<GPR64>, Requires<[HasC]>;
 def CBEQZ64 : Bcz<0b110, "c.beqz",  seteq, GPR64C>, Requires<[HasC]>;
 def CBNEZ64 : Bcz<0b111, "c.bnez",  setne, GPR64C>, Requires<[HasC]>;
 }
@@ -91,12 +79,6 @@ def CBNEZ64 : Bcz<0b111, "c.bnez",  setne, GPR64C>, Requires<[HasC]>;
 //===----------------------------------------------------------------------===//
 // Integer Computational Instructions
 //===----------------------------------------------------------------------===//
-
-let DecoderNamespace = "RISCV64_" in
-def CLI64   : Move_Imm<GPR64, imm64sx6>, Requires<[HasC]>;
-
-let DecoderNamespace = "RISCV64_" in
-def CADDI64 : Add_Imm<GPR64, imm64sx6>, Requires<[HasC, IsRV64]>;
 
 let DecoderNamespace = "RISCV64_" in
 def CADDIW : CI<0b001, 0b01, (outs GPR:$rd_wb), (ins GPR:$rd, simm6:$imm),
@@ -111,20 +93,25 @@ def CADDIW : CI<0b001, 0b01, (outs GPR:$rd_wb), (ins GPR:$rd, simm6:$imm),
 def :RVCPat<(i32 (trunc GPR64:$src)),
             (CADDIW (EXTRACT_SUBREG GPR64:$src, sub_32), 0)>;
 
-let DecoderNamespace = "RISCV64_" in
-def CSLLI64 : Shift_left<GPR64, uimm6, immZExt6>, Requires<[HasC, IsRV64]>;
-
-let DecoderNamespace = "RISCV64_" in
-def CSRLI64 : Shift_right<0b00, "c.srli",  srl, GPR64C, uimm6, immZExt6>,
-              Requires<[HasC, IsRV64]>;
-
-let DecoderNamespace = "RISCV64_" in
-def CSRAI64 : Shift_right<0b01, "c.srai",  sra, GPR64C, uimm6, immZExt6>,
-              Requires<[HasC, IsRV64]>;
-
 let DecoderNamespace = "RISCV64_" in {
+def CLI64    : Move_Imm<GPR64, imm64sx6>, Requires<[HasC]>;
+def CADDI64  : Add_Imm<GPR64, imm64sx6>, Requires<[HasC, IsRV64]>;
+
+def CADDI16SP64 : ADDI_16SP<SP64>, Requires<[HasC]>;
+def CADDI4SPN64 : ADDI_4SPN<GPR64C>, Requires<[HasC]>;
+
+def CSLLI64  : Shift_left<GPR64, uimm6, immZExt6>, Requires<[HasC, IsRV64]>;
+
+def CSRLI64  : Shift_right<0b00, "c.srli",  srl, GPR64C, uimm6, immZExt6>,
+               Requires<[HasC, IsRV64]>;
+
+def CSRAI64  : Shift_right<0b01, "c.srai",  sra, GPR64C, uimm6, immZExt6>,
+               Requires<[HasC, IsRV64]>;
+
 def CANDI64  : And_Imm<GPR64C, imm64sx6>, Requires<[HasC]>;
 def CADD64   : Add_Reg<GPR64>, Requires<[HasC, IsRV64]>;
+
+def CMV64    : Move_Reg<GPR64>, Requires<[HasC]>;
 
 def CAND64   : CS_ALU<0b11, "c.and",  and, GPR64C, 0>, Requires<[HasC]>;
 def COR64    : CS_ALU<0b10, "c.or" ,   or, GPR64C, 0>, Requires<[HasC]>;
@@ -133,3 +120,9 @@ def CSUB64   : CS_ALU<0b00, "c.sub",  sub, GPR64C, 0>, Requires<[HasC]>;
 def CSUBW    : CS_ALU<0b00, "c.subw", sub, GPRC, 1>, Requires<[HasC, IsRV64]>;
 def CADDW    : CS_ALU<0b01, "c.addw", add, GPRC, 1>, Requires<[HasC, IsRV64]>;
 }
+
+let rd = 0, imm = 0, DecoderNamespace = "RISCV64_" in
+def CNOP64 : CI<0b000, 0b01, (outs), (ins), "c.nop", []>, Requires<[HasC]>;
+
+let rs1 = 0, rs2 = 0, DecoderNamespace = "RISCV64_" in
+def CEBREAK64 : CR<0b1001, 0b10, (outs), (ins), "c.ebreak", []>, Requires<[HasC]>;

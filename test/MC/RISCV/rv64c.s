@@ -109,3 +109,6 @@ c.nop
 # CHECK-INST: c.ebreak
 # CHECK: encoding: [0x02,0x90]
 c.ebreak
+# CHECK-INST: c.lui   s0, 30
+# CHECK: encoding: [0x79,0x64]
+c.lui   s0, 30

@@ -136,6 +136,14 @@ class Move_Imm<RegisterClass cls, Operand ImmOpnd> :
 
 def CLI   : Move_Imm<GPR, simm6>, Requires<[HasC]>;
 
+class Move_High<RegisterClass cls, Operand ImmOpnd> :
+      CI<0b011, 0b01, (outs cls:$rd), (ins ImmOpnd:$imm),
+         "c.lui\t$rd, $imm", []> {
+  let Inst{6-2} = imm{4-0};
+}
+
+def CLUI   : Move_High<GPR, uimm6>, Requires<[HasC]>;
+
 class Add_Imm<RegisterClass cls, Operand ImmOpnd> :
       CI<0b000, 0b01, (outs cls:$rd_wb), (ins cls:$rd, ImmOpnd:$imm),
          "c.addi\t$rd, $imm",
@@ -152,6 +160,7 @@ class ADDI_16SP<RegisterClass cls> :
          "c.addi16sp\t$rd, $imm", []> {
   let Constraints = "$rd = $rd_wb";
   let Inst{12} = imm{9};
+  let Inst{11-7} = 2;
   let Inst{6} = imm{4};
   let Inst{5} = imm{6};
   let Inst{4-3} = imm{8-7};

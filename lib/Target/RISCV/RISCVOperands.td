@@ -180,6 +180,13 @@ def imm64sx12 : Immediate<i64, [{
   let DecoderMethod = "decodeSImmOperand<12>";
 }
 
+def imm64sxu6 : Immediate<i64, [{
+  return isUInt<6>(N->getSExtValue());
+}], NOOP_SDNodeXForm, "U6Imm"> {
+  let EncoderMethod = "getImmOpValue";
+  let DecoderMethod = "decodeUImmOperand<6>";
+}
+
 def imm64sxu20 : Immediate<i64, [{
   return isUInt<20>(N->getSExtValue());
 }], NOOP_SDNodeXForm, "U20Imm"> {

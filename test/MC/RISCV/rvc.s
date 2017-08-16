@@ -94,3 +94,6 @@ c.jal   func1
 # CHECK-INST: c.jal   256
 # CHECK: encoding: [0x41,0x20]
 c.jal   256
+# CHECK-INST: c.lui   s0, 30
+# CHECK: encoding: [0x79,0x64]
+c.lui   s0, 30

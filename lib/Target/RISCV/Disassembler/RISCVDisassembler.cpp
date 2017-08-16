@@ -107,18 +107,6 @@ static DecodeStatus DecodeGPR64RegisterClass(MCInst &Inst,
   return MCDisassembler::Success;
 }
 
-static DecodeStatus DecodeSPRegisterClass(MCInst &Inst, uint64_t RegNo,
-                                          uint64_t Address,
-                                          const void *Decoder) {
-   return DecodeGPRRegisterClass(Inst, RegNo, Address, Decoder);
-}
-
-static DecodeStatus DecodeSP64RegisterClass(MCInst &Inst, uint64_t RegNo,
-                                          uint64_t Address,
-                                          const void *Decoder) {
-   return DecodeGPR64RegisterClass(Inst, RegNo, Address, Decoder);
-}
-
 static DecodeStatus DecodeGPRCRegisterClass(MCInst &Inst, uint64_t RegNo,
                                             uint64_t Address,
                                             const void *Decoder) {
@@ -150,6 +138,16 @@ static void addImplySP(MCInst &Inst, int64_t Address, const void *Decoder) {
     else
       DecodeGPRRegisterClass(Inst, 2, Address, Decoder);
   }
+  if ((Inst.getOpcode() == RISCV::CADDI16SP) ||
+      (Inst.getOpcode() == RISCV::CADDI16SP64)) {
+    if (static_cast<const RISCVDisassembler *>(Decoder)->isRV64()) {
+      DecodeGPR64RegisterClass(Inst, 2, Address, Decoder);
+      DecodeGPR64RegisterClass(Inst, 2, Address, Decoder);
+    } else {
+      DecodeGPRRegisterClass(Inst, 2, Address, Decoder);
+      DecodeGPRRegisterClass(Inst, 2, Address, Decoder);
+    }
+  }
 }
 
 template <unsigned N>
@@ -164,6 +162,7 @@ static DecodeStatus decodeUImmOperand(MCInst &Inst, uint64_t Imm,
 template <unsigned N>
 static DecodeStatus decodeSImmOperand(MCInst &Inst, uint64_t Imm,
                                       int64_t Address, const void *Decoder) {
+  addImplySP(Inst, Address, Decoder);
   assert(isUInt<N>(Imm) && "Invalid immediate");
   // Sign-extend the number in the bottom N bits of Imm
   Inst.addOperand(MCOperand::createImm(SignExtend64<N>(Imm)));

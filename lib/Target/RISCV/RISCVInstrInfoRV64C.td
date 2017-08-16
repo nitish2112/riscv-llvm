@@ -95,6 +95,7 @@ def :RVCPat<(i32 (trunc GPR64:$src)),
 
 let DecoderNamespace = "RISCV64_" in {
 def CLI64    : Move_Imm<GPR64, imm64sx6>, Requires<[HasC]>;
+def CLUI64   : Move_High<GPR64, imm64sxu6>, Requires<[HasC]>;
 def CADDI64  : Add_Imm<GPR64, imm64sx6>, Requires<[HasC, IsRV64]>;
 
 def CADDI16SP64 : ADDI_16SP<SP64>, Requires<[HasC]>;

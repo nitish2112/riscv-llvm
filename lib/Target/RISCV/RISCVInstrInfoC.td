@@ -153,17 +153,18 @@ class ADDI_16SP<RegisterClass cls> :
 
 def CADDI16SP : ADDI_16SP<SP>, Requires<[HasC]>;
 
-class ADDI_4SPN<RegisterClass cls> :
+class ADDI_4SPN<RegisterClass cls, RegisterClass spcls> :
       CIW<0b000, 0b00, (outs cls:$rd),
-          (ins uimm10_2lsb0:$imm),
-          "c.addi4spn\t$rd, sp, $imm", []> {
+          (ins spcls:$rs1, uimm10_2lsb0:$imm),
+          "c.addi4spn\t$rd, $rs1, $imm", []> {
+  bits<5> rs1;
   let Inst{12-11} = imm{5-4};
   let Inst{10-7} = imm{9-6};
   let Inst{6} = imm{2};
   let Inst{5} = imm{3};
 }
 
-def CADDI4SPN : ADDI_4SPN<GPRC>, Requires<[HasC]>;
+def CADDI4SPN : ADDI_4SPN<GPRC, SP>, Requires<[HasC]>;
 
 class Shift_left<RegisterClass cls, Operand ImmOpnd, SDPatternOperator PF> :
       CI<0b000, 0b10, (outs cls:$rd_wb),

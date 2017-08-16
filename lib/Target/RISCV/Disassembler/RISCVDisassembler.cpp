@@ -141,9 +141,21 @@ static DecodeStatus DecodeGPR64CRegisterClass(MCInst &Inst, uint64_t RegNo,
    return MCDisassembler::Success;
 }
 
+// Add Imply SP operand for c.addi4spn instruction
+static void addImplySP(MCInst &Inst, int64_t Address, const void *Decoder) {
+  if ((Inst.getOpcode() == RISCV::CADDI4SPN) ||
+      (Inst.getOpcode() == RISCV::CADDI4SPN64)) {
+    if (static_cast<const RISCVDisassembler *>(Decoder)->isRV64())
+      DecodeGPR64RegisterClass(Inst, 2, Address, Decoder);
+    else
+      DecodeGPRRegisterClass(Inst, 2, Address, Decoder);
+  }
+}
+
 template <unsigned N>
 static DecodeStatus decodeUImmOperand(MCInst &Inst, uint64_t Imm,
                                       int64_t Address, const void *Decoder) {
+  addImplySP(Inst, Address, Decoder);
   assert(isUInt<N>(Imm) && "Invalid immediate");
   Inst.addOperand(MCOperand::createImm(Imm));
   return MCDisassembler::Success;

@@ -282,8 +282,9 @@ void RISCVRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
     return;
   } else if (Subtarget.hasC() && FitCADDI4SPN(MI, BasePtr, Offset)) {
     MI.setDesc(TII.get(RISCV::CADDI4SPN));
-    MI.getOperand(FIOperandNum).ChangeToImmediate(Offset);
-    MI.RemoveOperand(FIOperandNum + 1);
+    MI.getOperand(FIOperandNum).ChangeToRegister(BasePtr, false);
+    MI.getOperand(FIOperandNum + 1).ChangeToImmediate(Offset);
+    return;
   // If the offset fits in an immediate, then directly encode it
   } else if (isInt<12>(Offset)) {
     MI.getOperand(FIOperandNum).ChangeToRegister(BasePtr, false);

@@ -63,7 +63,10 @@ def : ProcessorModel<"generic-rv32", NoSchedModel, [FeatureRV32]>;
 def : ProcessorModel<"generic-rv64", NoSchedModel, [FeatureRV64]>;
 
 def : ProcessorModel<"rv32ema", NoSchedModel, [FeatureRV32, FeatureE,
-                                               FeatureM,FeatureA]>;
+                                               FeatureM, FeatureA]>;
+
+def : ProcessorModel<"rv32emac", NoSchedModel, [FeatureRV32, FeatureE,
+                                                FeatureM, FeatureA, FeatureC]>;
 
 def : ProcessorModel<"rv32imac", NoSchedModel, [FeatureRV32, FeatureM,
                                                 FeatureA, FeatureC]>;

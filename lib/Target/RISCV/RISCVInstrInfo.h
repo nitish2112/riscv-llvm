@@ -26,7 +26,8 @@ class RISCVSubtarget;
 class RISCVInstrInfo : public RISCVGenInstrInfo {
   const RISCVRegisterInfo RI;
   RISCVSubtarget &STI;
-  int UncondBranch;
+  unsigned UncondBranch, LUI, CLUI, ADDI, CMV;
+  unsigned CADDI16SP, CADDI, ADD, CLI;
 
 public:
   explicit RISCVInstrInfo(RISCVSubtarget &STI);

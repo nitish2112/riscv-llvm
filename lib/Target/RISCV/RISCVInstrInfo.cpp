@@ -31,12 +31,30 @@ using namespace llvm;
 RISCVInstrInfo::RISCVInstrInfo(RISCVSubtarget &sti)
   : RISCVGenInstrInfo(RISCV::ADJCALLSTACKDOWN, RISCV::ADJCALLSTACKUP),
     RI(sti), STI(sti) {
+  if (sti.isRV32()) {
+    UncondBranch = RISCV::PseudoBR;
+    CADDI16SP = RISCV::CADDI16SP;
+    CADDI = RISCV::CADDI;
+    CLUI = RISCV::CLUI;
+    ADDI = RISCV::ADDI;
+    ADD = RISCV::ADD;
+    LUI = RISCV::LUI;
+    CMV = RISCV::CMV;
+    CLI = RISCV::CLI;
+  } else {
+    UncondBranch = RISCV::PseudoBR64;
+    CADDI16SP = RISCV::CADDI16SP64;
+    CADDI = RISCV::CADDI64;
+    CLUI = RISCV::CLUI64;
+    ADDI = RISCV::ADDI64;
+    ADD = RISCV::ADD64;
+    LUI = RISCV::LUI64;
+    CMV = RISCV::CMV64;
+    CLI = RISCV::CLI64;
+  }
+
   if (sti.hasC())
     UncondBranch = RISCV::CJ;
-  else if (sti.isRV32())
-    UncondBranch = RISCV::PseudoBR;
-  else
-    UncondBranch = RISCV::PseudoBR64;
 }
 
 void RISCVInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
@@ -45,30 +63,20 @@ void RISCVInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                                  unsigned DestinationRegister,
                                  unsigned SourceRegister,
                                  bool KillSource) const {
-  if (STI.isRV64()) {
-    if (RISCV::GPRRegClass.contains(DestinationRegister)) {
-      BuildMI(MBB, Position, DL, get(RISCV::ADDIW), DestinationRegister)
-        .addReg(SourceRegister, getKillRegState(KillSource))
-        .addImm(0);
-    } else {
-      if (STI.hasC()) {
-        BuildMI(MBB, Position, DL, get(RISCV::CMV64), DestinationRegister)
-          .addReg(SourceRegister, getKillRegState(KillSource));
-      } else {
-        BuildMI(MBB, Position, DL, get(RISCV::ADDI64), DestinationRegister)
-          .addReg(SourceRegister, getKillRegState(KillSource))
-          .addImm(0);
-      }
-    }
+  if (STI.isRV64() && RISCV::GPRRegClass.contains(DestinationRegister)) {
+    BuildMI(MBB, Position, DL, get(RISCV::ADDIW), DestinationRegister)
+      .addReg(SourceRegister, getKillRegState(KillSource))
+      .addImm(0);
+    return;
+  }
+
+  if (STI.hasC()) {
+    BuildMI(MBB, Position, DL, get(CMV), DestinationRegister)
+      .addReg(SourceRegister, getKillRegState(KillSource));
   } else {
-    if (STI.hasC()) {
-      BuildMI(MBB, Position, DL, get(RISCV::CMV), DestinationRegister)
-        .addReg(SourceRegister, getKillRegState(KillSource));
-    } else {
-      BuildMI(MBB, Position, DL, get(RISCV::ADDI), DestinationRegister)
-        .addReg(SourceRegister, getKillRegState(KillSource))
-        .addImm(0);
-    }
+    BuildMI(MBB, Position, DL, get(ADDI), DestinationRegister)
+      .addReg(SourceRegister, getKillRegState(KillSource))
+      .addImm(0);
   }
 }
 
@@ -131,15 +139,15 @@ void RISCVInstrInfo::adjustStackPtr(unsigned SP, int64_t Amount,
   if (isInt<12>(Amount)) {
     if (isInt<10>(Amount) && ((Amount % 16) == 0) && STI.hasC()) {
       // c.addi16sp amount
-      BuildMI(MBB, I, DL, get(RISCV::CADDI16SP), SP).
+      BuildMI(MBB, I, DL, get(CADDI16SP), SP).
         addReg(SP).addImm(Amount);
     } else if (isInt<6>(Amount) && STI.hasC()) {
       // c.addi sp amount
-      BuildMI(MBB, I, DL, get(RISCV::CADDI), SP).
+      BuildMI(MBB, I, DL, get(CADDI), SP).
         addReg(SP).addImm(Amount);
     } else {
       // addi sp, sp, amount
-      BuildMI(MBB, I, DL, get(RISCV::ADDI), SP).
+      BuildMI(MBB, I, DL, get(ADDI), SP).
         addReg(SP).addImm(Amount);
     }
   } else {
@@ -154,35 +162,40 @@ void RISCVInstrInfo::loadImmediate(unsigned ScratchReg,
   MachineRegisterInfo &RegInfo = MBB.getParent()->getRegInfo();
   const TargetRegisterClass *RC = STI.isRV64() ?
     &RISCV::GPR64RegClass : &RISCV::GPRRegClass;
+  unsigned ZeroReg = STI.isRV64() ? RISCV::X0_64 : RISCV::X0_32;
 
   if (Imm == 0)
     return;
 
   int64_t LuiImm = ((Imm + 0x800) >> 12) & 0xfffff;
   int64_t LowImm = SignExtend64<12>(Imm);
+  unsigned LuiOpcode = LUI;
+
+  if (isUInt<5>(LuiImm) && STI.hasC())
+    LuiOpcode = CLUI;
 
   if ((LuiImm != 0) && (LowImm == 0)) {
-    BuildMI(MBB, II, DL, get(RISCV::LUI), ScratchReg)
+    BuildMI(MBB, II, DL, get(LuiOpcode), ScratchReg)
       .addImm(LuiImm);
   } else if ((LuiImm == 0) && (LowImm != 0)) {
     if (isInt<6>(LowImm) && STI.hasC()) {
       // c.li
-      BuildMI(MBB, II, DL, get(RISCV::CLI), ScratchReg).
-        addImm(LowImm);
+      BuildMI(MBB, II, DL, get(CLI), ScratchReg)
+        .addImm(LowImm);
     } else {
-      BuildMI(MBB, II, DL, get(RISCV::ADDI), ScratchReg).
-        addReg(RISCV::X0_32).
-        addImm(LowImm);
+      BuildMI(MBB, II, DL, get(ADDI), ScratchReg)
+        .addReg(ZeroReg)
+        .addImm(LowImm);
     }
   } else {
     // Create TempReg here because Virtual register expect as SSA form.
     // So ADDI ScratchReg, ScratchReg, Imm is not allow.
     unsigned TempReg = RegInfo.createVirtualRegister(RC);
 
-    BuildMI(MBB, II, DL, get(RISCV::LUI), TempReg)
+    BuildMI(MBB, II, DL, get(LuiOpcode), TempReg)
       .addImm(LuiImm);
 
-    BuildMI(MBB, II, DL, get(RISCV::ADDI), ScratchReg)
+    BuildMI(MBB, II, DL, get(ADDI), ScratchReg)
       .addReg(TempReg, getKillRegState (true))
       .addImm(LowImm);
   }
@@ -202,7 +215,7 @@ RISCVInstrInfo::basePlusImmediate(unsigned DstReg, unsigned BaseReg,
     DstReg = ScratchReg;
 
   loadImmediate (ScratchReg, Imm, MBB, II, DL);
-  BuildMI(MBB, II, DL, get(RISCV::ADD), DstReg)
+  BuildMI(MBB, II, DL, get(ADD), DstReg)
     .addReg(ScratchReg)
     .addReg(BaseReg);
 
@@ -221,11 +234,15 @@ RISCVInstrInfo::basePlusImmediateStripOffset(unsigned BaseReg, int64_t &Imm,
   unsigned ScratchReg2 = RegInfo.createVirtualRegister(RC);
 
   int64_t LuiImm = ((Imm + 0x800) >> 12) & 0xfffff;
+  unsigned LuiOpcode = LUI;
 
-  BuildMI(MBB, II, DL, get(RISCV::LUI), ScratchReg1)
+  if (isUInt<5>(LuiImm) && STI.hasC())
+    LuiOpcode = CLUI;
+
+  BuildMI(MBB, II, DL, get(LuiOpcode), ScratchReg1)
     .addImm(LuiImm);
 
-  BuildMI(MBB, II, DL, get(RISCV::ADD), ScratchReg2)
+  BuildMI(MBB, II, DL, get(ADD), ScratchReg2)
     .addReg(ScratchReg1, getKillRegState (true))
     .addReg(BaseReg);
 

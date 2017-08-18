@@ -62,6 +62,8 @@ namespace {
     }
 
   private:
+    unsigned ADDI, CADDI, LUI, CLUI;
+
     void transferImpOps(MachineInstr &OldMI,
                         MachineInstrBuilder &UseMI, MachineInstrBuilder &DefMI);
     bool expandMI(MachineBasicBlock &MBB,
@@ -72,6 +74,7 @@ namespace {
                            MachineBasicBlock::iterator &MBBI);
     void expandMOV64BitImm(MachineBasicBlock &MBB,
                            MachineBasicBlock::iterator &MBBI);
+    unsigned replaceBy16BitInst(unsigned Opc, int64_t Imm);
   };
   char RISCVExpandPseudo::ID = 0;
 }
@@ -108,9 +111,16 @@ void RISCVExpandPseudo::expandMOV32BitImm(MachineBasicBlock &MBB,
   unsigned LO12Opc = STI->isRV32() ? RISCV::ADDI : RISCV::ADDIW;
   unsigned HI20Opc = RISCV::LUI;
 
-  if ((LO12Opc == RISCV::ADDIW) && STI->hasC() &&
-      isIntN(6, Lo12))
-    LO12Opc = RISCV::CADDIW;
+  if (STI->hasC()) {
+    if (isUIntN(5, Hi20))
+      HI20Opc = RISCV::CLUI;
+    if (isIntN(6, Lo12)) {
+      if (LO12Opc == RISCV::ADDIW)
+        LO12Opc = RISCV::CADDIW;
+      if (LO12Opc == RISCV::ADDI)
+        LO12Opc = RISCV::CADDI;
+    }
+  }
 
   HI20 = BuildMI(MBB, MBBI, MI.getDebugLoc(), TII->get(HI20Opc))
     .addReg(DstReg, RegState::Define | getDeadRegState(DstIsDead));
@@ -131,6 +141,21 @@ void RISCVExpandPseudo::expandMOV32BitImm(MachineBasicBlock &MBB,
   MI.eraseFromParent();
 }
 
+unsigned RISCVExpandPseudo::replaceBy16BitInst(unsigned Opc, int64_t Imm) {
+  if (!STI->hasC())
+    return Opc;
+
+  if ((Opc == ADDI) && isInt<6>(Imm))
+    return CADDI;
+  if ((Opc == LUI) && isUInt<5>(Imm))
+    return CLUI;
+  if ((Opc == RISCV::SLLI) && isUInt<5>(Imm))
+    return RISCV::CSLLI;
+  if ((Opc == RISCV::SLLI64) && isUInt<6>(Imm))
+    return RISCV::CSLLI64;
+  return Opc;
+}
+
 void RISCVExpandPseudo::expandMOV64BitImm(MachineBasicBlock &MBB,
                                           MachineBasicBlock::iterator &MBBI) {
   MachineInstr &MI = *MBBI;
@@ -147,8 +172,10 @@ void RISCVExpandPseudo::expandMOV64BitImm(MachineBasicBlock &MBB,
 
   RISCVAnalyzeImmediate::InstSeq::const_iterator Inst = Seq.begin();
 
+  Opcode = replaceBy16BitInst(Inst->Opc, Inst->ImmOpnd);
+
   if (Inst->Opc == RISCV::LUI64) {
-    MIB1 = BuildMI(MBB, MBBI, MI.getDebugLoc(), TII->get(Inst->Opc))
+    MIB1 = BuildMI(MBB, MBBI, MI.getDebugLoc(), TII->get(Opcode))
            .addReg(DstReg, RegState::Define | getDeadRegState(DstIsDead))
            .addImm(Inst->ImmOpnd);
   }
@@ -161,7 +188,8 @@ void RISCVExpandPseudo::expandMOV64BitImm(MachineBasicBlock &MBB,
 
   // The remaining instructions in the sequence are handled here.
   for (++Inst; Inst != Seq.end(); ++Inst) {
-    MIB2 = BuildMI(MBB, MBBI, MI.getDebugLoc(), TII->get(Inst->Opc))
+    Opcode = replaceBy16BitInst(Inst->Opc, SignExtend64<12>(Inst->ImmOpnd));
+    MIB2 = BuildMI(MBB, MBBI, MI.getDebugLoc(), TII->get(Opcode))
            .addReg(DstReg)
            .addReg(DstReg)
            .addImm(SignExtend64<12>(Inst->ImmOpnd));
@@ -205,6 +233,18 @@ bool RISCVExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
   STI = &static_cast<const RISCVSubtarget &>(MF.getSubtarget());
   TII = STI->getInstrInfo();
   TRI = STI->getRegisterInfo();
+
+  if (STI->isRV32()) {
+    ADDI = RISCV::ADDI;
+    CADDI = RISCV::CADDI;
+    LUI = RISCV::LUI;
+    CLUI = RISCV::CLUI;
+  } else {
+    ADDI = RISCV::ADDI64;
+    CADDI = RISCV::CADDI64;
+    LUI = RISCV::LUI64;
+    CLUI = RISCV::CLUI64;
+  }
 
   bool Modified = false;
   for (MachineFunction::iterator MFI = MF.begin(), E = MF.end(); MFI != E;

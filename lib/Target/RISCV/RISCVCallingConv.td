@@ -86,6 +86,17 @@ def CC_RISCV32 : CallingConv<[
 
   CCIfCC<"CallingConv::Fast", CCDelegateTo<CC_RISCV32_FastCC>>,
 
+  // Force long double values to the stack and pass i32 pointers to them.
+  // These are already split into two i32 here,
+  // so we have to use a custom handler.
+
+  // Most of the case could transfer to indirct passing by clang,
+  // except the function call create by llvm.
+  // For example, __eqtf3 transfer by SoftenFloat for softfloat toolchain.
+  // Clang can't see these function calls, so we have to handle here.
+  CCIfType<[i32], CCCustom<"CC_RISCV_I128Indirect">>,
+
+
   CCIfType<[i32], CCAssignToReg<[X10_32, X11_32, X12_32, X13_32,
                                  X14_32, X15_32, X16_32, X17_32]>>,
 

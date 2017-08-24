@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "RISCVISelLowering.h"
+#include "RISCVCallingConv.h"
 #include "RISCV.h"
 #include "RISCVMachineFunctionInfo.h"
 #include "RISCVRegisterInfo.h"
@@ -920,6 +921,7 @@ static SDValue UnpackFromArgumentSlot(SDValue Val, const CCValAssign &VA,
   default:
     llvm_unreachable("Unknown loc info!");
   case CCValAssign::Full:
+  case CCValAssign::Indirect:
     break;
   case CCValAssign::AExtUpper:
   case CCValAssign::AExt:
@@ -951,6 +953,7 @@ SDValue RISCVTargetLowering::LowerFormalArguments(
   MachineFunction &MF = DAG.getMachineFunction();
   MachineFrameInfo &MFI = MF.getFrameInfo();
   RISCVMachineFunctionInfo *FI = MF.getInfo<RISCVMachineFunctionInfo>();
+  EVT PtrVT = getPointerTy(DAG.getDataLayout());
 
   FI->setVarArgsFrameIndex(0);
  
@@ -974,17 +977,17 @@ SDValue RISCVTargetLowering::LowerFormalArguments(
 
   unsigned CurArgIdx = 0;
 
-  for (unsigned i = 0, e = ArgLocs.size(); i != e; ++i) {
+  for (unsigned I = 0, E = ArgLocs.size(); I != E; ++I) {
     unsigned offset = 0;
-    CCValAssign &VA = ArgLocs[i];
-    if (Ins[i].isOrigArg()) {
-      std::advance(FuncArg, Ins[i].getOrigArgIndex() - CurArgIdx);
-      CurArgIdx = Ins[i].getOrigArgIndex();
+    CCValAssign &VA = ArgLocs[I];
+    if (Ins[I].isOrigArg()) {
+      std::advance(FuncArg, Ins[I].getOrigArgIndex() - CurArgIdx);
+      CurArgIdx = Ins[I].getOrigArgIndex();
     }
-    ISD::ArgFlagsTy Flags = Ins[i].Flags;
+    ISD::ArgFlagsTy Flags = Ins[I].Flags;
 
     if (Flags.isByVal()) {
-      assert(Ins[i].isOrigArg() && "Byval arguments cannot be implicit");
+      assert(Ins[I].isOrigArg() && "Byval arguments cannot be implicit");
 
       assert(Flags.getByValSize() &&
              "ByVal args of size 0 should have been ignored by front-end.");
@@ -997,6 +1000,7 @@ SDValue RISCVTargetLowering::LowerFormalArguments(
     }
 
     bool IsRegLoc = VA.isRegLoc();
+    SDValue ArgValue;
     // Arguments stored on registers
     if (IsRegLoc) {
       MVT RegVT = VA.getLocVT();
@@ -1006,15 +1010,13 @@ SDValue RISCVTargetLowering::LowerFormalArguments(
       // Transform the arguments stored on
       // physical registers into virtual ones
       unsigned Reg = addLiveIn(DAG.getMachineFunction(), ArgReg, RC);
-      SDValue ArgValue = DAG.getCopyFromReg(Chain, DL, Reg, RegVT);
+      ArgValue = DAG.getCopyFromReg(Chain, DL, Reg, RegVT);
 
       // All integral types are promoted to the GPR width in RISCV Clang,
       // So we have to handle the integer argument smaller then GPR width.
       // See gcc.c-torture/execute/20000205-1.c testcase argument passing
       // of f for RISCV64 target.
-      ArgValue = UnpackFromArgumentSlot(ArgValue, VA, Ins[i].ArgVT, DL, DAG);
-
-      InVals.push_back(ArgValue);
+      ArgValue = UnpackFromArgumentSlot(ArgValue, VA, Ins[I].ArgVT, DL, DAG);
     } else { // VA.isRegLoc()
       MVT LocVT = VA.getLocVT();
 
@@ -1027,14 +1029,32 @@ SDValue RISCVTargetLowering::LowerFormalArguments(
       // Create load nodes to retrieve arguments from the stack
       SDValue FIN = DAG.getFrameIndex(FrameIdx,
                                       getPointerTy(DAG.getDataLayout()));
-      SDValue ArgValue = DAG.getLoad(
+      ArgValue = DAG.getLoad(
           VA.getValVT(), DL, Chain, FIN,
           MachinePointerInfo::getFixedStack(DAG.getMachineFunction(),
                                             FrameIdx));
       OutChains.push_back(ArgValue.getValue(1));
-
-      InVals.push_back(ArgValue);
     }
+    // Convert the value of the argument register into the value that's
+    // being passed.
+    if (VA.getLocInfo() == CCValAssign::Indirect) {
+      InVals.push_back(DAG.getLoad(VA.getValVT(), DL, Chain, ArgValue,
+                                   MachinePointerInfo()));
+      // If the original argument was split (e.g. i128), we need
+      // to load all parts of it here (using the same address).
+      unsigned ArgIndex = Ins[I].OrigArgIndex;
+      assert (Ins[I].PartOffset == 0);
+      while (I + 1 != E && Ins[I + 1].OrigArgIndex == ArgIndex) {
+        CCValAssign &PartVA = ArgLocs[I + 1];
+        unsigned PartOffset = Ins[I + 1].PartOffset;
+        SDValue Address = DAG.getNode(ISD::ADD, DL, PtrVT, ArgValue,
+                                      DAG.getIntPtrConstant(PartOffset, DL));
+        InVals.push_back(DAG.getLoad(PartVA.getValVT(), DL, Chain, Address,
+                                     MachinePointerInfo()));
+        ++I;
+      }
+    } else
+      InVals.push_back(ArgValue);
   }
 
   // Push VarArg Registers to the stack
@@ -1184,6 +1204,7 @@ RISCVTargetLowering::LowerCall(CallLoweringInfo &CLI,
   const TargetFrameLowering *TFL = Subtarget->getFrameLowering();
   MachineFunction &MF = DAG.getMachineFunction();
   MachineFrameInfo &MFI = MF.getFrameInfo();
+  EVT PtrVT = getPointerTy(MF.getDataLayout());
 
   // Analyze the operands of the call, assigning locations to each operand.
   SmallVector<CCValAssign, 16> ArgLocs;
@@ -1218,8 +1239,29 @@ RISCVTargetLowering::LowerCall(CallLoweringInfo &CLI,
     SDValue Arg = OutVals[I];
     ISD::ArgFlagsTy Flags = Outs[I].Flags;
 
-    // ByVal Arg.
-    if (Flags.isByVal()) {
+    if (VA.getLocInfo() == CCValAssign::Indirect) {
+      // Store the argument in a stack slot and pass its address.
+      SDValue SpillSlot = DAG.CreateStackTemporary(Outs[I].ArgVT);
+      int FI = cast<FrameIndexSDNode>(SpillSlot)->getIndex();
+      MemOpChains.push_back(
+          DAG.getStore(Chain, DL, Arg, SpillSlot,
+                       MachinePointerInfo::getFixedStack(MF, FI)));
+      // If the original argument was split (e.g. i128), we need
+      // to store all parts of it here (and pass just one address).
+      unsigned ArgIndex = Outs[I].OrigArgIndex;
+      assert (Outs[I].PartOffset == 0);
+      while (I + 1 != E && Outs[I + 1].OrigArgIndex == ArgIndex) {
+        SDValue PartValue = OutVals[I + 1];
+        unsigned PartOffset = Outs[I + 1].PartOffset;
+        SDValue Address = DAG.getNode(ISD::ADD, DL, PtrVT, SpillSlot,
+                                      DAG.getIntPtrConstant(PartOffset, DL));
+        MemOpChains.push_back(
+            DAG.getStore(Chain, DL, PartValue, Address,
+                         MachinePointerInfo::getFixedStack(MF, FI)));
+        ++I;
+      }
+      Arg = SpillSlot;
+    } else if (Flags.isByVal()) {
       unsigned offset = 0;
       unsigned FirstByValReg, LastByValReg;
       unsigned ByValIdx = ArgCCInfo.getInRegsParamsProcessed();
@@ -1263,7 +1305,9 @@ RISCVTargetLowering::LowerCall(CallLoweringInfo &CLI,
     // Promote the value if needed.
     switch (VA.getLocInfo()) {
     default: llvm_unreachable("Unknown loc info!");
-    case CCValAssign::Full: break;
+    case CCValAssign::Indirect:
+    case CCValAssign::Full:
+      break;
     case CCValAssign::SExt:
       Arg = DAG.getNode(ISD::SIGN_EXTEND, DL, VA.getLocVT(), Arg);
       break;

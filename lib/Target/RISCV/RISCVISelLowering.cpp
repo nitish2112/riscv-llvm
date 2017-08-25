@@ -733,30 +733,6 @@ addLiveIn(MachineFunction &MF, unsigned PReg, const TargetRegisterClass *RC)
   return VReg;
 }
 
-static const MCPhysReg RISCV32EArgRegs[6] = {
-    RISCV::X10_32, RISCV::X11_32, RISCV::X12_32, RISCV::X13_32,
-    RISCV::X14_32, RISCV::X15_32
-};
-
-static const MCPhysReg RISCV32ArgRegs[8] = {
-    RISCV::X10_32, RISCV::X11_32, RISCV::X12_32, RISCV::X13_32,
-    RISCV::X14_32, RISCV::X15_32, RISCV::X16_32, RISCV::X17_32
-};
-
-static const MCPhysReg RISCV64ArgRegs[8] = {
-    RISCV::X10_64, RISCV::X11_64, RISCV::X12_64, RISCV::X13_64,
-    RISCV::X14_64, RISCV::X15_64, RISCV::X16_64, RISCV::X17_64
-};
-
-static ArrayRef<MCPhysReg> getArgRegs (const RISCVSubtarget *STI) {
-  if (STI->isRV64())
-    return makeArrayRef(RISCV64ArgRegs);
-  if (STI->hasE())
-    return makeArrayRef(RISCV32EArgRegs);
-
-  return makeArrayRef(RISCV32ArgRegs);
-}
-
 static CCAssignFn *getCCAssignFn(const RISCVSubtarget *STI, bool IsVarArg) {
   if (STI->hasE())
     return CC_RISCV32E;

@@ -33,6 +33,9 @@ def CC_RISCV32E : CallingConv<[
   // Pass by value if the byval attribute is given
   CCIfByVal<CCPassByVal<4, 4>>,
 
+  // Force long double values to the stack and pass i32 pointers to them.
+  CCIfType<[i32], CCCustom<"CC_RISCV_I128Indirect">>,
+
   CCIfType<[i32], CCAssignToReg<[X10_32, X11_32, X12_32, X13_32,
                                  X14_32, X15_32]>>,
 

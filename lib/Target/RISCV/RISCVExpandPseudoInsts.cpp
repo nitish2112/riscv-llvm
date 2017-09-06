@@ -122,22 +122,27 @@ void RISCVExpandPseudo::expandMOV32BitImm(MachineBasicBlock &MBB,
     }
   }
 
-  HI20 = BuildMI(MBB, MBBI, MI.getDebugLoc(), TII->get(HI20Opc))
-    .addReg(DstReg, RegState::Define | getDeadRegState(DstIsDead));
-  LO12 = BuildMI(MBB, MBBI, MI.getDebugLoc(), TII->get(LO12Opc), DstReg)
-    .addReg(DstReg);
-
   switch (MO.getType()) {
   case MachineOperand::MO_Immediate: {
-    LO12 = LO12.addImm(Lo12);
+    HI20 = BuildMI(MBB, MBBI, MI.getDebugLoc(), TII->get(HI20Opc))
+      .addReg(DstReg, RegState::Define | getDeadRegState(DstIsDead));
     HI20 = HI20.addImm(Hi20);
+    // Emit low-part only when it needs.
+    if (Lo12 != 0) {
+      LO12 = BuildMI(MBB, MBBI, MI.getDebugLoc(), TII->get(LO12Opc), DstReg)
+        .addReg(DstReg);
+      LO12 = LO12.addImm(Lo12);
+    }
     break;
   }
   default:
     llvm_unreachable("expandMOV32BitImm operand not immediate value");
   }
 
-  transferImpOps(MI, LO12, HI20);
+  if (Lo12 != 0)
+    transferImpOps(MI, LO12, HI20);
+  else
+    transferImpOps(MI, HI20, HI20);
   MI.eraseFromParent();
 }
 

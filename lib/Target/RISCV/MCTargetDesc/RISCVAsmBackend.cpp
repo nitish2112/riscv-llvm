@@ -34,7 +34,7 @@ public:
   RISCVAsmBackend(const Triple &TT, uint8_t OSABI, bool Is64Bit)
       : MCAsmBackend(), OSABI(OSABI), Is64Bit(Is64Bit) {
     StringRef Arch = TT.getArchName();
-    HasC = false;
+    HasC = true;
     if (Arch.startswith("riscv32emac") ||
         Arch.startswith("riscv32imac") ||
         Arch.startswith("riscv64imac") ||

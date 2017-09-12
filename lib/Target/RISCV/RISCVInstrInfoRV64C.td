@@ -44,7 +44,7 @@ def CSDSP  : Stack_Store<0b111, "c.sdsp", GPR64, addr_sp_imm6u_double>,
 //===----------------------------------------------------------------------===//
 
 let DecoderNamespace = "RISCV64_" in
-def CLW64: Reg_Load<0b010, "c.lw", sextloadi32, GPR64C, addr_reg_imm5u_word_rv64>,
+def CLW64: Reg_Load<0b010, "c.lw", sextloadi32, GPR64C, addr_reg_imm5u_word>,
            Requires<[HasC, IsRV64]>;
 
 let DecoderNamespace = "RISCV64_" in
@@ -52,7 +52,7 @@ def CLD  : Reg_Load<0b011, "c.ld", load, GPR64C, addr_reg_imm5u_double>,
            Requires<[HasC, IsRV64]>;
 
 let DecoderNamespace = "RISCV64_" in
-def CSW64: Reg_Store<0b110, "c.sw", truncstorei32, GPR64C, addr_reg_imm5u_word_rv64>,
+def CSW64: Reg_Store<0b110, "c.sw", truncstorei32, GPR64C, addr_reg_imm5u_word>,
            Requires<[HasC, IsRV64]>;
 
 let DecoderNamespace = "RISCV64_" in

@@ -7,6 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+def ptr_rc_c : PointerLikeRegClass<1>;
+
 class ImmAsmOperand<string prefix, int width, string suffix> : AsmOperandClass {
   let Name = prefix # "Imm" # width # suffix;
   let RenderMethod = "addImmOperands";
@@ -273,19 +275,7 @@ def addr_reg_imm5u_word : MemOperand,
   // 5-bit unsigned immediate operand.
   // Immediate access range would be (imm5u << 2).
 
-  let MIOperandInfo = (ops GPRC:$base, iPTR:$offsimm);
-  let PrintMethod = "printAddrRegImmOperand";
-  let ParserMatchClass = AddrRegImm5uWordAsmOperand;
-  let EncoderMethod = "getAddrRegImm5uWordEncoding";
-  let DecoderMethod = "decodeAddrRegImm5uWord";
-}
-// addr_reg_imm5u_word_rv64 := [reg + imm5u << 2]
-def addr_reg_imm5u_word_rv64 : MemOperand,
-    ComplexPattern<iPTR, 2, "SelectAddrRegImm5uWord", []> {
-  // 5-bit unsigned immediate operand.
-  // Immediate access range would be (imm5u << 2).
-
-  let MIOperandInfo = (ops GPR64C:$base, iPTR:$offsimm);
+  let MIOperandInfo = (ops ptr_rc_c:$base, iPTR:$offsimm);
   let PrintMethod = "printAddrRegImmOperand";
   let ParserMatchClass = AddrRegImm5uWordAsmOperand;
   let EncoderMethod = "getAddrRegImm5uWordEncoding";

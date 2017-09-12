@@ -324,8 +324,17 @@ RISCVRegisterInfo::getCallPreservedMask(const MachineFunction & /*MF*/,
 const TargetRegisterClass *
 RISCVRegisterInfo::getPointerRegClass(const MachineFunction &MF,
                                       unsigned Kind) const {
-  if(Subtarget.isRV64())
-    return &RISCV::GPR64RegClass;
-  else
-    return &RISCV::GPRRegClass;
+  switch (Kind) {
+  default: llvm_unreachable("Unexpected Kind in getPointerRegClass!");
+  case 0:
+    if(Subtarget.isRV64())
+      return &RISCV::GPR64RegClass;
+    else
+      return &RISCV::GPRRegClass;
+  case 1:
+    if(Subtarget.isRV64())
+      return &RISCV::GPR64CRegClass;
+    else
+      return &RISCV::GPRCRegClass;
+  }
 }

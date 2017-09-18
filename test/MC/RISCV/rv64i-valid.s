@@ -1,6 +1,6 @@
-# RUN: llvm-mc %s -triple=riscv32 -show-encoding \
+# RUN: llvm-mc %s -triple=riscv64 -mattr=+m -show-encoding \
 # RUN:     | FileCheck -check-prefixes=CHECK,CHECK-INST %s
-# RUN: llvm-mc -filetype=obj -triple riscv32 < %s \
+# RUN: llvm-mc -filetype=obj -triple riscv64 -mattr=+m < %s \
 # RUN:     | llvm-objdump -d - | FileCheck -check-prefix=CHECK-INST %s
 
 # CHECK-INST: lui a0, 2
@@ -229,3 +229,31 @@ csrrsi t2, 0xfff, 31
 # CHECK-INST: csrrci t1, 320, 5
 # CHECK: encoding: [0x73,0xf3,0x02,0x14]
 csrrci t1, 0x140, 5
+
+# CHECK-INST: slliw   a0, a0, 27
+# CHECK: encoding: [0x1b,0x15,0xb5,0x01]
+slliw   a0, a0, 27
+# CHECK-INST: sllw   a0, a0, s0
+# CHECK: encoding: [0x3b,0x15,0x85,0x00]
+sllw    a0, a0, s0
+# CHECK-INST: srliw  s7, a7, 18
+# CHECK: encoding: [0x9b,0xdb,0x28,0x01]
+srliw   s7, a7, 18
+# CHECK-INST: srlw   s7, t0, a3
+# CHECK: encoding: [0xbb,0xdb,0xd2,0x00]
+srlw    s7, t0, a3
+# CHECK-INST: sraiw  a7, t3, 19
+# CHECK: encoding: [0x9b,0x58,0x3e,0x41]
+sraiw   a7, t3, 19
+# CHECK-INST: sraw   a3, t0, s3
+# CHECK: encoding: [0xbb,0xd6,0x32,0x41]
+sraw    a3, t0, s3
+# CHECK-INST: addiw  a2, a0, 32
+# CHECK: encoding: [0x1b,0x06,0x05,0x02]
+addiw   a2, a0, 32
+# CHECK-INST: addw   a2, a0, s3
+# CHECK: encoding: [0x3b,0x06,0x35,0x01]
+addw    a2, a0, s3
+# CHECK-INST: subw  a5, t1, s3
+# CHECK: encoding: [0xbb,0x07,0x33,0x41]
+subw    a5, t1, s3

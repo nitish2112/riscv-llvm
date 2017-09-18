@@ -26,25 +26,16 @@ using namespace llvm;
 
 namespace {
 class RISCVAsmBackend : public MCAsmBackend {
+  const MCSubtargetInfo *STI;
   uint8_t OSABI;
   bool Is64Bit;
-  bool HasC;
 
 public:
   RISCVAsmBackend(const Triple &TT, uint8_t OSABI, bool Is64Bit)
-      : MCAsmBackend(), OSABI(OSABI), Is64Bit(Is64Bit) {
-    StringRef Arch = TT.getArchName();
-    HasC = true;
-    if (Arch.startswith("riscv32emac") ||
-        Arch.startswith("riscv32imac") ||
-        Arch.startswith("riscv64imac") ||
-        Arch.startswith("riscv32imafdc") ||
-        Arch.startswith("riscv64imafdc"))
-      HasC = true;
-  }
-  ~RISCVAsmBackend() override {}
+      : MCAsmBackend(), STI(RISCV_MC::createRISCVMCSubtargetInfo(TT, "", "")),
+        OSABI(OSABI), Is64Bit(Is64Bit) {}
 
-  bool hasC() const { return HasC; }
+  ~RISCVAsmBackend() override {}
 
   void applyFixup(const MCAssembler &Asm, const MCFixup &Fixup,
                   const MCValue &Target, MutableArrayRef<char> Data,
@@ -99,7 +90,8 @@ public:
 };
 
 bool RISCVAsmBackend::writeNopData(uint64_t Count, MCObjectWriter *OW) const {
-  if (hasC()) {
+  bool HasC = STI->getFeatureBits()[RISCV::FeatureC];
+  if (HasC) {
     if ((Count % 2) != 0)
       return false;
   } else {
@@ -112,8 +104,14 @@ bool RISCVAsmBackend::writeNopData(uint64_t Count, MCObjectWriter *OW) const {
     OW->write32(0x13);
 
   // The canonical nop on RVC is c.nop
-  if (hasC() && i)
+  if (HasC) {
+    uint64_t NumNops = i / 2;
+    for (uint64_t i = 0; i != NumNops; ++i)
     OW->write16(0x01);
+  }
+
+  if (Count & 1)
+    OW->write8(0);
 
   return true;
 }

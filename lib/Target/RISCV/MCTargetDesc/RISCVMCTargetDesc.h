@@ -47,6 +47,10 @@ MCObjectWriter *createRISCVELFObjectWriter(raw_pwrite_stream &OS, uint8_t OSABI,
                                            bool Is64Bit);
 namespace RISCV_MC {
 StringRef selectRISCVCPU(const Triple &TT, StringRef CPU);
+/// Create a RISCV MCSubtargetInfo instance. This is exposed so Asm parser, etc.
+/// do not need to go through TargetRegistry.
+MCSubtargetInfo *createRISCVMCSubtargetInfo(const Triple &TT, StringRef CPU,
+                                            StringRef FS);
 }
 
 }

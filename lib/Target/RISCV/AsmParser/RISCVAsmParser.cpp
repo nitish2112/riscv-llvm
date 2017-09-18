@@ -65,8 +65,8 @@ class ParseResult {
     };
 
 public:
-    ParseResult(const ParseSuccess<T>& S) : Kind{KindTy::Success}, Success{S} {};
-    ParseResult(const ParseError& E) : Kind{KindTy::Error}, Error{E} {};
+    ParseResult(const ParseSuccess<T>& S) : Kind(KindTy::Success), Success(S) {};
+    ParseResult(const ParseError& E) : Kind(KindTy::Error), Error(E) {};
 
     operator bool() const { return Kind == KindTy::Success; }
 

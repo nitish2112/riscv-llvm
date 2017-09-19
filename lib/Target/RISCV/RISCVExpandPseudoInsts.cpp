@@ -195,7 +195,7 @@ void RISCVExpandPseudo::expandMOV64BitImm(MachineBasicBlock &MBB,
   for (++Inst; Inst != Seq.end(); ++Inst) {
     Opcode = replaceBy16BitInst(Inst->Opc, SignExtend64<12>(Inst->ImmOpnd));
     MIB2 = BuildMI(MBB, MBBI, MI.getDebugLoc(), TII->get(Opcode))
-           .addReg(DstReg)
+           .addReg(DstReg, RegState::Define)
            .addReg(DstReg)
            .addImm(SignExtend64<12>(Inst->ImmOpnd));
   }

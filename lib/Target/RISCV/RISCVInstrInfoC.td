@@ -182,32 +182,32 @@ class ADDI_4SPN<RegisterClass cls, RegisterClass spcls> :
 
 def CADDI4SPN : ADDI_4SPN<GPRC, SP>, Requires<[HasC]>;
 
-class Shift_left<RegisterClass cls, Operand ImmOpnd, SDPatternOperator PF> :
+class Shift_left<RegisterClass cls, Operand ImmOpnd> :
       CI<0b000, 0b10, (outs cls:$rd_wb),
          (ins cls:$rd, ImmOpnd:$imm),
          "c.slli\t$rd, $imm",
-         [(set cls:$rd_wb, (shl cls:$rd, PF:$imm))]> {
+         [(set cls:$rd_wb, (shl cls:$rd, ImmOpnd:$imm))]> {
   let Constraints = "$rd = $rd_wb";
   let Inst{6-2} = imm{4-0};
 }
 
-def CSLLI   : Shift_left<GPR,   uimm5, immZExt5>, Requires<[HasC, IsRV32]>;
+def CSLLI   : Shift_left<GPR, uimm5>, Requires<[HasC, IsRV32]>;
 
 class Shift_right<bits<2> funct2, string OpcodeStr, SDPatternOperator OpNode,
-                  RegisterClass cls, Operand ImmOpnd, SDPatternOperator PF> :
+                  RegisterClass cls, Operand ImmOpnd> :
       CB<0b100, 0b01, (outs cls:$rs1_wb), (ins cls:$rs1, ImmOpnd:$imm),
          OpcodeStr#"\t$rs1, $imm",
-         [(set cls:$rs1_wb, (OpNode cls:$rs1, PF:$imm))]> {
+         [(set cls:$rs1_wb, (OpNode cls:$rs1, ImmOpnd:$imm))]> {
   let Constraints = "$rs1 = $rs1_wb";
   let Inst{12} = imm{5};
   let Inst{11-10} = funct2;
   let Inst{6-2} = imm{4-0};
 }
 
-def CSRLI   : Shift_right<0b00, "c.srli",  srl, GPRC,   uimm5, immZExt5>,
+def CSRLI   : Shift_right<0b00, "c.srli",  srl, GPRC,   uimm5>,
               Requires<[HasC, IsRV32]>;
 
-def CSRAI   : Shift_right<0b01, "c.srai",  sra, GPRC,   uimm5, immZExt5>,
+def CSRAI   : Shift_right<0b01, "c.srai",  sra, GPRC,   uimm5>,
               Requires<[HasC, IsRV32]>;
 
 

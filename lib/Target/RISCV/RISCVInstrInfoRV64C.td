@@ -101,12 +101,12 @@ def CADDI64  : Add_Imm<GPR64, imm64sx6>, Requires<[HasC, IsRV64]>;
 def CADDI16SP64 : ADDI_16SP<SP64>, Requires<[HasC]>;
 def CADDI4SPN64 : ADDI_4SPN<GPR64C, SP64>, Requires<[HasC]>;
 
-def CSLLI64  : Shift_left<GPR64, uimm6, immZExt6>, Requires<[HasC, IsRV64]>;
+def CSLLI64  : Shift_left<GPR64, uimm6>, Requires<[HasC, IsRV64]>;
 
-def CSRLI64  : Shift_right<0b00, "c.srli",  srl, GPR64C, uimm6, immZExt6>,
+def CSRLI64  : Shift_right<0b00, "c.srli",  srl, GPR64C, uimm6>,
                Requires<[HasC, IsRV64]>;
 
-def CSRAI64  : Shift_right<0b01, "c.srai",  sra, GPR64C, uimm6, immZExt6>,
+def CSRAI64  : Shift_right<0b01, "c.srai",  sra, GPR64C, uimm6>,
                Requires<[HasC, IsRV64]>;
 
 def CANDI64  : And_Imm<GPR64C, imm64sx6>, Requires<[HasC]>;

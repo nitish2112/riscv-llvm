@@ -158,12 +158,14 @@ class Bcc<bits<3> funct3, string OpcodeStr, PatFrag CondOp> :
   let isTerminator = 1;
 }
 
-def BEQ   : Bcc<0b000, "beq",  seteq>;
-def BNE   : Bcc<0b001, "bne",  setne>;
-def BLT   : Bcc<0b100, "blt",  setlt>;
-def BGE   : Bcc<0b101, "bge",  setge>;
-def BLTU  : Bcc<0b110, "bltu", setult>;
-def BGEU  : Bcc<0b111, "bgeu", setuge>;
+def BEQ   : Bcc<0b000, "beq",    seteq>;
+def BNE   : Bcc<0b001, "bne",    setne>;
+// niitsh: Added support for for_u
+def FOR_U : Bcc<0b010, "for_u",  setne>;
+def BLT   : Bcc<0b100, "blt",    setlt>;
+def BGE   : Bcc<0b101, "bge",    setge>;
+def BLTU  : Bcc<0b110, "bltu",   setult>;
+def BGEU  : Bcc<0b111, "bgeu",   setuge>;
 
 def : Pat<(brcond (i32 (setne GPR:$lhs, 0)), bb:$dst),
           (BNE GPR:$lhs, X0_32, bb:$dst)>;

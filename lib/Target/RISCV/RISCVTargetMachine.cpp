@@ -96,6 +96,10 @@ void RISCVPassConfig::addPreEmitPass() {
   // range of their destination.
   if (BranchRelaxation)
     addPass(&BranchRelaxationPassID);
+ 
+  // nitish: Add Xloops pass to the backend
+  RISCVTargetMachine &TM = getRISCVTargetMachine();
+  addPass(createRISCVXloopsPass(TM));
 }
 
 void RISCVPassConfig::addPreSched2() {

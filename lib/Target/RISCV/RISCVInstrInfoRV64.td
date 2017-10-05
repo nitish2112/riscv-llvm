@@ -253,12 +253,14 @@ class Bcc64<bits<3> funct3, string OpcodeStr, PatFrag CondOp> :
 }
 
 let DecoderNamespace = "RISCV64_" in {
-def BEQ64   : Bcc64<0b000, "beq",  seteq>;
-def BNE64   : Bcc64<0b001, "bne",  setne>;
-def BLT64   : Bcc64<0b100, "blt",  setlt>;
-def BGE64   : Bcc64<0b101, "bge",  setge>;
-def BLTU64  : Bcc64<0b110, "bltu", setult>;
-def BGEU64  : Bcc64<0b111, "bgeu", setuge>;
+def BEQ64   : Bcc64<0b000, "beq",   seteq>;
+def BNE64   : Bcc64<0b001, "bne",   setne>;
+// nitish: add support for xloops
+def FOR_U64 : Bcc64<0b010, "for_u", setne>;
+def BLT64   : Bcc64<0b100, "blt",   setlt>;
+def BGE64   : Bcc64<0b101, "bge",   setge>;
+def BLTU64  : Bcc64<0b110, "bltu",  setult>;
+def BGEU64  : Bcc64<0b111, "bgeu",  setuge>;
 } // End of DecoderNamespace
 
 def : Pat<(brcond (i32 (setne GPR64:$lhs, 0)), bb:$dst),

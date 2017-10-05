@@ -729,6 +729,7 @@ public:
     auto *SE = SEWP ? &SEWP->getSE() : nullptr;
     const SimplifyQuery SQ = getBestSimplifyQuery(*this, F);
     LoopRotate LR(MaxHeaderSize, LI, TTI, AC, DT, SE, SQ);
+
     return LR.processLoop(L);
   }
 };

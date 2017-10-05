@@ -27,6 +27,7 @@ add_llvm_target(RISCVCodeGen
   RISCVMachineFunctionInfo.cpp
   RISCVAnalyzeImmediate.cpp
   RISCVExpandPseudoInsts.cpp
+  RISCVXloops.cpp
   )
 
 add_subdirectory(AsmParser)

@@ -38,6 +38,9 @@ bool LowerRISCVMachineOperandToMCOperand(const MachineOperand &MO,
                                          MCOperand &MCOp, const AsmPrinter &AP);
 
 FunctionPass *createRISCVISelDag(RISCVTargetMachine &TM);
+
+// nitish: Added RISCV xloops pass support
+FunctionPass *createRISCVXloopsPass(RISCVTargetMachine &TM);
 }
 
 #endif

@@ -149,6 +149,20 @@ let Defs = [X2_32], Uses = [X2_32], hasSideEffects = 1 in {
                                 [(CallSeqEnd timm:$amt1, timm:$amt2)]>;
 }
 
+// nitish: Add custom branch instructions
+class XBcc<bits<3> funct3, string OpcodeStr, PatFrag CondOp> :
+      FSB<funct3, 0b1011011, (outs),
+          (ins GPR:$rs1, GPR:$rs2, simm13_lsb0:$imm12),
+          OpcodeStr#"\t$rs1, $rs2, $imm12",
+          []> {
+  let isBranch = 1;
+  let isTerminator = 1;
+}
+
+def FOR_F   : XBcc<0b000, "for_f", setne>;
+
+// def FOR_F : FI<0b000, 0b1011011, (outs), (ins GPR:$rs1, GPR:$rs2, simm13_lsb0:$imm12), string asmstr, list<dag> pattern>
+
 class Bcc<bits<3> funct3, string OpcodeStr, PatFrag CondOp> :
       FSB<funct3, 0b1100011, (outs),
           (ins GPR:$rs1, GPR:$rs2, simm13_lsb0:$imm12),
@@ -160,8 +174,10 @@ class Bcc<bits<3> funct3, string OpcodeStr, PatFrag CondOp> :
 
 def BEQ   : Bcc<0b000, "beq",    seteq>;
 def BNE   : Bcc<0b001, "bne",    setne>;
-// niitsh: Added support for for_u
+// niitsh: Added support for for_u and for_r
 def FOR_U : Bcc<0b010, "for_u",  setne>;
+def FOR_R : Bcc<0b011, "for_r",  setne>;
+
 def BLT   : Bcc<0b100, "blt",    setlt>;
 def BGE   : Bcc<0b101, "bge",    setge>;
 def BLTU  : Bcc<0b110, "bltu",   setult>;
@@ -269,6 +285,16 @@ def SLTU : ALU_rr<0b0000000, 0b011, "sltu", setult>;
 def XOR  : ALU_rr<0b0000000, 0b100, "xor",  xor>;
 def OR   : ALU_rr<0b0000000, 0b110, "or",   or>;
 def AND  : ALU_rr<0b0000000, 0b111, "and",  and>;
+
+// nitish: Add custom instructions using XCEL class
+class XCEL_rr<bits<7> funct7, bits<3> funct3, string OpcodeStr,
+             SDPatternOperator OpNode> :
+      FR<funct7, funct3, 0b1101011, (outs GPR:$rd), (ins GPR:$rs1, GPR:$rs2),
+         OpcodeStr#"\t$rd, $rs1, $rs2",
+         [(set GPR:$rd, (OpNode GPR:$rs1, GPR:$rs2))]>;
+
+def PUSHPOP  : XCEL_rr<0b0000001, 0b000, "pushpop",  pushpop>, Requires<[IsRV32]>;
+def PUSH     : XCEL_rr<0b0000001, 0b001, "push",  push>, Requires<[IsRV32]>;
 
 // Define pattern expansions for setcc operations that aren't directly
 // handled by a RISC-V instruction

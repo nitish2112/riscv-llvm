@@ -41,6 +41,11 @@ FunctionPass *createRISCVISelDag(RISCVTargetMachine &TM);
 
 // nitish: Added RISCV xloops pass support
 FunctionPass *createRISCVXloopsPass(RISCVTargetMachine &TM);
+
+// nitish: Added RISCV feeder pass support
+// FunctionPass *createRISCVFeederPass(RISCVTargetMachine &TM);
+
+
 }
 
 #endif

@@ -368,6 +368,12 @@ def tblockaddress: SDNode<"ISD::TargetBlockAddress",  SDTPtrLeaf, [],
 
 def add        : SDNode<"ISD::ADD"       , SDTIntBinOp   ,
                         [SDNPCommutative, SDNPAssociative]>;
+// nitish: add pushpop and push instructions
+def pushpop    : SDNode<"ISD::XCELINST" , SDTIntBinOp   ,
+                        [SDNPCommutative, SDNPAssociative]>;
+def push       : SDNode<"ISD::XCELINST" , SDTIntBinOp   ,
+                        [SDNPCommutative, SDNPAssociative]>;
+
 def sub        : SDNode<"ISD::SUB"       , SDTIntBinOp>;
 def mul        : SDNode<"ISD::MUL"       , SDTIntBinOp,
                         [SDNPCommutative, SDNPAssociative]>;

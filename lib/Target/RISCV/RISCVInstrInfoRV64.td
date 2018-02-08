@@ -25,6 +25,14 @@ class ALU64_rr<bits<7> funct7, bits<3> funct3, string OpcodeStr,
          OpcodeStr#"\t$rd, $rs1, $rs2",
          [(set GPR64:$rd, (OpNode GPR64:$rs1, GPR64:$rs2))]>;
 
+// nitish: new class created for custom accelerator instructions
+class XCEL64_rr<bits<7> funct7, bits<3> funct3, string OpcodeStr,
+               SDPatternOperator OpNode> :
+      FR<funct7, funct3, 0b1101011, (outs GPR64:$rd),
+         (ins GPR64:$rs1, GPR64:$rs2),
+         OpcodeStr#"\t$rd, $rs1, $rs2",
+         [(set GPR64:$rd, (OpNode GPR64:$rs1, GPR64:$rs2))]>;
+
 class SHIFT64_rr<bits<7> funct7, bits<3> funct3, string OpcodeStr,
                  SDPatternOperator OpNode> :
       FR<funct7, funct3, 0b0110011, (outs GPR64:$rd),
@@ -74,6 +82,11 @@ def LUI64 : FU<0b0110111, (outs GPR64:$rd), (ins imm64sxu20:$imm20),
 
 def AUIPC64 : FU<0b0010111, (outs GPR64:$rd), (ins imm64sxu20:$imm20),
                  "auipc\t$rd, $imm20", []>;
+
+// Nitish: Add pushpop inst
+def PUSHPOP64 : XCEL64_rr<0b0000001, 0b000, "pushpop",  pushpop>, Requires<[IsRV64]>; 
+def PUSH64    : XCEL64_rr<0b0000001, 0b001, "push",  push>, Requires<[IsRV64]>; 
+
 } // End of DecoderNamespace
 
 class SLT_rr<bits<7> funct7, bits<3> funct3, string OpcodeStr,
@@ -243,6 +256,22 @@ let isBranch = 1, isBarrier = 1, isTerminator = 1, isIndirectBranch = 1,
                       Requires<[IsRV64]>;
 }
 
+// nitish: Add support for custom branch instructions
+class XBcc64<bits<3> funct3, string OpcodeStr, PatFrag CondOp> :
+      FSB<funct3, 0b1011011, (outs),
+          (ins GPR64:$rs1, GPR64:$rs2, simm13_lsb0:$imm12),
+          OpcodeStr#"\t$rs1, $rs2, $imm12",
+          []> {
+  let isBranch = 1;
+  let isTerminator = 1;
+}
+
+let DecoderNamespace = "RISCV64_" in {
+// nitish: for_f instruction
+def FOR_F64 : XBcc64<0b000, "for_f", setne>;
+
+}
+
 class Bcc64<bits<3> funct3, string OpcodeStr, PatFrag CondOp> :
       FSB<funct3, 0b1100011, (outs),
           (ins GPR64:$rs1, GPR64:$rs2, simm13_lsb0:$imm12),
@@ -253,10 +282,15 @@ class Bcc64<bits<3> funct3, string OpcodeStr, PatFrag CondOp> :
 }
 
 let DecoderNamespace = "RISCV64_" in {
+// nitish: for_f instruction
+//def FOR_F64 : XBcc64<0b000, "for_f", setne>;
+
 def BEQ64   : Bcc64<0b000, "beq",   seteq>;
 def BNE64   : Bcc64<0b001, "bne",   setne>;
 // nitish: add support for xloops
 def FOR_U64 : Bcc64<0b010, "for_u", setne>;
+def FOR_R64 : Bcc64<0b011, "for_r", setne>;
+
 def BLT64   : Bcc64<0b100, "blt",   setlt>;
 def BGE64   : Bcc64<0b101, "bge",   setge>;
 def BLTU64  : Bcc64<0b110, "bltu",  setult>;

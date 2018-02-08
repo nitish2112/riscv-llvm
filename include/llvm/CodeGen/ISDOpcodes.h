@@ -199,6 +199,9 @@ namespace ISD {
     /// Simple integer binary arithmetic operators.
     ADD, SUB, MUL, SDIV, UDIV, SREM, UREM,
 
+    // nitish: Add opcode for Xcel instructions
+    XCELINST,
+
     /// SMUL_LOHI/UMUL_LOHI - Multiply two integers of type iN, producing
     /// a signed/unsigned value of type i[2*N], and return the full value as
     /// two results, each of type iN.

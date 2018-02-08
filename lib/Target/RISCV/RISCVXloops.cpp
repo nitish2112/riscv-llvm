@@ -95,13 +95,15 @@ bool Xloops::runOnMachineBasicBlock_xloops(MachineBasicBlock &MBB) {
   const TargetInstrInfo *TII = MF->getSubtarget().getInstrInfo();
 
   bool isUnorderedFor = false;
+  bool isFeeder = false;
   // llvm.loop.unordered_for is marked on the back edges of a loop. Therefore,
   // we iterate through each inst in the latch block and check
   // whether its metadata contains llvm.loop.unroll.enable.                                                                        
   if (const BasicBlock *BB = MBB.getBasicBlock()) {                       
     if (MDNode *LoopID =                                                     
             BB->getTerminator()->getMetadata(LLVMContext::MD_loop)) {    
-      StringRef Name = "llvm.loop.unordered_for.enable";
+      StringRef ForuName = "llvm.loop.unordered_for.enable";
+      StringRef ForfName = "llvm.loop.feeder.enable";
       for (unsigned i = 1, e = LoopID->getNumOperands(); i < e; ++i) {
         MDNode *MD = dyn_cast<MDNode>(LoopID->getOperand(i));
           if (!MD)                                                                  
@@ -111,11 +113,14 @@ bool Xloops::runOnMachineBasicBlock_xloops(MachineBasicBlock &MBB) {
           if (!S)                                                                   
             continue;                                                               
                                                  
-          DPRINTF("MD String found is %s\n", Name);                          
-          if (Name.equals(S->getString())) {                                          
+          if (ForuName.equals(S->getString())) {                                          
             isUnorderedFor = true;          
             DPRINTF("unordered_for hint found\n"); 
-          }                                                   
+          } 
+          if (ForfName.equals(S->getString())) {                                          
+            isFeeder = true;          
+            DPRINTF("feeder hint found\n"); 
+          } 
       }
     }                                                                        
   }                                                                          
@@ -124,8 +129,8 @@ bool Xloops::runOnMachineBasicBlock_xloops(MachineBasicBlock &MBB) {
 //  for (InstrIter I = MBB.instr_begin(); I != MBB.instr_end(); ++I) {
     // Both IR and Machine instruction classes have DebugLoc data member. 
 //    if ( I->getDebugLoc() && I->getDebugLoc().getScope() ) {
-     if ( isUnorderedFor )  { 
-      DPRINTF("Inside isUnorderedFor\n");
+     if ( isUnorderedFor || isFeeder )  { 
+      DPRINTF("Inside isUnorderedFor OR isFeeder\n");
       // This machine basic block does belong to a Loop and this block is the latch block
       // Later: This will also have that if the loop is tagged.
       if (!ML) {
@@ -143,12 +148,22 @@ bool Xloops::runOnMachineBasicBlock_xloops(MachineBasicBlock &MBB) {
 
       if ( ML && !(ML->getBlocks()).empty() &&  ML->getBottomBlock() == &MBB  ) { // ML->getLoopLatch() == MBB.getBasicBlock() ) { 
         MachineInstr* CondBr = &*(MBB.getFirstTerminator());
-	DPRINTF("[Found]: hint for_u, inst is: %d RISCV::BNE is %d\n", CondBr->getOpcode(), RISCV::BNE);
-        if ( CondBr->getOpcode() == RISCV::BNE64 || CondBr->getOpcode() == RISCV::BLT64 ) {
-	  DPRINTF("[BNE]: detected, changing instruction to for_u\n");
+	DPRINTF("[Found]: hint for_x, inst is: %d RISCV::BNE is %d\n", CondBr->getOpcode(), RISCV::BNE);
+        if ( CondBr->getOpcode() == RISCV::BNE64 || CondBr->getOpcode() == RISCV::BLT64 || CondBr->getOpcode() == RISCV::BNE || CondBr->getOpcode() == RISCV::BLT ) {
+	  DPRINTF("[BNE]: detected, changing instruction to for_u/f\n");
 
           // Change the instruction to for.u
-          CondBr->setDesc(TII->get(RISCV::FOR_U64));
+          if ( CondBr->getOpcode() == RISCV::BNE64 || CondBr->getOpcode() == RISCV::BLT64 ) {
+            if ( isUnorderedFor )
+              CondBr->setDesc(TII->get(RISCV::FOR_U64));
+            else
+              CondBr->setDesc(TII->get(RISCV::FOR_F64));
+          } else {
+            if ( isUnorderedFor )
+              CondBr->setDesc(TII->get(RISCV::FOR_U));
+            else
+              CondBr->setDesc(TII->get(RISCV::FOR_F));
+          }
 
           MachineInstrBuilder MIB;
           bool legal = false;

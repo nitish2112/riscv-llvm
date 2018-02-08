@@ -100,6 +100,10 @@ void RISCVPassConfig::addPreEmitPass() {
   // nitish: Add Xloops pass to the backend
   RISCVTargetMachine &TM = getRISCVTargetMachine();
   addPass(createRISCVXloopsPass(TM));
+
+  // nitish: Add Feeder pass to the backend
+  // addPass(createRISCVFeederPass(TM));
+
 }
 
 void RISCVPassConfig::addPreSched2() {

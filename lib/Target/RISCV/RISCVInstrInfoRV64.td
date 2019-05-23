@@ -84,8 +84,12 @@ def AUIPC64 : FU<0b0010111, (outs GPR64:$rd), (ins imm64sxu20:$imm20),
                  "auipc\t$rd, $imm20", []>;
 
 // Nitish: Add pushpop inst
-def PUSHPOP64 : XCEL64_rr<0b0000001, 0b000, "pushpop",  pushpop>, Requires<[IsRV64]>; 
-def PUSH64    : XCEL64_rr<0b0000001, 0b001, "push",  push>, Requires<[IsRV64]>; 
+def PUSHPOP64  : XCEL64_rr<0b0000001, 0b000, "pushpop",  pushpop>, Requires<[IsRV64]>; 
+def PUSH64     : XCEL64_rr<0b0000001, 0b001, "push",  push>, Requires<[IsRV64]>;
+def STATSON64  : XCEL64_rr<0b0000001, 0b010, "statson",  statson>, Requires<[IsRV64]>; 
+def STATSOFF64 : XCEL64_rr<0b0000001, 0b011, "statsoff",  statsoff>, Requires<[IsRV64]>; 
+//def SPADCONF64 : XCEL64_rr<0b0000001, 0b100, "spadconf",  spadconf>, Requires<[IsRV64]>; 
+def MTX64 : XCEL64_rr<0b0000001, 0b100, "mtx",  mtx>, Requires<[IsRV64]>;
 
 } // End of DecoderNamespace
 
@@ -221,6 +225,7 @@ def : Pat<(extloadi32 addr_reg_imm12s:$addr), (LW64   addr_reg_imm12s:$addr)>;
 let DecoderNamespace = "RISCV64_" in {
   def SD   : StoreRI<0b011, "sd", store, GPR64>, Requires<[IsRV64]>;
   def SW64 : StoreRI<0b010, "sw", truncstorei32, GPR64>, Requires<[IsRV64]>;
+  def SW_NC64 : StoreRI<0b100, "sw_nc", truncstorei32, GPR64>, Requires<[IsRV64]>;
   def SH64 : StoreRI<0b001, "sh", truncstorei16, GPR64>, Requires<[IsRV64]>;
   def SB64 : StoreRI<0b000, "sb", truncstorei8, GPR64>, Requires<[IsRV64]>;
 }

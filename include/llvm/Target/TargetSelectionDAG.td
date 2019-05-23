@@ -374,6 +374,19 @@ def pushpop    : SDNode<"ISD::XCELINST" , SDTIntBinOp   ,
 def push       : SDNode<"ISD::XCELINST" , SDTIntBinOp   ,
                         [SDNPCommutative, SDNPAssociative]>;
 
+// nitish: add statson and statsoff instructions
+def statson    : SDNode<"ISD::XCELINST" , SDTIntBinOp   ,
+                        [SDNPCommutative, SDNPAssociative]>;
+def statsoff   : SDNode<"ISD::XCELINST" , SDTIntBinOp   ,
+                        [SDNPCommutative, SDNPAssociative]>;
+// nitish: add spadconf
+//def spadconf   : SDNode<"ISD::XCELINST" , SDTIntBinOp   ,
+//                        [SDNPCommutative, SDNPAssociative]>;
+
+// nitish: add mtx
+def mtx        : SDNode<"ISD::XCELINST" , SDTIntBinOp   ,
+                        [SDNPCommutative, SDNPAssociative]>;
+
 def sub        : SDNode<"ISD::SUB"       , SDTIntBinOp>;
 def mul        : SDNode<"ISD::MUL"       , SDTIntBinOp,
                         [SDNPCommutative, SDNPAssociative]>;

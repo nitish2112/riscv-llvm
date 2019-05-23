@@ -239,9 +239,10 @@ def : Pat<(i32 (extloadi1  addr_reg_imm12s:$src)), (LBU addr_reg_imm12s:$src)>;
 // reflecting the order these fields are specified in the instruction
 // encoding.
 
-def SB  : StoreRI<0b000, "sb", truncstorei8,  GPR>;
-def SH  : StoreRI<0b001, "sh", truncstorei16, GPR>;
-def SW  : StoreRI<0b010, "sw", store,         GPR>;
+def SB    : StoreRI<0b000, "sb", truncstorei8,  GPR>;
+def SH    : StoreRI<0b001, "sh", truncstorei16, GPR>;
+def SW    : StoreRI<0b010, "sw", store,         GPR>;
+def SW_NC : StoreRI<0b100, "sw_nc", store,      GPR>;
 
 def : Pat<(store (i32 0), addr_reg_imm12s:$addr),
           (SW X0_32, addr_reg_imm12s:$addr)>;
@@ -295,6 +296,10 @@ class XCEL_rr<bits<7> funct7, bits<3> funct3, string OpcodeStr,
 
 def PUSHPOP  : XCEL_rr<0b0000001, 0b000, "pushpop",  pushpop>, Requires<[IsRV32]>;
 def PUSH     : XCEL_rr<0b0000001, 0b001, "push",  push>, Requires<[IsRV32]>;
+def STATSON  : XCEL_rr<0b0000001, 0b010, "statson",  statson>, Requires<[IsRV32]>;
+def STATSOFF : XCEL_rr<0b0000001, 0b011, "statsoff",  statsoff>, Requires<[IsRV32]>;
+//def SPADCONF : XCEL_rr<0b0000001, 0b100, "spadconf",  spadconf>, Requires<[IsRV32]>;
+def MTX      : XCEL_rr<0b0000001, 0b100, "mtx",  mtx>, Requires<[IsRV32]>;
 
 // Define pattern expansions for setcc operations that aren't directly
 // handled by a RISC-V instruction
